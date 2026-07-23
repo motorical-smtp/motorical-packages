@@ -9,11 +9,9 @@ Public source for Motorical’s agent/developer tooling published on npm:
 
 ## Install
 
-Named install may fail until the npm packument is healthy; use the registry tarball meanwhile:
-
 ```bash
-npm install -g https://registry.npmjs.org/@motorical/cli/-/cli-1.0.5.tgz
-npm install -g https://registry.npmjs.org/@motorical/mcp/-/mcp-1.0.5.tgz
+npm install -g @motorical/cli
+npm install -g @motorical/mcp
 ```
 
 Or from this repo:
