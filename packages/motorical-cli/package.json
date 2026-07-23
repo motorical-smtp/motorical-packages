@@ -1,0 +1,41 @@
+{
+  "name": "@motorical/cli",
+  "version": "1.0.5",
+  "description": "Motorical developer CLI \u2014 signup, sandbox provision, dry-run send, convert to production",
+  "type": "module",
+  "bin": {
+    "motorical": "./src/index.js"
+  },
+  "main": "./src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {},
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "homepage": "https://docs.motorical.com/ai",
+  "bugs": {
+    "url": "https://github.com/motorical-smtp/motorical-packages/issues"
+  },
+  "keywords": [
+    "motorical",
+    "cli",
+    "email",
+    "sandbox",
+    "smtp"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motorical-smtp/motorical-packages.git",
+    "directory": "packages/motorical-cli"
+  }
+}
