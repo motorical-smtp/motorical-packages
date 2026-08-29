@@ -13,7 +13,7 @@ A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per
 | `motorical_get_send_status` | none | `GET /v1/status` |
 | `motorical_mint_public_token` | `ak_live_…` | Mint Public API bearer |
 | `motorical_list_motor_blocks` | bearer (auto-mint) | List Motor Blocks |
-| `motorical_send_email` | `mk_live_…` | Transactional `POST /v1/send` (**default `dryRun: true`**) |
+| `motorical_send_email` | `mk_live_…` | Transactional `POST /v1/send` (**default `dryRun: true`**; optional **`fromName`**) |
 | `motorical_get_message` | bearer | Message by UUID |
 | `motorical_get_message_events` | bearer | Delivery lifecycle events |
 | `motorical_sandbox_status` | `MOTORICAL_JWT` | Developer sandbox status |
@@ -23,7 +23,7 @@ A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per
 **Resources:** `motorical://docs/llms.txt`, `motorical://docs/openapi.json`  
 **Prompt:** `motorical_integrate_send`
 
-Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Sandbox outbound is allowlist-locked until convert.
+Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Sandbox outbound is allowlist-locked until convert. Optional `fromName` sets the inbox display name (same as HTTP `/v1/send` / CLI `--from-name`); do not put `From` in custom headers.
 
 ## Environment
 

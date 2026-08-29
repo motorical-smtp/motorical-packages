@@ -54,7 +54,8 @@ export function createMotoricalMcpServer(options = {}) {
     'motorical_mint_public_token',
     {
       description:
-        'Mint a short-lived Public Analytics API bearer token using MOTORICAL_AK_API_KEY (ak_live_...). ' +
+        'Mint a short-lived Public Analytics API bearer token using MOTORICAL_AK_API_KEY (ak_live_...) ' +
+        'or, when none is configured, MOTORICAL_JWT. ' +
         'Use for /api/public/v1 logs, analytics, webhooks, config. Not for POST /v1/send.',
       inputSchema: {
         motorBlockId: z.string().uuid().optional().describe('Defaults to MOTORICAL_MOTOR_BLOCK_ID'),
@@ -95,7 +96,9 @@ export function createMotoricalMcpServer(options = {}) {
       description:
         'Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). ' +
         'Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. ' +
-        'Do not use OAuth access tokens or Bearer tokens here.',
+        'Do not use OAuth access tokens or Bearer tokens here. ' +
+        'For developer-sandbox accounts, a non-allowlisted recipient is redirected to the account ' +
+        'email rather than rejected — check the response\'s sandboxRedirect field.',
       inputSchema: {
         from: z.string().email().optional().describe('Defaults to MOTORICAL_DEFAULT_FROM'),
         fromName: z
@@ -173,6 +176,47 @@ export function createMotoricalMcpServer(options = {}) {
     async () => {
       try {
         return jsonResult(await client.sandboxStatus());
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  server.registerTool(
+    'motorical_sandbox_allowlist_request',
+    {
+      description:
+        'Request to add a new recipient to the developer sandbox outbound allowlist. ' +
+        'Sends a 6-digit confirmation code to that address (not the account owner) — ' +
+        'call motorical_sandbox_allowlist_confirm with the code the recipient receives. Requires MOTORICAL_JWT.',
+      inputSchema: {
+        email: z.string().email()
+      }
+    },
+    async (args) => {
+      try {
+        return jsonResult(await client.sandboxAllowlistRequest(args));
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  server.registerTool(
+    'motorical_sandbox_allowlist_confirm',
+    {
+      description:
+        'Confirm a sandbox allowlist recipient using the 6-digit code sent by ' +
+        'motorical_sandbox_allowlist_request. On success the address is added to the ' +
+        'allowlist and can receive real (non-dryRun) sandbox sends. Requires MOTORICAL_JWT.',
+      inputSchema: {
+        email: z.string().email(),
+        code: z.string().length(6)
+      }
+    },
+    async (args) => {
+      try {
+        return jsonResult(await client.sandboxAllowlistConfirm(args));
       } catch (err) {
         return errorResult(err);
       }

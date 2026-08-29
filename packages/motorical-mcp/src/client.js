@@ -24,20 +24,16 @@ export class MotoricalClient {
     this.config = config;
     /** @type {string|null} */
     this._cachedBearer = config.bearerToken || null;
+    /** @type {string|null} */
+    this._cachedMkKey = null;
   }
 
   requireMk() {
+    if (this._cachedMkKey) return this._cachedMkKey;
     if (!this.config.mkApiKey) {
       throw new Error('MOTORICAL_MK_API_KEY is required (mk_live_... Motor Block API key for POST /v1/send)');
     }
     return this.config.mkApiKey;
-  }
-
-  requireAk() {
-    if (!this.config.akApiKey) {
-      throw new Error('MOTORICAL_AK_API_KEY is required (ak_live_... Account API key to mint public tokens)');
-    }
-    return this.config.akApiKey;
   }
 
   async request(method, path, { headers = {}, body, apiKey, bearer } = {}) {
@@ -73,17 +69,28 @@ export class MotoricalClient {
 
   async mintPublicToken({ motorBlockId, scopes, ttlSeconds = 900 } = {}) {
     const blockId = motorBlockId || this.config.motorBlockId;
-    if (!blockId) {
-      throw new Error('motorBlockId is required (argument or MOTORICAL_MOTOR_BLOCK_ID)');
+    const hasAk = !!this.config.akApiKey;
+    const hasJwt = !!this.config.dashboardJwt;
+
+    const missing = [];
+    if (!blockId) missing.push('motorBlockId (argument or MOTORICAL_MOTOR_BLOCK_ID)');
+    if (!hasAk && !hasJwt) {
+      missing.push('MOTORICAL_AK_API_KEY (ak_live_... Account API key) or MOTORICAL_JWT (dashboard session)');
     }
-    const data = await this.request('POST', '/api/public/token/account-key', {
-      apiKey: this.requireAk(),
-      body: {
-        motorBlockId: blockId,
-        scopes: scopes || ['logs.read', 'analytics.read', 'webhooks.manage', 'config.read'],
-        ttlSeconds
-      }
-    });
+    if (missing.length) {
+      throw new Error(`Missing required to mint a public token: ${missing.join('; ')}`);
+    }
+
+    const body = {
+      motorBlockId: blockId,
+      scopes: scopes || ['logs.read', 'analytics.read', 'webhooks.manage', 'config.read'],
+      ttlSeconds
+    };
+
+    const data = hasAk
+      ? await this.request('POST', '/api/public/token/account-key', { apiKey: this.config.akApiKey, body })
+      : await this.request('POST', '/api/public/token', { bearer: this.config.dashboardJwt, body });
+
     const token = data?.data?.token || data?.token || data?.access_token;
     if (token) this._cachedBearer = token;
     return data;
@@ -178,14 +185,29 @@ export class MotoricalClient {
   }
 
   async sandboxStatus() {
-    return this.request('GET', '/api/developer/sandbox', { bearer: this.requireDashboardJwt() });
+    const result = await this.request('GET', '/api/developer/sandbox', {
+      bearer: this.requireDashboardJwt()
+    });
+    // A returning agent that calls status instead of re-provisioning still
+    // needs motorBlockId for mintPublicToken()/getBearer() (message lookup).
+    const blockId = result?.data?.motorBlock?.id;
+    if (blockId && !this.config.motorBlockId) this.config.motorBlockId = blockId;
+    return result;
   }
 
   async sandboxProvision({ handle, channel = 'agent' } = {}) {
-    return this.request('POST', '/api/developer/sandbox/provision', {
+    const result = await this.request('POST', '/api/developer/sandbox/provision', {
       bearer: this.requireDashboardJwt(),
       body: { handle, channel }
     });
+    const mkKey = result?.data?.credentials?.mkApiKey;
+    if (mkKey && !this.config.mkApiKey) this._cachedMkKey = mkKey;
+    // Without this a cold JWT-only agent can send but never track: getBearer()
+    // throws 'motorBlockId is required'. Same precedence rule as mkApiKey —
+    // an explicit MOTORICAL_MOTOR_BLOCK_ID always wins.
+    const blockId = result?.data?.motorBlock?.id;
+    if (blockId && !this.config.motorBlockId) this.config.motorBlockId = blockId;
+    return result;
   }
 
   async sandboxConvert({ domainId }) {
@@ -217,6 +239,23 @@ export class MotoricalClient {
     return this.request('POST', `/api/domains/${encodeURIComponent(domainId)}/check-dns`, {
       bearer: this.requireDashboardJwt(),
       body: recordType ? { recordType } : {}
+    });
+  }
+
+  async sandboxAllowlistRequest({ email } = {}) {
+    if (!email) throw new Error('email is required');
+    return this.request('POST', '/api/developer/sandbox/allowlist/request', {
+      bearer: this.requireDashboardJwt(),
+      body: { email }
+    });
+  }
+
+  async sandboxAllowlistConfirm({ email, code } = {}) {
+    if (!email) throw new Error('email is required');
+    if (!code) throw new Error('code is required');
+    return this.request('POST', '/api/developer/sandbox/allowlist/confirm', {
+      bearer: this.requireDashboardJwt(),
+      body: { email, code }
     });
   }
 

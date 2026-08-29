@@ -27,15 +27,21 @@ test('MCP server lists tools and resources', async () => {
   const tools = await client.listTools();
   const names = tools.tools.map((t) => t.name).sort();
   assert.deepEqual(names, [
+    'motorical_domain_add',
+    'motorical_domain_check_dns',
+    'motorical_domain_verify',
     'motorical_get_message',
     'motorical_get_message_events',
     'motorical_get_send_status',
     'motorical_list_motor_blocks',
     'motorical_mint_public_token',
+    'motorical_sandbox_allowlist_confirm',
+    'motorical_sandbox_allowlist_request',
     'motorical_sandbox_convert',
     'motorical_sandbox_provision',
     'motorical_sandbox_status',
-    'motorical_send_email'
+    'motorical_send_email',
+    'motorical_web_handoff'
   ]);
 
   const status = await client.callTool({ name: 'motorical_get_send_status', arguments: {} });
