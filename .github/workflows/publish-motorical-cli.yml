@@ -44,5 +44,5 @@ jobs:
             exit 1
           fi
 
-      - name: Publish (dry run)
-        run: npm publish --dry-run --provenance
+      - name: Publish
+        run: npm publish --provenance
