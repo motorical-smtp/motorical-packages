@@ -1,0 +1,48 @@
+name: Publish @motorical/cli
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/motorical-cli
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Ensure npm supports OIDC trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Audit dependencies (high/critical only)
+        run: npm audit --audit-level=high
+
+      - name: Verify this version isn't already published
+        run: |
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view @motorical/cli version 2>/dev/null || echo "none")
+          echo "package.json version: $LOCAL_VERSION"
+          echo "currently published version: $PUBLISHED_VERSION"
+          if [ "$LOCAL_VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "::error::Version $LOCAL_VERSION is already published. Bump packages/motorical-cli/package.json's version before running this workflow."
+            exit 1
+          fi
+
+      - name: Publish (dry run)
+        run: npm publish --dry-run --provenance

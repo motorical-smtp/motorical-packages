@@ -1,7 +1,7 @@
 {
   "name": "@motorical/cli",
-  "version": "1.0.5",
-  "description": "Motorical developer CLI \u2014 signup, sandbox provision, dry-run send, convert to production",
+  "version": "1.0.6",
+  "description": "Motorical developer CLI — signup, sandbox provision, dry-run send, convert to production",
   "type": "module",
   "bin": {
     "motorical": "./src/index.js"
