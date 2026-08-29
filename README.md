@@ -36,3 +36,19 @@ packages/
 - https://docs.motorical.com/openapi.json
 
 This repository is **not** the Motorical API backend. It only contains the public CLI and MCP packages.
+
+## `motorical-mcp` is a release-time mirror, not the dev source
+
+As of 2026-08-29, `packages/motorical-mcp/` here is synced from the private
+`motorical-smtp/motorical-backend` repo at release time — it is **not** where day-to-day
+development happens. Do not fix bugs directly here; fix them in `motorical-backend` and
+re-sync, or the fix will be silently overwritten at the next release. The publish
+workflow (`.github/workflows/publish-motorical-mcp.yml`) lives here specifically because
+`npm publish --provenance` requires a public source repo, which `motorical-backend`
+correctly is not.
+
+One field is intentionally different between the two repos' copies of `package.json`:
+`repository.url` and `bugs.url` here point at `motorical-smtp/motorical-packages` (this
+repo), reflecting where the package was actually built and published from — do not
+"fix" this to match `motorical-backend`. Full release process:
+[motorical-docs/services/motorical-mcp.md](https://github.com/motorical-smtp/motorical-docs/blob/main/services/motorical-mcp.md).
