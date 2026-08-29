@@ -52,3 +52,31 @@ One field is intentionally different between the two repos' copies of `package.j
 repo), reflecting where the package was actually built and published from — do not
 "fix" this to match `motorical-backend`. Full release process:
 [motorical-docs/services/motorical-mcp.md](https://github.com/motorical-smtp/motorical-docs/blob/main/services/motorical-mcp.md).
+
+## Repository security settings (as of 2026-08-29)
+
+Hardened as a follow-on to an account-wide GitHub Actions worm incident found and
+cleaned up the same day (unrelated repo, `ai-support-chat` — full writeup in the
+maintainer's private notes, not in this repo). This repo is the account's only public
+release surface with a live publish pipeline, so it got the closest look:
+
+- **Branch protection on `main`:** force-pushes and branch deletion are blocked.
+  Direct push to `main` is still allowed and required-review is deliberately **not**
+  enabled — the documented release process above (step 2: "commit and push to
+  `motorical-packages`'s `main`") is a solo-maintainer, direct-push flow and this
+  setting was chosen specifically not to break it. The protection exists to stop the
+  *ai-support-chat* failure mode (a compromised credential deleting `main` and
+  repointing the repo's default branch to an attacker-created branch), not to add
+  process overhead here.
+- **Secret scanning + push protection: enabled.** Free for public repos. Push
+  protection blocks a commit containing a recognized secret pattern before it lands in
+  public history.
+- **Dependabot security updates: enabled** (vulnerability alerts were already on).
+- **`sha_pinning_required: true`** at the repo level (Settings → Actions → General).
+  `publish-motorical-mcp.yml` already pinned both actions to commit SHAs by hand
+  (see the workflow file) — this setting makes that mandatory for any future workflow
+  added here, rather than relying on remembering to do it again.
+
+None of this changes the publish workflow or the release steps above — it only
+constrains what a compromised credential or a careless future change could do to this
+repo.
