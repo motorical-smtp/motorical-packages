@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {
   generatePkce, validateCallback, isExpired, toStoredCredentials,
-  buildAuthorizeUrl, discover, saveCredentials, loadCredentials, CLIENT_ID,
+  buildAuthorizeUrl, discover, saveCredentials, loadCredentials, revokeToken, CLIENT_ID,
 } from '../src/oauth.js';
 import { MotoricalClient } from '../src/client.js';
 
@@ -109,7 +109,7 @@ test('stored credentials are owner-only on disk', () => {
 test('an OAuth session sends with Bearer instead of demanding an mk_live_ key', async () => {
   const client = new MotoricalClient({
     apiBaseUrl: 'https://api.motorical.com', docsBaseUrl: '', mkApiKey: '', akApiKey: '',
-    bearerToken: '', motorBlockId: '', defaultFrom: 'noreply@example.com',
+    bearerToken: '', motorBlockId: 'mb-1', defaultFrom: 'noreply@example.com',
     oauthCredentials: {
       issuer: ISSUER, resource: RESOURCE, accessToken: 'mcp-access-token',
       refreshToken: 'r', scope: 'send:transactional', expiresAt: Date.now() + 3_600_000,
@@ -121,7 +121,7 @@ test('an OAuth session sends with Bearer instead of demanding an mk_live_ key', 
 
   await client.sendEmail({ to: 'a@example.com', subject: 's', text: 't', dryRun: true });
 
-  assert.equal(seen.p, '/v1/send');
+  assert.equal(seen.p, '/v1/send?motorBlockId=mb-1');
   assert.equal(seen.opts.bearer, 'mcp-access-token');
   assert.equal(seen.opts.apiKey, undefined);
 });
@@ -160,4 +160,113 @@ test('an expired session with no refresh token tells the user to log in again', 
     },
   });
   await assert.rejects(() => client.oauthAccessToken(), /motorical-mcp login/);
+});
+
+// An OAuth grant covers every Motor Block the user owns, so block-scoped calls
+// must name one. Regression guard for a 12-block account, where the API would
+// otherwise answer every read with a bare 400.
+function oauthClient(overrides = {}) {
+  return new MotoricalClient({
+    apiBaseUrl: '', docsBaseUrl: '', mkApiKey: '', akApiKey: '', bearerToken: '',
+    motorBlockId: '', defaultFrom: 'noreply@example.com',
+    oauthCredentials: {
+      issuer: ISSUER, resource: RESOURCE, accessToken: 'tok', refreshToken: 'r',
+      scope: 'send:transactional read:analytics', expiresAt: Date.now() + 3_600_000,
+    },
+    ...overrides,
+  });
+}
+
+test('reads carry motorBlockId when one is configured', async () => {
+  const client = oauthClient({ motorBlockId: 'mb-7' });
+  let seen;
+  client.request = async (m, p) => { seen = p; return {}; };
+  await client.listMotorBlocks();
+  assert.match(seen, /motorBlockId=mb-7/);
+});
+
+test('an explicit motorBlockId argument wins over the configured default', async () => {
+  const client = oauthClient({ motorBlockId: 'mb-7' });
+  let seen;
+  client.request = async (m, p) => { seen = p; return {}; };
+  await client.getMessage('msg-1', { motorBlockId: 'mb-9' });
+  assert.match(seen, /motorBlockId=mb-9/);
+});
+
+test('a read with no block anywhere fails with an actionable message, not a bare 400', async () => {
+  const client = oauthClient();
+  client.request = async () => ({});
+  await assert.rejects(() => client.listMotorBlocks(), /MOTORICAL_MOTOR_BLOCK_ID/);
+});
+
+test('sending with no block anywhere fails before it reaches the API', async () => {
+  const client = oauthClient();
+  client.request = async () => { throw new Error('must not reach the API'); };
+  await assert.rejects(
+    () => client.sendEmail({ to: 'a@example.com', subject: 's', text: 't' }),
+    /MOTORICAL_MOTOR_BLOCK_ID/
+  );
+});
+
+test('sending passes the block through so the grant can be checked against it', async () => {
+  const client = oauthClient({ motorBlockId: 'mb-7' });
+  let seen;
+  client.request = async (m, path, opts) => { seen = { path, opts }; return {}; };
+  await client.sendEmail({ to: 'a@example.com', subject: 's', text: 't', dryRun: true });
+  assert.match(seen.path, /^\/v1\/send\?motorBlockId=mb-7$/);
+  assert.equal(seen.opts.body.motorBlockId, undefined);   // strict schema rejects unknown body keys
+  assert.equal(seen.opts.bearer, 'tok');
+});
+
+test('an api-key client is unaffected — no motorBlockId is injected', async () => {
+  const client = new MotoricalClient({
+    apiBaseUrl: '', docsBaseUrl: '', mkApiKey: 'mk_live_x_y', akApiKey: '', bearerToken: '',
+    motorBlockId: '', defaultFrom: 'noreply@example.com', oauthCredentials: null,
+  });
+  let seen;
+  client.request = async (m, p, opts) => { seen = { p, opts }; return {}; };
+  await client.sendEmail({ to: 'a@example.com', subject: 's', text: 't', dryRun: true });
+  assert.equal(seen.opts.body.motorBlockId, undefined);
+  assert.equal(seen.opts.apiKey, 'mk_live_x_y');
+});
+
+test('domainList uses the scoped public endpoint under OAuth, never the dashboard route', async () => {
+  const client = oauthClient({ motorBlockId: 'mb-7' });
+  let seen;
+  client.request = async (m, p, opts) => { seen = { p, opts }; return {}; };
+  await client.domainList();
+  assert.match(seen.p, /^\/api\/public\/v1\/domains\?motorBlockId=mb-7$/);
+  assert.equal(seen.opts.bearer, 'tok');
+});
+
+test('domainList still uses the dashboard route when there is no OAuth session', async () => {
+  const client = new MotoricalClient({
+    apiBaseUrl: '', docsBaseUrl: '', mkApiKey: '', akApiKey: '', bearerToken: '',
+    motorBlockId: '', defaultFrom: '', dashboardJwt: 'jwt-token', oauthCredentials: null,
+  });
+  let seen;
+  client.request = async (m, p, opts) => { seen = { p, opts }; return {}; };
+  await client.domainList();
+  assert.equal(seen.p, '/api/domains');
+  assert.equal(seen.opts.bearer, 'jwt-token');
+});
+
+test('revokeToken posts the token to the advertised revocation endpoint', async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts) => { calls.push({ url, body: opts.body }); return { ok: true }; };
+  const ok = await revokeToken({ ...META, revocation_endpoint: `${ISSUER}/api/oauth2/revoke` },
+    { token: 'refresh-abc', tokenTypeHint: 'refresh_token' }, fetchImpl);
+  assert.equal(ok, true);
+  assert.equal(calls[0].url, `${ISSUER}/api/oauth2/revoke`);
+  const p = new URLSearchParams(calls[0].body);
+  assert.equal(p.get('token'), 'refresh-abc');
+  assert.equal(p.get('token_type_hint'), 'refresh_token');
+  assert.equal(p.get('client_id'), CLIENT_ID);
+});
+
+test('revokeToken is a no-op when the AS advertises no revocation endpoint', async () => {
+  let called = false;
+  const fetchImpl = async () => { called = true; return { ok: true }; };
+  assert.equal(await revokeToken(META, { token: 't' }, fetchImpl), false);
+  assert.equal(called, false);
 });

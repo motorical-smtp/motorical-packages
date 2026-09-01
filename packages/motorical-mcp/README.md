@@ -38,6 +38,11 @@ and the grant is stored at `~/.motorical/mcp-credentials.json` (owner-only,
 `0600`). Access tokens last an hour and refresh silently.
 
 - `motorical-mcp status` — show the current connection
+
+An authorization covers **every Motor Block you own**, so block-scoped calls
+must say which one they mean. Set `MOTORICAL_MOTOR_BLOCK_ID` (or pass
+`motorBlockId` per call); the tools fail with a clear message rather than a bare
+API error if it is missing.
 - `motorical-mcp logout` — remove the local credentials
 
 Logging out only deletes the local file. To cut the agent's access off at the

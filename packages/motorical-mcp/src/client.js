@@ -19,7 +19,9 @@ export function loadConfig(env = process.env) {
     bearerToken: env.MOTORICAL_BEARER_TOKEN || '',
     dashboardJwt: env.MOTORICAL_JWT || '',
     motorBlockId: env.MOTORICAL_MOTOR_BLOCK_ID || '',
-    defaultFrom: env.MOTORICAL_DEFAULT_FROM || ''
+    defaultFrom: env.MOTORICAL_DEFAULT_FROM || '',
+    // A grant from `motorical-mcp login`, when one exists.
+    oauthCredentials: loadCredentials()
   };
 }
 
@@ -34,9 +36,10 @@ export class MotoricalClient {
      * An OAuth grant from `motorical-mcp login`. When present it is preferred
      * over pasted keys: it is scoped, revocable from the dashboard, and expires.
      */
-    this._oauth = config.oauthCredentials !== undefined
-      ? config.oauthCredentials
-      : loadCredentials();
+    // Read ONLY from config. An implicit loadCredentials() here would make the
+    // client behave differently on a machine that happens to have logged in —
+    // including inside tests. loadConfig() is the one place the disk is read.
+    this._oauth = config.oauthCredentials || null;
     this._oauthMeta = null;
   }
 
@@ -143,6 +146,26 @@ export class MotoricalClient {
     return data;
   }
 
+  /**
+   * An OAuth grant covers every Motor Block the user owned at consent time, so
+   * a block-scoped request must say which one it means. (A minted public token
+   * carried a single block inside the token, so this never came up before.)
+   * Fails here with an actionable message rather than letting the API answer
+   * with a bare 400.
+   */
+  _scoped(path, motorBlockId) {
+    if (!this.hasOAuthSession()) return path;
+    const id = motorBlockId || this.config.motorBlockId;
+    if (!id) {
+      throw new Error(
+        'motorBlockId is required: your Motorical authorization covers multiple Motor Blocks. '
+        + 'Pass motorBlockId, or set MOTORICAL_MOTOR_BLOCK_ID.'
+      );
+    }
+    const sep = path.includes('?') ? '&' : '?';
+    return `${path}${sep}motorBlockId=${encodeURIComponent(id)}`;
+  }
+
   async getBearer({ motorBlockId, forceRefresh = false } = {}) {
     // An OAuth grant supersedes minted public tokens entirely — no ak_live_ key
     // and no dashboard JWT needed.
@@ -159,7 +182,7 @@ export class MotoricalClient {
 
   async listMotorBlocks({ motorBlockId } = {}) {
     const bearer = await this.getBearer({ motorBlockId });
-    return this.request('GET', '/api/public/v1/motor-blocks', { bearer });
+    return this.request('GET', this._scoped('/api/public/v1/motor-blocks', motorBlockId), { bearer });
   }
 
   async sendEmail(payload) {
@@ -193,13 +216,26 @@ export class MotoricalClient {
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
 
     const oauthToken = await this.oauthAccessToken();
+    if (oauthToken && !this.config.motorBlockId && !payload.motorBlockId) {
+      throw new Error(
+        'motorBlockId is required to send with an OAuth authorization: it covers every Motor Block '
+        + 'you own. Set MOTORICAL_MOTOR_BLOCK_ID, or pass motorBlockId.'
+      );
+    }
     const auth = oauthToken ? { bearer: oauthToken } : { apiKey: this.requireMk() };
 
-    return this.request('POST', '/v1/send', {
+    // The block goes in the query string, not the body: /v1/send validates its
+    // body strictly and rejects unknown keys, and an api-key client's block
+    // comes from the key itself — a body field that disagreed would be a
+    // silent footgun.
+    const sendPath = oauthToken
+      ? `/v1/send?motorBlockId=${encodeURIComponent(payload.motorBlockId || this.config.motorBlockId)}`
+      : '/v1/send';
+
+    return this.request('POST', sendPath, {
       ...auth,
       headers,
       body: {
-        ...(oauthToken && this.config.motorBlockId ? { motorBlockId: this.config.motorBlockId } : {}),
         from: fromAddr,
         ...(fromName ? { fromName } : {}),
         to: Array.isArray(to) ? to : [to],
@@ -217,14 +253,14 @@ export class MotoricalClient {
     if (!messageId) throw new Error('messageId is required');
     const bearer = await this.getBearer({ motorBlockId });
     const q = includePII ? '?includePII=true' : '';
-    return this.request('GET', `/api/public/v1/messages/${encodeURIComponent(messageId)}${q}`, { bearer });
+    return this.request('GET', this._scoped(`/api/public/v1/messages/${encodeURIComponent(messageId)}${q}`, motorBlockId), { bearer });
   }
 
   async getMessageEvents(messageId, { includePII = false, motorBlockId } = {}) {
     if (!messageId) throw new Error('messageId is required');
     const bearer = await this.getBearer({ motorBlockId });
     const q = includePII ? '?includePII=true' : '';
-    return this.request('GET', `/api/public/v1/messages/${encodeURIComponent(messageId)}/events${q}`, { bearer });
+    return this.request('GET', this._scoped(`/api/public/v1/messages/${encodeURIComponent(messageId)}/events${q}`, motorBlockId), { bearer });
   }
 
   async getSendApiStatus() {
@@ -275,6 +311,16 @@ export class MotoricalClient {
   }
 
   async domainList() {
+    // An OAuth grant reads the scoped public endpoint. It cannot use
+    // /api/domains: that route is behind the dashboard-session middleware,
+    // which also guards billing and account settings.
+    const oauthToken = await this.oauthAccessToken();
+    if (oauthToken) {
+      // Domains are account-wide, but authenticatePublic keeps MCP grants
+      // strictly block-bound rather than silently choosing one, so the
+      // selector travels here too. The endpoint scopes by user, not by block.
+      return this.request('GET', this._scoped('/api/public/v1/domains'), { bearer: oauthToken });
+    }
     return this.request('GET', '/api/domains', {
       bearer: this.requireDashboardJwt()
     });

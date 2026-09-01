@@ -135,6 +135,24 @@ export async function refreshTokens(meta, { refreshToken }, fetchImpl = fetch) {
   return data;
 }
 
+/**
+ * RFC 7009. Deleting the local file leaves the grant alive on the server —
+ * still valid, still refreshable, belonging to nobody. "Log out" should mean
+ * the access is gone, so revoke before forgetting.
+ */
+export async function revokeToken(meta, { token, tokenTypeHint = 'refresh_token' }, fetchImpl = fetch) {
+  if (!meta?.revocation_endpoint) return false;
+  const body = new URLSearchParams({
+    token, token_type_hint: tokenTypeHint, client_id: CLIENT_ID,
+  });
+  const res = await fetchImpl(meta.revocation_endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+  return res.ok;
+}
+
 /** Shape stored on disk; `expiresAt` is absolute so a stale clock is obvious. */
 export function toStoredCredentials(tokenResponse, { issuer, resource }) {
   return {

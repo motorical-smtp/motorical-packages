@@ -12,7 +12,8 @@ const USAGE = `motorical-mcp — Motorical MCP server
 
   motorical-mcp             start the MCP server on stdio (default)
   motorical-mcp login       authorize with Motorical in your browser
-  motorical-mcp logout      remove locally stored credentials
+  motorical-mcp logout      revoke the authorization and remove local credentials
+                            (--local-only to forget it without revoking)
   motorical-mcp status      show the current connection
 `;
 
@@ -22,7 +23,7 @@ async function main() {
   if (cmd === 'login' || cmd === 'logout' || cmd === 'status') {
     const mod = await import('./login.js');
     if (cmd === 'login') await mod.login();
-    if (cmd === 'logout') mod.logout();
+    if (cmd === 'logout') await mod.logout({ revoke: !process.argv.includes('--local-only') });
     if (cmd === 'status') mod.status();
     return;
   }

@@ -8,11 +8,11 @@ import { spawn } from 'node:child_process';
 import {
   DEFAULT_ISSUER, DEFAULT_RESOURCE,
   discover, generatePkce, buildAuthorizeUrl, startCallbackServer,
-  exchangeCode, toStoredCredentials, saveCredentials, clearCredentials,
+  exchangeCode, toStoredCredentials, saveCredentials, clearCredentials, revokeToken,
   credentialsPath, loadCredentials,
 } from './oauth.js';
 
-const DEFAULT_SCOPES = ['send:transactional', 'read:analytics'];
+const DEFAULT_SCOPES = ['send:transactional', 'read:analytics', 'manage:domains'];
 
 function openBrowser(url) {
   const cmd = process.platform === 'darwin' ? 'open'
@@ -68,11 +68,28 @@ export async function login({
   return creds;
 }
 
-export function logout({ log = (m) => console.error(m) } = {}) {
+export async function logout({ log = (m) => console.error(m), revoke = true } = {}) {
+  const creds = loadCredentials();
+  if (!creds) { log('No stored credentials to remove.'); return false; }
+
+  if (revoke) {
+    try {
+      const meta = await discover(creds.issuer);
+      const ok = await revokeToken(meta, {
+        token: creds.refreshToken || creds.accessToken,
+        tokenTypeHint: creds.refreshToken ? 'refresh_token' : 'access_token',
+      });
+      log(ok
+        ? 'Revoked the authorization on the server.'
+        : 'Could not revoke on the server — revoke it in Settings → API Access.');
+    } catch (err) {
+      log(`Could not reach the server to revoke (${err.message}).`);
+      log('The grant is still live — revoke it in Settings → API Access.');
+    }
+  }
+
   const removed = clearCredentials();
-  log(removed
-    ? `Removed ${credentialsPath()}. Revoke the grant itself in Settings → API Access.`
-    : 'No stored credentials to remove.');
+  log(removed ? `Removed ${credentialsPath()}.` : 'No local credentials file to remove.');
   return removed;
 }
 
