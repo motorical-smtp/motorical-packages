@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { MotoricalClient, loadConfig } from './client.js';
 
-const PACKAGE_VERSION = '1.1.2';
+const PACKAGE_VERSION = '1.1.3';
 
 function jsonResult(data, { isError = false } = {}) {
   return {
@@ -251,7 +251,9 @@ export function createMotoricalMcpServer(options = {}) {
     'motorical_sandbox_convert',
     {
       description:
-        'Convert sandbox Motor Block onto a verified customer domain. Requires active Motorical Plan + MOTORICAL_JWT.',
+        'Convert sandbox Motor Block onto a verified customer domain. Requires active Motorical Plan + MOTORICAL_JWT. ' +
+        'If no sandbox exists yet (check motorical_sandbox_status first — data.stage: "not_started"), call ' +
+        'motorical_sandbox_provision instead; this endpoint returns 404 "No developer sandbox to convert" otherwise.',
       inputSchema: {
         domainId: z.string().uuid()
       }
