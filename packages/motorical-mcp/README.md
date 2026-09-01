@@ -25,6 +25,34 @@ A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per
 
 Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Sandbox outbound is allowlist-locked until convert. Optional `fromName` sets the inbox display name (same as HTTP `/v1/send` / CLI `--from-name`); do not put `From` in custom headers.
 
+## Authorization (recommended)
+
+Sign in once; no keys to paste, copy, or rotate by hand:
+
+```bash
+npx @motorical/mcp login
+```
+
+This opens your browser, you approve the scopes on Motorical's consent screen,
+and the grant is stored at `~/.motorical/mcp-credentials.json` (owner-only,
+`0600`). Access tokens last an hour and refresh silently.
+
+- `motorical-mcp status` — show the current connection
+- `motorical-mcp logout` — remove the local credentials
+
+Logging out only deletes the local file. To cut the agent's access off at the
+server, revoke the connection in **Settings → API Access → Connected AI
+Agents**; that takes effect immediately, on every device, and does not sign you
+out of your own dashboard.
+
+Under the hood this is OAuth 2.1: PKCE `S256`, a loopback redirect, RFC 8707
+audience-bound tokens, and RFC 9207 issuer checking on the callback. The client
+is public, so refresh tokens rotate on every use.
+
+The environment variables below still work and are the right choice for CI or a
+headless server, where no browser is available. When an OAuth session is present
+it takes precedence over them.
+
 ## Environment
 
 | Variable | Required | Description |

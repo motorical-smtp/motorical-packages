@@ -3,6 +3,10 @@
  * Auth rules match docs.motorical.com (mk_live_ → /v1/send; ak_live_ → mint bearer).
  */
 
+import {
+  loadCredentials, saveCredentials, isExpired, discover, refreshTokens,
+} from './oauth.js';
+
 const DEFAULT_API_BASE = 'https://api.motorical.com';
 const DEFAULT_DOCS_BASE = 'https://docs.motorical.com';
 
@@ -26,12 +30,55 @@ export class MotoricalClient {
     this._cachedBearer = config.bearerToken || null;
     /** @type {string|null} */
     this._cachedMkKey = null;
+    /**
+     * An OAuth grant from `motorical-mcp login`. When present it is preferred
+     * over pasted keys: it is scoped, revocable from the dashboard, and expires.
+     */
+    this._oauth = config.oauthCredentials !== undefined
+      ? config.oauthCredentials
+      : loadCredentials();
+    this._oauthMeta = null;
+  }
+
+  hasOAuthSession() {
+    return !!(this._oauth && this._oauth.accessToken);
+  }
+
+  /** Returns a live OAuth access token, refreshing (and rotating) if needed. */
+  async oauthAccessToken({ fetchImpl } = {}) {
+    if (!this.hasOAuthSession()) return null;
+    if (!isExpired(this._oauth)) return this._oauth.accessToken;
+
+    if (!this._oauth.refreshToken) {
+      throw new Error('Motorical session expired and has no refresh token. Run: motorical-mcp login');
+    }
+    if (!this._oauthMeta) {
+      this._oauthMeta = await discover(this._oauth.issuer, fetchImpl || fetch);
+    }
+    let tokens;
+    try {
+      tokens = await refreshTokens(this._oauthMeta, { refreshToken: this._oauth.refreshToken }, fetchImpl || fetch);
+    } catch (err) {
+      throw new Error(`Motorical session could not be refreshed (${err.message}). Run: motorical-mcp login`);
+    }
+    this._oauth = {
+      ...this._oauth,
+      accessToken: tokens.access_token,
+      // Rotation is mandatory for public clients: the old refresh token is dead.
+      refreshToken: tokens.refresh_token || this._oauth.refreshToken,
+      scope: tokens.scope || this._oauth.scope,
+      expiresAt: Date.now() + (Number(tokens.expires_in || 3600) * 1000),
+    };
+    try { saveCredentials(this._oauth); } catch { /* keep working in-memory */ }
+    return this._oauth.accessToken;
   }
 
   requireMk() {
     if (this._cachedMkKey) return this._cachedMkKey;
     if (!this.config.mkApiKey) {
-      throw new Error('MOTORICAL_MK_API_KEY is required (mk_live_... Motor Block API key for POST /v1/send)');
+      throw new Error(
+        'No credentials for sending. Run `motorical-mcp login`, or set MOTORICAL_MK_API_KEY (mk_live_...).'
+      );
     }
     return this.config.mkApiKey;
   }
@@ -97,6 +144,11 @@ export class MotoricalClient {
   }
 
   async getBearer({ motorBlockId, forceRefresh = false } = {}) {
+    // An OAuth grant supersedes minted public tokens entirely — no ak_live_ key
+    // and no dashboard JWT needed.
+    const oauthToken = await this.oauthAccessToken();
+    if (oauthToken) return oauthToken;
+
     if (this._cachedBearer && !forceRefresh) return this._cachedBearer;
     const minted = await this.mintPublicToken({ motorBlockId });
     const token = minted?.data?.token || minted?.token || minted?.access_token;
@@ -140,10 +192,14 @@ export class MotoricalClient {
     const headers = {};
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
 
+    const oauthToken = await this.oauthAccessToken();
+    const auth = oauthToken ? { bearer: oauthToken } : { apiKey: this.requireMk() };
+
     return this.request('POST', '/v1/send', {
-      apiKey: this.requireMk(),
+      ...auth,
       headers,
       body: {
+        ...(oauthToken && this.config.motorBlockId ? { motorBlockId: this.config.motorBlockId } : {}),
         from: fromAddr,
         ...(fromName ? { fromName } : {}),
         to: Array.isArray(to) ? to : [to],
