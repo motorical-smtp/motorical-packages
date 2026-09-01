@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { MotoricalClient, loadConfig } from './client.js';
 
-const PACKAGE_VERSION = '1.0.5';
+const PACKAGE_VERSION = '1.1.2';
 
 function jsonResult(data, { isError = false } = {}) {
   return {
@@ -170,7 +170,11 @@ export function createMotoricalMcpServer(options = {}) {
     'motorical_sandbox_status',
     {
       description:
-        'Get developer sandbox status (domain, Motor Block, outbound lock, allowlist). Requires MOTORICAL_JWT.',
+        'Get developer sandbox status (domain, Motor Block, outbound lock, allowlist). ' +
+        'Check data.stage to determine provisioning state: "not_started" (no sandbox yet — call ' +
+        'motorical_sandbox_provision), "sandbox_active" (sandbox exists, outbound-locked), or "live" ' +
+        '(converted to production, no lock). allowlist/caps are always present in the response regardless ' +
+        'of stage — do not infer provisioning state from their presence. Requires MOTORICAL_JWT.',
       inputSchema: {}
     },
     async () => {
@@ -266,7 +270,9 @@ export function createMotoricalMcpServer(options = {}) {
     {
       description:
         'Add a customer domain (POST /api/domains). Returns verification DNS instructions. ' +
-        'For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). Requires MOTORICAL_JWT.',
+        'For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). ' +
+        'On 409 (domain already registered), call motorical_domain_list first to check whether it is already on ' +
+        'this account before asking the user to resolve the conflict. Requires MOTORICAL_JWT.',
       inputSchema: {
         domain: z.string().min(3),
         verificationMethod: z.enum(['dns', 'email']).optional()
@@ -275,6 +281,24 @@ export function createMotoricalMcpServer(options = {}) {
     async (args) => {
       try {
         return jsonResult(await client.domainAdd(args));
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  server.registerTool(
+    'motorical_domain_list',
+    {
+      description:
+        'List domains already on this account (GET /api/domains) — id, domain, verified, DNS auth flags. ' +
+        'Call this before motorical_domain_add on a 409 conflict to self-diagnose whether the domain is already ' +
+        'yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Requires MOTORICAL_JWT.',
+      inputSchema: {}
+    },
+    async () => {
+      try {
+        return jsonResult(await client.domainList());
       } catch (err) {
         return errorResult(err);
       }

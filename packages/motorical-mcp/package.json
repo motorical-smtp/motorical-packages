@@ -1,6 +1,6 @@
 {
   "name": "@motorical/mcp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "MCP server for Motorical transactional email API — dry-run/send, mint public tokens, list Motor Blocks, inspect delivery events",
   "type": "module",
   "bin": {

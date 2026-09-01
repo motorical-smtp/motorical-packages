@@ -218,6 +218,12 @@ export class MotoricalClient {
     });
   }
 
+  async domainList() {
+    return this.request('GET', '/api/domains', {
+      bearer: this.requireDashboardJwt()
+    });
+  }
+
   async domainAdd({ domain, verificationMethod = 'dns' } = {}) {
     if (!domain) throw new Error('domain is required');
     return this.request('POST', '/api/domains', {

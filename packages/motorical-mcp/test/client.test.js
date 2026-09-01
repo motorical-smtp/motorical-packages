@@ -300,6 +300,26 @@ test('sandboxStatus also caches motorBlockId for a returning agent', async () =>
   assert.equal(result.success, true, 'sandboxStatus must still return the response');
 });
 
+test('domainList GETs /api/domains with the dashboard JWT', async () => {
+  const client = new MotoricalClient({
+    apiBaseUrl: 'https://api.motorical.com',
+    docsBaseUrl: 'https://docs.motorical.com',
+    mkApiKey: '', akApiKey: '', bearerToken: '',
+    dashboardJwt: 'dashboard-jwt-test',
+    motorBlockId: '', defaultFrom: ''
+  });
+  const calls = [];
+  client.request = async (method, path, opts) => {
+    calls.push({ method, path, opts });
+    return { success: true, domains: [{ id: 'd1', domain: 'example.com' }] };
+  };
+  const result = await client.domainList();
+  assert.equal(calls[0].method, 'GET');
+  assert.equal(calls[0].path, '/api/domains');
+  assert.equal(calls[0].opts.bearer, 'dashboard-jwt-test');
+  assert.equal(result.domains[0].domain, 'example.com');
+});
+
 test('sandboxStatus tolerates a status response with no motor block yet', async () => {
   const client = new MotoricalClient({
     apiBaseUrl: 'https://api.motorical.com',

@@ -29,6 +29,7 @@ test('MCP server lists tools and resources', async () => {
   assert.deepEqual(names, [
     'motorical_domain_add',
     'motorical_domain_check_dns',
+    'motorical_domain_list',
     'motorical_domain_verify',
     'motorical_get_message',
     'motorical_get_message_events',
