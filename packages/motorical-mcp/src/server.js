@@ -34,7 +34,19 @@ export function createMotoricalMcpServer(options = {}) {
     version: PACKAGE_VERSION
   });
 
-  server.registerTool(
+  // The stdio/CLI entrypoint (index.js) calls this with no allowedTools and
+  // gets every tool, unaffected. The HTTP resource server (http.js) passes
+  // the connected server's own tool list: without this, tools/list would
+  // advertise every tool on every path — e.g. motorical_send_email on the
+  // analytics-only server — even though calling it there would be refused.
+  // The advertisement must match what's actually callable.
+  const allowedTools = options.allowedTools || null;
+  function registerTool(name, config, cb) {
+    if (allowedTools && !allowedTools.includes(name)) return;
+    server.registerTool(name, config, cb);
+  }
+
+  registerTool(
     'motorical_get_send_status',
     {
       description:
@@ -50,7 +62,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_mint_public_token',
     {
       description:
@@ -72,13 +84,13 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_list_motor_blocks',
     {
       description:
         'List Motor Blocks (isolated sending streams) visible to a Public API bearer token (auto-mints with ak_live_ if needed).',
       inputSchema: {
-        motorBlockId: z.string().uuid().optional().describe('Block used when minting a token if none cached')
+        motorBlockId: z.string().uuid().optional().describe('Optional. Listing is account-wide; a block is only used when minting a legacy public token on the non-OAuth path.')
       }
     },
     async (args) => {
@@ -90,7 +102,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_send_email',
     {
       description:
@@ -115,7 +127,12 @@ export function createMotoricalMcpServer(options = {}) {
           .boolean()
           .optional()
           .describe('Required true when dryRun is false'),
-        idempotencyKey: z.string().optional()
+        idempotencyKey: z.string().optional(),
+        motorBlockId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe('Required when the authorization covers more than one Motor Block')
       }
     },
     async (args) => {
@@ -127,7 +144,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_get_message',
     {
       description: 'Get a message by send UUID (GET /api/public/v1/messages/{id}). Auto-mints bearer if needed.',
@@ -146,7 +163,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_get_message_events',
     {
       description:
@@ -166,7 +183,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_sandbox_status',
     {
       description:
@@ -186,7 +203,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_sandbox_allowlist_request',
     {
       description:
@@ -206,7 +223,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_sandbox_allowlist_confirm',
     {
       description:
@@ -227,7 +244,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_sandbox_provision',
     {
       description:
@@ -247,7 +264,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_sandbox_convert',
     {
       description:
@@ -267,7 +284,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_domain_add',
     {
       description:
@@ -277,7 +294,12 @@ export function createMotoricalMcpServer(options = {}) {
         'this account before asking the user to resolve the conflict. Requires MOTORICAL_JWT.',
       inputSchema: {
         domain: z.string().min(3),
-        verificationMethod: z.enum(['dns', 'email']).optional()
+        verificationMethod: z.enum(['dns', 'email']).optional(),
+        motorBlockId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
       }
     },
     async (args) => {
@@ -289,25 +311,31 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_domain_list',
     {
       description:
         'List domains already on this account (GET /api/domains) — id, domain, verified, DNS auth flags. ' +
         'Call this before motorical_domain_add on a 409 conflict to self-diagnose whether the domain is already ' +
         'yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Requires MOTORICAL_JWT.',
-      inputSchema: {}
+      inputSchema: {
+        motorBlockId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
+      }
     },
-    async () => {
+    async (args) => {
       try {
-        return jsonResult(await client.domainList());
+        return jsonResult(await client.domainList(args));
       } catch (err) {
         return errorResult(err);
       }
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_domain_verify',
     {
       description:
@@ -315,7 +343,12 @@ export function createMotoricalMcpServer(options = {}) {
         'Safe to re-call after ownership is done — returns sendReady. Requires MOTORICAL_JWT.',
       inputSchema: {
         domainId: z.string().uuid(),
-        method: z.enum(['dns', 'email']).optional()
+        method: z.enum(['dns', 'email']).optional(),
+        motorBlockId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
       }
     },
     async (args) => {
@@ -327,7 +360,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_domain_check_dns',
     {
       description:
@@ -335,7 +368,12 @@ export function createMotoricalMcpServer(options = {}) {
         'Required before /v1/send when ownership is verified but send returns DOMAIN_DNS_INCOMPLETE. Requires MOTORICAL_JWT.',
       inputSchema: {
         domainId: z.string().uuid(),
-        recordType: z.enum(['dkim', 'spf', 'dmarc', 'mx']).optional()
+        recordType: z.enum(['dkim', 'spf', 'dmarc', 'mx']).optional(),
+        motorBlockId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
       }
     },
     async (args) => {
@@ -347,7 +385,7 @@ export function createMotoricalMcpServer(options = {}) {
     }
   );
 
-  server.registerTool(
+  registerTool(
     'motorical_web_handoff',
     {
       description:

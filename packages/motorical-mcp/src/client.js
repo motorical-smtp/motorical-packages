@@ -3,12 +3,25 @@
  * Auth rules match docs.motorical.com (mk_live_ → /v1/send; ak_live_ → mint bearer).
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import {
   loadCredentials, saveCredentials, isExpired, discover, refreshTokens,
 } from './oauth.js';
 
 const DEFAULT_API_BASE = 'https://api.motorical.com';
 const DEFAULT_DOCS_BASE = 'https://docs.motorical.com';
+
+/**
+ * Per-call forced-auth context for withAuth()/request(). This is a module-
+ * level AsyncLocalStorage, not an instance field: a plain `this._forcedAuth`
+ * field set-and-restored around an await would be shared mutable state on
+ * the client instance, so two overlapping withAuth() calls on the same
+ * client (e.g. two concurrent tool calls sharing one MotoricalClient) could
+ * stomp each other's headers depending on scheduling. ALS binds the
+ * override to the async call chain that set it, so concurrent chains never
+ * observe each other's context regardless of interleaving.
+ */
+const forcedAuthStorage = new AsyncLocalStorage();
 
 export function loadConfig(env = process.env) {
   return {
@@ -86,9 +99,22 @@ export class MotoricalClient {
     return this.config.mkApiKey;
   }
 
-  async request(method, path, { headers = {}, body, apiKey, bearer } = {}) {
+  /** Runs `fn` with these headers forced onto every request it makes. */
+  async withAuth(headers, fn) {
+    return forcedAuthStorage.run(headers, fn);
+  }
+
+  async request(method, path, opts = {}) {
+    const { headers = {}, body } = opts;
+    let { apiKey, bearer } = opts;
     const url = `${this.config.apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
     const h = { Accept: 'application/json', ...headers };
+    const forcedAuth = forcedAuthStorage.getStore();
+    if (forcedAuth) {
+      Object.assign(h, forcedAuth);
+      apiKey = undefined;
+      bearer = undefined;
+    }
     if (apiKey) h.Authorization = `ApiKey ${apiKey}`;
     if (bearer) h.Authorization = `Bearer ${bearer}`;
     if (body !== undefined) h['Content-Type'] = 'application/json';
@@ -166,6 +192,22 @@ export class MotoricalClient {
     return `${path}${sep}motorBlockId=${encodeURIComponent(id)}`;
   }
 
+  /**
+   * The account-scoped counterpart to _scoped, for operations acting on the
+   * ACCOUNT rather than on one Motor Block (domain management, listing the
+   * blocks themselves). The backend mounts those routes with
+   * { accountScoped: true } and reads only the token's user, so a block is
+   * passed through when the caller has one and omitted when not — never
+   * demanded, and never a reason to throw.
+   */
+  _accountPath(path, motorBlockId) {
+    if (!this.hasOAuthSession()) return path;
+    const id = motorBlockId || this.config.motorBlockId;
+    if (!id) return path;
+    const sep = path.includes('?') ? '&' : '?';
+    return `${path}${sep}motorBlockId=${encodeURIComponent(id)}`;
+  }
+
   async getBearer({ motorBlockId, forceRefresh = false } = {}) {
     // An OAuth grant supersedes minted public tokens entirely — no ak_live_ key
     // and no dashboard JWT needed.
@@ -182,7 +224,7 @@ export class MotoricalClient {
 
   async listMotorBlocks({ motorBlockId } = {}) {
     const bearer = await this.getBearer({ motorBlockId });
-    return this.request('GET', this._scoped('/api/public/v1/motor-blocks', motorBlockId), { bearer });
+    return this.request('GET', this._accountPath('/api/public/v1/motor-blocks', motorBlockId), { bearer });
   }
 
   async sendEmail(payload) {
@@ -197,6 +239,7 @@ export class MotoricalClient {
       confirmRealSend = false,
       idempotencyKey,
       headers: customHeaders,
+      motorBlockId: _motorBlockId, // never in the body — see sendPath below
       ...rest
     } = payload;
 
@@ -310,44 +353,85 @@ export class MotoricalClient {
     });
   }
 
-  async domainList() {
-    // An OAuth grant reads the scoped public endpoint. It cannot use
-    // /api/domains: that route is behind the dashboard-session middleware,
-    // which also guards billing and account settings.
-    const oauthToken = await this.oauthAccessToken();
-    if (oauthToken) {
-      // Domains are account-wide, but authenticatePublic keeps MCP grants
-      // strictly block-bound rather than silently choosing one, so the
-      // selector travels here too. The endpoint scopes by user, not by block.
-      return this.request('GET', this._scoped('/api/public/v1/domains'), { bearer: oauthToken });
-    }
-    return this.request('GET', '/api/domains', {
-      bearer: this.requireDashboardJwt()
-    });
+  // These four target the public API the same way listMotorBlocks/getMessage
+  // do — never branching on oauthAccessToken() to pick a URL. That branch was
+  // the bug: it's null for a delegated call by design (no stored session,
+  // auth travels per-call instead), so every one of these calls fell through
+  // to /api/domains, which rejects a Delegation header outright.
+  //
+  // One narrow exception, preserved on purpose: a dashboard-JWT-only caller
+  // (no OAuth session, MOTORICAL_JWT set directly) with NO motor block
+  // configured yet — the state a brand-new customer is in before their first
+  // Motor Block exists, but domains are account-wide and this account may
+  // already need one added. mintPublicToken() hard-requires a motorBlockId
+  // it doesn't have; /api/domains doesn't need one at all. A delegated call
+  // never hits this branch — resolveBlock() in delegatedClient.js always
+  // supplies a real motorBlockId before any of these run.
+  hasNoBlockToScopeAPublicToken(motorBlockId) {
+    // _delegated is set by delegatedClient.js's callView. A delegated call is
+    // never the legacy dashboard-JWT caller this fallback exists for: its
+    // dashboardJwt is a placeholder, not a credential, so taking this branch
+    // means authenticating the dashboard route with the string
+    // 'mcp-delegated' — a guaranteed 401. This used to be unreachable because
+    // resolveBlock() always supplied a block; account-scoped tools now supply
+    // none, so the guard has to be explicit. Found live 2026-09-02.
+    if (this._delegated) return false;
+    return !(motorBlockId || this.config.motorBlockId) && !this.hasOAuthSession();
   }
 
-  async domainAdd({ domain, verificationMethod = 'dns' } = {}) {
+  async domainList({ motorBlockId } = {}) {
+    if (this.hasNoBlockToScopeAPublicToken(motorBlockId) && this.config.dashboardJwt) {
+      return this.request('GET', '/api/domains', { bearer: this.requireDashboardJwt() });
+    }
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request('GET', this._accountPath('/api/public/v1/domains', motorBlockId), { bearer });
+  }
+
+  async domainAdd({ domain, verificationMethod = 'dns', motorBlockId } = {}) {
     if (!domain) throw new Error('domain is required');
-    return this.request('POST', '/api/domains', {
-      bearer: this.requireDashboardJwt(),
+    if (this.hasNoBlockToScopeAPublicToken(motorBlockId) && this.config.dashboardJwt) {
+      return this.request('POST', '/api/domains', {
+        bearer: this.requireDashboardJwt(),
+        body: { domain, verificationMethod }
+      });
+    }
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request('POST', this._accountPath('/api/public/v1/domains', motorBlockId), {
+      bearer,
       body: { domain, verificationMethod }
     });
   }
 
-  async domainVerify({ domainId, method = 'dns' } = {}) {
+  async domainVerify({ domainId, method = 'dns', motorBlockId } = {}) {
     if (!domainId) throw new Error('domainId is required');
-    return this.request('POST', `/api/domains/${encodeURIComponent(domainId)}/verify`, {
-      bearer: this.requireDashboardJwt(),
-      body: { method }
-    });
+    if (this.hasNoBlockToScopeAPublicToken(motorBlockId) && this.config.dashboardJwt) {
+      return this.request('POST', `/api/domains/${encodeURIComponent(domainId)}/verify`, {
+        bearer: this.requireDashboardJwt(),
+        body: { method }
+      });
+    }
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request(
+      'POST',
+      this._accountPath(`/api/public/v1/domains/${encodeURIComponent(domainId)}/verify`, motorBlockId),
+      { bearer, body: { method } }
+    );
   }
 
-  async domainCheckDns({ domainId, recordType } = {}) {
+  async domainCheckDns({ domainId, recordType, motorBlockId } = {}) {
     if (!domainId) throw new Error('domainId is required');
-    return this.request('POST', `/api/domains/${encodeURIComponent(domainId)}/check-dns`, {
-      bearer: this.requireDashboardJwt(),
-      body: recordType ? { recordType } : {}
-    });
+    if (this.hasNoBlockToScopeAPublicToken(motorBlockId) && this.config.dashboardJwt) {
+      return this.request('POST', `/api/domains/${encodeURIComponent(domainId)}/check-dns`, {
+        bearer: this.requireDashboardJwt(),
+        body: recordType ? { recordType } : {}
+      });
+    }
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request(
+      'POST',
+      this._accountPath(`/api/public/v1/domains/${encodeURIComponent(domainId)}/check-dns`, motorBlockId),
+      { bearer, body: recordType ? { recordType } : {} }
+    );
   }
 
   async sandboxAllowlistRequest({ email } = {}) {

@@ -193,10 +193,25 @@ test('an explicit motorBlockId argument wins over the configured default', async
   assert.match(seen, /motorBlockId=mb-9/);
 });
 
-test('a read with no block anywhere fails with an actionable message, not a bare 400', async () => {
+// Inverted 2026-09-02. This used to assert that listMotorBlocks() with no
+// block configured threw an actionable error. Listing the account's Motor
+// Blocks is ACCOUNT-scoped — you cannot name a block before you know what you
+// have — so demanding one made the tool unusable on exactly the grants that
+// needed it (zero-block accounts, and multi-block grants with no default).
+// The backend route is mounted { accountScoped: true } and reads only the
+// token's user. Block-scoped reads still throw: see getMessage below.
+test('an account-wide read with no block anywhere succeeds, unscoped', async () => {
   const client = oauthClient();
-  client.request = async () => ({});
-  await assert.rejects(() => client.listMotorBlocks(), /MOTORICAL_MOTOR_BLOCK_ID/);
+  let seen;
+  client.request = async (m, p) => { seen = p; return {}; };
+  await client.listMotorBlocks();
+  assert.equal(seen, '/api/public/v1/motor-blocks');
+});
+
+test('a block-scoped read with no block anywhere still fails with an actionable message', async () => {
+  const client = oauthClient();
+  client.request = async () => { throw new Error('must not reach the API'); };
+  await assert.rejects(() => client.getMessage('msg-1'), /MOTORICAL_MOTOR_BLOCK_ID/);
 });
 
 test('sending with no block anywhere fails before it reaches the API', async () => {

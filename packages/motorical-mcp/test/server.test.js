@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -56,4 +57,26 @@ test('MCP server lists tools and resources', async () => {
 
   await client.close();
   await server.close();
+});
+
+// The tool schema IS public contract (doctrine §10). These four tools spent
+// their whole life advertising a Motor Block requirement that, as of
+// 2026-09-02, does not exist: domains are account-wide and the routes are
+// mounted { accountScoped: true }. A false contract is worse than a missing
+// one — an agent reading this schema would go hunting for a block id it does
+// not need, which is exactly what happened live.
+const SERVER_SRC = await readFile(new URL('../src/server.js', import.meta.url), 'utf8');
+
+test('no account-scoped tool advertises motorBlockId as conditionally required', () => {
+  // Only motorical_send_email may still say this: sending IS block-scoped.
+  const hits = SERVER_SRC.match(/Required when the authorization covers more than one Motor Block/g) || [];
+  assert.equal(hits.length, 1, `expected only send_email to claim the requirement, found ${hits.length}`);
+});
+
+test('block-scoped sending still states the requirement', () => {
+  const sendBlock = SERVER_SRC.slice(SERVER_SRC.indexOf("'motorical_send_email'"));
+  assert.match(
+    sendBlock.slice(0, 1500),
+    /Required when the authorization covers more than one Motor Block/
+  );
 });
