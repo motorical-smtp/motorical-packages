@@ -56,7 +56,14 @@ test('MCP server lists tools and resources', async () => {
     'motorical_sandbox_provision',
     'motorical_sandbox_status',
     'motorical_send_email',
-    'motorical_web_handoff'
+    'motorical_web_handoff',
+    'motorical_webhook_create',
+    'motorical_webhook_delete',
+    'motorical_webhook_get_deliveries',
+    'motorical_webhook_get_stats',
+    'motorical_webhook_list',
+    'motorical_webhook_test',
+    'motorical_webhook_update'
   ]);
 
   const status = await client.callTool({ name: 'motorical_get_send_status', arguments: {} });
@@ -99,6 +106,10 @@ async function registeredTools() {
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
   return (await client.listTools()).tools;
 }
+
+// The account-scoped-tools schema test lives in the private resource-server repo:
+// it reads ACCOUNT_SCOPED_TOOLS from servers.js, which is not part of this
+// published package. Stripped on every sync — see the repo README.
 
 test('block-scoped tools still state the requirement', async () => {
   const tools = await registeredTools();
@@ -147,4 +158,16 @@ test('reported server version matches package.json, not a hardcoded literal', as
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
   assert.equal(client.getServerVersion().version, pkg.version);
+});
+
+test('webhook tools declare motorBlockId optional and webhookId where relevant', async () => {
+  const tools = await registeredTools();
+  const withWebhookId = ['motorical_webhook_update', 'motorical_webhook_delete', 'motorical_webhook_test', 'motorical_webhook_get_deliveries', 'motorical_webhook_get_stats'];
+  for (const name of withWebhookId) {
+    const tool = tools.find((t) => t.name === name);
+    assert.ok(tool, `${name} not registered`);
+    assert.ok(tool.inputSchema.properties.webhookId, `${name} must declare webhookId`);
+    assert.ok((tool.inputSchema.required || []).includes('webhookId'), `${name} must require webhookId`);
+    assert.ok(!(tool.inputSchema.required || []).includes('motorBlockId'), `${name} must not require motorBlockId`);
+  }
 });

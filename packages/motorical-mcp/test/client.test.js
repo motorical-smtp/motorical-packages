@@ -684,3 +684,128 @@ test('getDomainHealth omits refresh unless it is true', async () => {
   await c.getDomainHealth({ motorBlockId: 'mb-1', refresh: false });
   assert.equal(seenPath, '/api/public/v1/motor-blocks/mb-1/domain-health?motorBlockId=mb-1');
 });
+
+function fakeClient(overrides = {}) {
+  return new MotoricalClient({
+    apiBaseUrl: 'https://api.motorical.com',
+    docsBaseUrl: 'https://docs.motorical.com',
+    mkApiKey: '',
+    akApiKey: 'ak_live_test',
+    bearerToken: '',
+    motorBlockId: 'mb-1',
+    defaultFrom: 'noreply@example.com',
+    ...overrides
+  });
+}
+
+test('webhookList GETs the collection route, scoped by motorBlockId', async () => {
+  const client = fakeClient();
+  const calls = [];
+  client.getBearer = async () => 'bearer-token';
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true, data: [] }; };
+
+  await client.webhookList({ motorBlockId: 'mb-1' });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, 'GET');
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks');
+  assert.equal(calls[0].opts.bearer, 'bearer-token');
+});
+
+test('webhookCreate POSTs url and events in the body', async () => {
+  const client = fakeClient();
+  const calls = [];
+  client.getBearer = async () => 'bearer-token';
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true, data: { id: 'wh-1', secret: 'full-secret-once' } }; };
+
+  const result = await client.webhookCreate({ motorBlockId: 'mb-1', url: 'https://example.com/hook', events: ['message.delivered'] });
+
+  assert.equal(calls[0].method, 'POST');
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks');
+  assert.deepEqual(calls[0].opts.body, { url: 'https://example.com/hook', events: ['message.delivered'] });
+  // Pass-through, not withheld — reveal-once secret, matches Stripe/AWS convention.
+  assert.equal(result.data.secret, 'full-secret-once');
+});
+
+test('webhookCreate requires url', async () => {
+  const client = fakeClient();
+  await assert.rejects(() => client.webhookCreate({ motorBlockId: 'mb-1' }), /url is required/);
+});
+
+test('webhookUpdate PUTs only the fields given', async () => {
+  const client = fakeClient();
+  const calls = [];
+  client.getBearer = async () => 'bearer-token';
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true }; };
+
+  await client.webhookUpdate({ motorBlockId: 'mb-1', webhookId: 'wh-1', enabled: false });
+
+  assert.equal(calls[0].method, 'PUT');
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks/wh-1');
+  assert.deepEqual(calls[0].opts.body, { enabled: false });
+});
+
+test('webhookUpdate requires webhookId', async () => {
+  const client = fakeClient();
+  await assert.rejects(() => client.webhookUpdate({ motorBlockId: 'mb-1', enabled: true }), /webhookId is required/);
+});
+
+test('webhookDelete DELETEs the specific webhook', async () => {
+  const client = fakeClient();
+  const calls = [];
+  client.getBearer = async () => 'bearer-token';
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true }; };
+
+  await client.webhookDelete({ motorBlockId: 'mb-1', webhookId: 'wh-1' });
+
+  assert.equal(calls[0].method, 'DELETE');
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks/wh-1');
+});
+
+test('webhookTest POSTs to the test sub-route with no body', async () => {
+  const client = fakeClient();
+  const calls = [];
+  client.getBearer = async () => 'bearer-token';
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true }; };
+
+  await client.webhookTest({ motorBlockId: 'mb-1', webhookId: 'wh-1' });
+
+  assert.equal(calls[0].method, 'POST');
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks/wh-1/test');
+});
+
+test('webhookGetDeliveries GETs with an optional limit', async () => {
+  const client = fakeClient();
+  const calls = [];
+  client.getBearer = async () => 'bearer-token';
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true, data: { items: [] } }; };
+
+  await client.webhookGetDeliveries({ motorBlockId: 'mb-1', webhookId: 'wh-1', limit: 10 });
+
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks/wh-1/deliveries?limit=10');
+});
+
+test('webhookGetStats GETs with an optional hours window', async () => {
+  const client = fakeClient();
+  const calls = [];
+  client.getBearer = async () => 'bearer-token';
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true, data: {} }; };
+
+  await client.webhookGetStats({ motorBlockId: 'mb-1', webhookId: 'wh-1', hours: 48 });
+
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks/wh-1/stats?hours=48');
+});
+
+// Every webhook tool is block-scoped: under an OAuth session it must always
+// append ?motorBlockId=, never branch away like the pre-fix domain tools did.
+test('webhookList appends motorBlockId under an OAuth session', async () => {
+  const client = fakeClient({ oauthAccessToken: undefined });
+  client.hasOAuthSession = () => true;
+  client.oauthAccessToken = async () => 'oauth-token';
+  const calls = [];
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true, data: [] }; };
+
+  await client.webhookList({ motorBlockId: 'mb-1' });
+
+  assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks?motorBlockId=mb-1');
+});

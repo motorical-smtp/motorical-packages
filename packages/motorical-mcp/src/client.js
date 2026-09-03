@@ -293,6 +293,59 @@ export class MotoricalClient {
     return this.request('GET', this._scoped(path + qs, motorBlockId), { bearer });
   }
 
+  async webhookList({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks`;
+    return this.request('GET', this._scoped(path, motorBlockId), { bearer });
+  }
+
+  async webhookCreate({ motorBlockId, url, events } = {}) {
+    if (!url) throw new Error('url is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks`;
+    const body = events !== undefined ? { url, events } : { url };
+    return this.request('POST', this._scoped(path, motorBlockId), { bearer, body });
+  }
+
+  async webhookUpdate({ motorBlockId, webhookId, url, events, enabled } = {}) {
+    if (!webhookId) throw new Error('webhookId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks/${encodeURIComponent(webhookId)}`;
+    const body = {};
+    if (url !== undefined) body.url = url;
+    if (events !== undefined) body.events = events;
+    if (enabled !== undefined) body.enabled = enabled;
+    return this.request('PUT', this._scoped(path, motorBlockId), { bearer, body });
+  }
+
+  async webhookDelete({ motorBlockId, webhookId } = {}) {
+    if (!webhookId) throw new Error('webhookId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks/${encodeURIComponent(webhookId)}`;
+    return this.request('DELETE', this._scoped(path, motorBlockId), { bearer });
+  }
+
+  async webhookTest({ motorBlockId, webhookId } = {}) {
+    if (!webhookId) throw new Error('webhookId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks/${encodeURIComponent(webhookId)}/test`;
+    return this.request('POST', this._scoped(path, motorBlockId), { bearer });
+  }
+
+  async webhookGetDeliveries({ motorBlockId, webhookId, limit } = {}) {
+    if (!webhookId) throw new Error('webhookId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks/${encodeURIComponent(webhookId)}/deliveries`;
+    return this.request('GET', this._scoped(path + this._qs({ limit }), motorBlockId), { bearer });
+  }
+
+  async webhookGetStats({ motorBlockId, webhookId, hours } = {}) {
+    if (!webhookId) throw new Error('webhookId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks/${encodeURIComponent(webhookId)}/stats`;
+    return this.request('GET', this._scoped(path + this._qs({ hours }), motorBlockId), { bearer });
+  }
+
   // Account-wide: the route is mounted { accountScoped: true } and reads only
   // the token's user, so _accountPath omits the block rather than throwing.
   // Using _scoped() here would demand a Motor Block for an account-wide route.

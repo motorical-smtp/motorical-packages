@@ -556,6 +556,63 @@ export function createMotoricalMcpServer(options = {}) {
     }
   }, async (args) => { try { return jsonResult(await client.getDomainHealth(args)); } catch (err) { return errorResult(err); } });
 
+  const webhookIdArg = z.string().describe('The webhook endpoint id, from motorical_webhook_list or the create response');
+
+  registerTool('motorical_webhook_list', {
+    description: 'List webhook endpoints registered on one Motor Block (GET /api/public/v1/motor-blocks/{id}/webhooks).',
+    inputSchema: { motorBlockId: blockSelector }
+  }, async (args) => { try { return jsonResult(await client.webhookList(args)); } catch (err) { return errorResult(err); } });
+
+  registerTool('motorical_webhook_create', {
+    description:
+      'Register a new webhook endpoint on one Motor Block (POST /api/public/v1/motor-blocks/{id}/webhooks). '
+      + 'The response includes the full signing secret exactly once — store it immediately, it is only masked on every later read.',
+    inputSchema: {
+      motorBlockId: blockSelector,
+      url: z.string().url().describe('HTTPS endpoint that will receive webhook deliveries'),
+      events: z.array(z.string()).optional().describe('Event types to subscribe to; defaults to all event types when omitted')
+    }
+  }, async (args) => { try { return jsonResult(await client.webhookCreate(args)); } catch (err) { return errorResult(err); } });
+
+  registerTool('motorical_webhook_update', {
+    description: 'Update a webhook endpoint\'s url, events, or enabled state (PUT /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Only the fields you pass are changed.',
+    inputSchema: {
+      motorBlockId: blockSelector,
+      webhookId: webhookIdArg,
+      url: z.string().url().optional(),
+      events: z.array(z.string()).optional(),
+      enabled: z.boolean().optional()
+    }
+  }, async (args) => { try { return jsonResult(await client.webhookUpdate(args)); } catch (err) { return errorResult(err); } });
+
+  registerTool('motorical_webhook_delete', {
+    description: 'Delete a webhook endpoint (DELETE /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}).',
+    inputSchema: { motorBlockId: blockSelector, webhookId: webhookIdArg }
+  }, async (args) => { try { return jsonResult(await client.webhookDelete(args)); } catch (err) { return errorResult(err); } });
+
+  registerTool('motorical_webhook_test', {
+    description: 'Send a synthetic test delivery to a webhook endpoint (POST /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/test).',
+    inputSchema: { motorBlockId: blockSelector, webhookId: webhookIdArg }
+  }, async (args) => { try { return jsonResult(await client.webhookTest(args)); } catch (err) { return errorResult(err); } });
+
+  registerTool('motorical_webhook_get_deliveries', {
+    description: 'Recent delivery attempts for one webhook endpoint (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/deliveries).',
+    inputSchema: {
+      motorBlockId: blockSelector,
+      webhookId: webhookIdArg,
+      limit: z.number().int().positive().max(200).optional().describe('Default 50, max 200')
+    }
+  }, async (args) => { try { return jsonResult(await client.webhookGetDeliveries(args)); } catch (err) { return errorResult(err); } });
+
+  registerTool('motorical_webhook_get_stats', {
+    description: 'Delivery success/failure counts and average latency for one webhook endpoint over a time window (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/stats).',
+    inputSchema: {
+      motorBlockId: blockSelector,
+      webhookId: webhookIdArg,
+      hours: z.number().int().positive().max(168).optional().describe('Default 24, max 168 (7 days)')
+    }
+  }, async (args) => { try { return jsonResult(await client.webhookGetStats(args)); } catch (err) { return errorResult(err); } });
+
   server.registerResource(
     'motorical-llms',
     'motorical://docs/llms.txt',
