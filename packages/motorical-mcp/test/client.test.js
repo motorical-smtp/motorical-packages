@@ -517,3 +517,170 @@ test('_scoped still throws for a block-scoped path with no selector', () => {
   const c = oauthClient();
   assert.throws(() => c._scoped('/api/public/v1/messages/m1'), /motorBlockId is required/);
 });
+
+test('_qs drops undefined, null and empty values', () => {
+  const c = oauthClient();
+  assert.equal(c._qs({ from: undefined, to: null, limit: '' }), '');
+  assert.equal(c._qs({ from: '2026-09-01', limit: 50 }), '?from=2026-09-01&limit=50');
+});
+
+test('_qs encodes values that need it', () => {
+  const c = oauthClient();
+  assert.equal(c._qs({ query: 'a b&c' }), '?query=a+b%26c');
+});
+
+test('getOverview targets the block-scoped overview route with its date range', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+
+  await c.getOverview({ motorBlockId: 'mb-1', from: '2026-09-01', to: '2026-09-02' });
+
+  assert.equal(
+    seenPath,
+    '/api/public/v1/motor-blocks/mb-1/overview?from=2026-09-01&to=2026-09-02&motorBlockId=mb-1'
+  );
+});
+
+test('getOverview omits absent query params entirely', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+
+  await c.getOverview({ motorBlockId: 'mb-1' });
+
+  assert.equal(seenPath, '/api/public/v1/motor-blocks/mb-1/overview?motorBlockId=mb-1');
+});
+
+// One routing assertion per tool. These are deliberately about the PATH: a call
+// that reaches the wrong endpoint with a valid credential is the failure mode
+// that passed four green tests on 2026-09-02.
+const ANALYTICS_ROUTING = [
+  ['getDailySummary', { motorBlockId: 'mb-1', days: 7 },
+   '/api/public/v1/motor-blocks/mb-1/daily-summary?days=7&motorBlockId=mb-1'],
+  ['getMetrics', { motorBlockId: 'mb-1', from: '2026-09-01', to: '2026-09-02', interval: 'day' },
+   '/api/public/v1/motor-blocks/mb-1/metrics?from=2026-09-01&to=2026-09-02&interval=day&motorBlockId=mb-1'],
+  ['getDeliverability', { motorBlockId: 'mb-1', limit: 20 },
+   '/api/public/v1/motor-blocks/mb-1/deliverability?limit=20&motorBlockId=mb-1'],
+  ['getReputation', { motorBlockId: 'mb-1' },
+   '/api/public/v1/motor-blocks/mb-1/reputation?motorBlockId=mb-1'],
+  ['getAnomalies', { motorBlockId: 'mb-1' },
+   '/api/public/v1/motor-blocks/mb-1/anomalies?motorBlockId=mb-1'],
+  ['getProviders', { motorBlockId: 'mb-1', from: '2026-09-01', limit: 5 },
+   '/api/public/v1/motor-blocks/mb-1/providers?from=2026-09-01&limit=5&motorBlockId=mb-1'],
+  ['getErrorCodes', { motorBlockId: 'mb-1', to: '2026-09-02' },
+   '/api/public/v1/motor-blocks/mb-1/error-codes?to=2026-09-02&motorBlockId=mb-1'],
+];
+
+for (const [method, args, expected] of ANALYTICS_ROUTING) {
+  test(`${method} targets ${expected.split('?')[0]}`, async () => {
+    const c = oauthClient();
+    let seenPath;
+    c.request = async (m, p) => { seenPath = p; return { success: true }; };
+    await c[method](args);
+    assert.equal(seenPath, expected);
+  });
+}
+
+test('getRateLimits targets the block-scoped rate-limits route', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getRateLimits({ motorBlockId: 'mb-1' });
+  assert.equal(seenPath, '/api/public/v1/motor-blocks/mb-1/rate-limits?motorBlockId=mb-1');
+});
+
+// Account-wide: the route is mounted { accountScoped: true } and reads only the
+// token's user. Using _scoped() here would demand a Motor Block for an
+// account-wide route — the inversion fixed earlier on 2026-09-02.
+test('getAccountRateLimits needs no Motor Block, even on a multi-block session', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getAccountRateLimits();
+  assert.equal(seenPath, '/api/public/v1/account/rate-limits');
+});
+
+test('getAccountRateLimits still passes a block through when one is given', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getAccountRateLimits({ motorBlockId: 'mb-1' });
+  assert.equal(seenPath, '/api/public/v1/account/rate-limits?motorBlockId=mb-1');
+});
+
+test('getLogs passes its full filter set through', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+
+  await c.getLogs({
+    motorBlockId: 'mb-1', from: '2026-09-01', to: '2026-09-02',
+    currentOutcome: 'bounced', query: 'example.com', limit: 100, cursor: 'abc',
+  });
+
+  assert.equal(seenPath,
+    '/api/public/v1/motor-blocks/mb-1/logs'
+    + '?from=2026-09-01&to=2026-09-02&currentOutcome=bounced&query=example.com'
+    + '&limit=100&cursor=abc&motorBlockId=mb-1');
+});
+
+test('getLogs sends only what was supplied', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getLogs({ motorBlockId: 'mb-1', limit: 25 });
+  assert.equal(seenPath, '/api/public/v1/motor-blocks/mb-1/logs?limit=25&motorBlockId=mb-1');
+});
+
+test('getMessageBySmtpId requires an smtpMessageId before any network call', async () => {
+  const c = oauthClient();
+  c.request = async () => { throw new Error('must not reach the API'); };
+  await assert.rejects(() => c.getMessageBySmtpId({ motorBlockId: 'mb-1' }), /smtpMessageId/);
+});
+
+test('getMessageBySmtpId targets the messages lookup route', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getMessageBySmtpId({ smtpMessageId: '<abc@mail>', motorBlockId: 'mb-1' });
+  assert.equal(seenPath,
+    '/api/public/v1/messages?smtpMessageId=%3Cabc%40mail%3E&motorBlockId=mb-1');
+});
+
+// The client must not pre-empt the backend's 403: logs.pii is stripped from
+// every MCP token at mcpTokens.js:39, and the API is where that refusal belongs.
+test('includePII travels to the backend rather than being blocked client-side', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getLogs({ motorBlockId: 'mb-1', includePII: true });
+  assert.match(seenPath, /includePII=true/);
+});
+
+const HEALTH_ROUTING = [
+  ['getConfig', { motorBlockId: 'mb-1' },
+   '/api/public/v1/motor-blocks/mb-1/config?motorBlockId=mb-1'],
+  ['getDomainHealth', { motorBlockId: 'mb-1', refresh: true },
+   '/api/public/v1/motor-blocks/mb-1/domain-health?refresh=true&motorBlockId=mb-1'],
+];
+
+for (const [method, args, expected] of HEALTH_ROUTING) {
+  test(`${method} targets ${expected}`, async () => {
+    const c = oauthClient();
+    let seenPath;
+    c.request = async (m, p) => { seenPath = p; return { success: true }; };
+    await c[method](args);
+    assert.equal(seenPath, expected);
+  });
+}
+
+// refresh is a "re-run the expensive live DNS check now" switch, so sending
+// refresh=false is not the same request as omitting it.
+test('getDomainHealth omits refresh unless it is true', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getDomainHealth({ motorBlockId: 'mb-1', refresh: false });
+  assert.equal(seenPath, '/api/public/v1/motor-blocks/mb-1/domain-health?motorBlockId=mb-1');
+});

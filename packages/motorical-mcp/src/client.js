@@ -208,6 +208,128 @@ export class MotoricalClient {
     return `${path}${sep}motorBlockId=${encodeURIComponent(id)}`;
   }
 
+  /**
+   * Query string from a params object, skipping anything the caller didn't
+   * supply. Returns '' when nothing survives, so it composes with _scoped()
+   * and _accountPath() — both of which detect an existing '?' and switch to
+   * '&' when appending motorBlockId.
+   */
+  _qs(params = {}) {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v === undefined || v === null || v === '') continue;
+      q.set(k, String(v));
+    }
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }
+
+  async getOverview({ motorBlockId, from, to } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/overview`;
+    return this.request('GET', this._scoped(path + this._qs({ from, to }), motorBlockId), { bearer });
+  }
+
+  async getDailySummary({ motorBlockId, days } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/daily-summary`;
+    return this.request('GET', this._scoped(path + this._qs({ days }), motorBlockId), { bearer });
+  }
+
+  async getMetrics({ motorBlockId, from, to, interval } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/metrics`;
+    return this.request('GET', this._scoped(path + this._qs({ from, to, interval }), motorBlockId), { bearer });
+  }
+
+  async getDeliverability({ motorBlockId, from, to, limit } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/deliverability`;
+    return this.request('GET', this._scoped(path + this._qs({ from, to, limit }), motorBlockId), { bearer });
+  }
+
+  async getReputation({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/reputation`;
+    return this.request('GET', this._scoped(path, motorBlockId), { bearer });
+  }
+
+  async getAnomalies({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/anomalies`;
+    return this.request('GET', this._scoped(path, motorBlockId), { bearer });
+  }
+
+  async getProviders({ motorBlockId, from, to, limit } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/providers`;
+    return this.request('GET', this._scoped(path + this._qs({ from, to, limit }), motorBlockId), { bearer });
+  }
+
+  async getErrorCodes({ motorBlockId, from, to, limit } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/error-codes`;
+    return this.request('GET', this._scoped(path + this._qs({ from, to, limit }), motorBlockId), { bearer });
+  }
+
+  async getRateLimits({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/rate-limits`;
+    return this.request('GET', this._scoped(path, motorBlockId), { bearer });
+  }
+
+  async getConfig({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/config`;
+    return this.request('GET', this._scoped(path, motorBlockId), { bearer });
+  }
+
+  // refresh is sent only when true: the route reads it as "re-run the live DNS
+  // check now", so refresh=false is not the same request as omitting it.
+  async getDomainHealth({ motorBlockId, refresh } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/domain-health`;
+    const qs = this._qs({ refresh: refresh === true ? 'true' : undefined });
+    return this.request('GET', this._scoped(path + qs, motorBlockId), { bearer });
+  }
+
+  // Account-wide: the route is mounted { accountScoped: true } and reads only
+  // the token's user, so _accountPath omits the block rather than throwing.
+  // Using _scoped() here would demand a Motor Block for an account-wide route.
+  async getAccountRateLimits({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request(
+      'GET',
+      this._accountPath('/api/public/v1/account/rate-limits', motorBlockId),
+      { bearer }
+    );
+  }
+
+  async getLogs({
+    motorBlockId, from, to, currentOutcome, query, limit, cursor, includePII,
+  } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/logs`;
+    const qs = this._qs({
+      from, to, currentOutcome, query, limit, cursor,
+      includePII: includePII === true ? 'true' : undefined,
+    });
+    return this.request('GET', this._scoped(path + qs, motorBlockId), { bearer });
+  }
+
+  // GET /messages is a LOOKUP, not a listing: it 400s without an exact
+  // smtpMessageId and resolves at most one match. This is a second lookup key
+  // alongside getMessage()'s internal UUID, never a way to browse.
+  async getMessageBySmtpId({ smtpMessageId, motorBlockId, includePII } = {}) {
+    if (!smtpMessageId) throw new Error('smtpMessageId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const qs = this._qs({
+      smtpMessageId,
+      includePII: includePII === true ? 'true' : undefined,
+    });
+    return this.request('GET', this._scoped(`/api/public/v1/messages${qs}`, motorBlockId), { bearer });
+  }
+
   async getBearer({ motorBlockId, forceRefresh = false } = {}) {
     // An OAuth grant supersedes minted public tokens entirely — no ak_live_ key
     // and no dashboard JWT needed.
