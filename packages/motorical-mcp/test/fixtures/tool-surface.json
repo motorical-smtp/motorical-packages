@@ -1,0 +1,610 @@
+[
+  {
+    "name": "motorical_domain_add",
+    "description": "Add a customer domain (POST /api/domains). Returns verification DNS instructions. For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). On 409 (domain already registered), call motorical_domain_list first to check whether it is already on this account before asking the user to resolve the conflict. Requires MOTORICAL_JWT. Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "inputKeys": [
+      "domain",
+      "idempotencyKey",
+      "motorBlockId",
+      "verificationMethod"
+    ],
+    "annotations": {
+      "title": "Add a customer domain",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_domain_check_dns",
+    "description": "Live-check DKIM/SPF/DMARC and persist dkim_configured/spf_configured (POST /api/domains/{id}/check-dns). Required before /v1/send when ownership is verified but send returns DOMAIN_DNS_INCOMPLETE. Requires MOTORICAL_JWT. Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "inputKeys": [
+      "domainId",
+      "motorBlockId",
+      "recordType"
+    ],
+    "annotations": {
+      "title": "Live-check domain DNS",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_domain_list",
+    "description": "List domains already on this account (GET /api/domains) — id, domain, verified, DNS auth flags. Call this before motorical_domain_add on a 409 conflict to self-diagnose whether the domain is already yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Requires MOTORICAL_JWT. Requires OAuth scope: read:domains (List and read sending domains, without adding or verifying any.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "List account domains",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_domain_verify",
+    "description": "Verify domain ownership and refresh DKIM/SPF/DMARC send-readiness flags (POST /api/domains/{id}/verify). Requires confirm:true — this call is destructive/consequential. Returns sendReady. Requires MOTORICAL_JWT. Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "inputKeys": [
+      "confirm",
+      "domainId",
+      "method",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Verify domain ownership",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_get_account_rate_limits",
+    "description": "Account-wide send ceiling and current usage across every Motor Block (GET /api/public/v1/account/rate-limits). Account-scoped: no Motor Block needed. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get account rate limits",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_anomalies",
+    "description": "Detected sending anomalies for one Motor Block — volume spikes, bounce surges, unusual patterns (GET /api/public/v1/motor-blocks/{id}/anomalies). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get sending anomalies",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_config",
+    "description": "Configuration of one Motor Block — its sending domain, limits, delivery settings, and activeAuthMethod (\"Password\"/\"API Key\"/\"OAuth 2.0\"/\"mTLS\", read-only -- changing it is dashboard-only) (GET /api/public/v1/motor-blocks/{id}/config). Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get Motor Block config",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_daily_summary",
+    "description": "Per-day send counts and outcomes for one Motor Block (GET /api/public/v1/motor-blocks/{id}/daily-summary). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "days",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get daily send summary",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_deliverability",
+    "description": "Deliverability broken down by recipient domain (GET /api/public/v1/motor-blocks/{id}/deliverability). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "from",
+      "limit",
+      "motorBlockId",
+      "to"
+    ],
+    "annotations": {
+      "title": "Get deliverability by domain",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_domain_health",
+    "description": "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX (GET /api/public/v1/motor-blocks/{id}/domain-health). Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "inputKeys": [
+      "motorBlockId",
+      "refresh"
+    ],
+    "annotations": {
+      "title": "Get domain health",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_error_codes",
+    "description": "SMTP error codes seen for one Motor Block, with counts and diagnostics (GET /api/public/v1/motor-blocks/{id}/error-codes). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "from",
+      "limit",
+      "motorBlockId",
+      "to"
+    ],
+    "annotations": {
+      "title": "Get SMTP error codes",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_logs",
+    "description": "Search send logs for one Motor Block (GET /api/public/v1/motor-blocks/{id}/logs). Paginate with cursor. Recipient addresses are masked unless the token carries logs.pii, which OAuth tokens never do. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "currentOutcome",
+      "cursor",
+      "from",
+      "includePII",
+      "limit",
+      "motorBlockId",
+      "query",
+      "to"
+    ],
+    "annotations": {
+      "title": "Search send logs",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_message",
+    "description": "Get a message by send UUID (GET /api/public/v1/messages/{id}). Auto-mints bearer if needed. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "includePII",
+      "messageId",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get message by ID",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_message_by_smtp_id",
+    "description": "Look up one message by its SMTP Message-ID header (GET /api/public/v1/messages?smtpMessageId=). This is a lookup, not a listing: an exact id is required and at most one message is returned. Use motorical_get_message when you have the internal send UUID instead. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "includePII",
+      "motorBlockId",
+      "smtpMessageId"
+    ],
+    "annotations": {
+      "title": "Get message by SMTP Message-ID",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_message_events",
+    "description": "Get delivery lifecycle events for a message (GET /api/public/v1/messages/{id}/events). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "includePII",
+      "messageId",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get message delivery events",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_metrics",
+    "description": "Time-series send metrics for one Motor Block, bucketed by hour or day (GET /api/public/v1/motor-blocks/{id}/metrics). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "from",
+      "interval",
+      "motorBlockId",
+      "to"
+    ],
+    "annotations": {
+      "title": "Get send metrics",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_onboarding_state",
+    "description": "Where this account stands right now: stage, whether it can actually send (ready_to_send), what's blocking it, and the one next tool to call to move forward (GET /api/public/v1/account/state). Account-scoped: no Motor Block needed. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get onboarding/account state",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_overview",
+    "description": "Sending overview for one Motor Block over a date range — volume, delivery and bounce rates, and current usage against plan limits (GET /api/public/v1/motor-blocks/{id}/overview). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "from",
+      "motorBlockId",
+      "to"
+    ],
+    "annotations": {
+      "title": "Get Motor Block overview",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_providers",
+    "description": "Send outcomes grouped by receiving mailbox provider (GET /api/public/v1/motor-blocks/{id}/providers). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "from",
+      "limit",
+      "motorBlockId",
+      "to"
+    ],
+    "annotations": {
+      "title": "Get outcomes by provider",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_rate_limits",
+    "description": "Current hourly and daily send usage against this Motor Block's limits (GET /api/public/v1/motor-blocks/{id}/rate-limits). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get Motor Block rate limits",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_reputation",
+    "description": "Current sending reputation for one Motor Block (GET /api/public/v1/motor-blocks/{id}/reputation). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get sending reputation",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_get_send_status",
+    "description": "Check Motorical transactional email HTTP Send API status (GET /v1/status). No auth required. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [],
+    "annotations": {
+      "title": "Check Send API status",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_list_motor_blocks",
+    "description": "List Motor Blocks (isolated sending streams) visible to a Public API bearer token (auto-mints with ak_live_ if needed). Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "List Motor Blocks",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_mint_public_token",
+    "description": "Mint a short-lived Public Analytics API bearer token using MOTORICAL_AK_API_KEY (ak_live_...) or, when none is configured, MOTORICAL_JWT. Use for /api/public/v1 logs, analytics, webhooks, config. Not for POST /v1/send.",
+    "inputKeys": [
+      "motorBlockId",
+      "scopes",
+      "ttlSeconds"
+    ],
+    "annotations": {
+      "title": "Mint public API token",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_sandbox_allowlist_confirm",
+    "description": "Confirm a sandbox allowlist recipient using the 6-digit code sent by motorical_sandbox_allowlist_request. On success the address is added to the allowlist and can receive real (non-dryRun) sandbox sends. Requires MOTORICAL_JWT. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.). Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.",
+    "inputKeys": [
+      "code",
+      "email"
+    ],
+    "annotations": {
+      "title": "Confirm sandbox allowlist code",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_sandbox_allowlist_request",
+    "description": "Request to add a new recipient to the developer sandbox outbound allowlist. Sends a 6-digit confirmation code to that address (not the account owner) — call motorical_sandbox_allowlist_confirm with the code the recipient receives. Requires MOTORICAL_JWT. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.). Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.",
+    "inputKeys": [
+      "email"
+    ],
+    "annotations": {
+      "title": "Request sandbox allowlist addition",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_sandbox_convert",
+    "description": "Convert sandbox Motor Block onto a verified customer domain. Requires an active Motorical plan -- if none exists, this call throws with err.data.code === \"subscription_required\" and err.data.upgradeUrl naming where a human can subscribe; retry this same call once they have. If no sandbox exists yet (check motorical_sandbox_status first -- data.stage: \"not_started\"), call motorical_sandbox_provision instead; this endpoint returns 404 \"No developer sandbox to convert\" otherwise. The response always includes activeAuthMethod (the Motor Block's configured auth method -- \"Password\", \"API Key\", \"OAuth 2.0\", or \"mTLS\" -- read-only, changing it is dashboard-only). Over hosted OAuth it also includes credentialsLocation, a link to the dashboard where the customer can view or regenerate the actual credential value -- this tool never returns the raw value itself. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "inputKeys": [
+      "domainId"
+    ],
+    "annotations": {
+      "title": "Convert sandbox to production",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_sandbox_provision",
+    "description": "Provision unpaid developer sandbox (*.sandbox.motorical.com + outbound-locked Motor Block). Over hosted OAuth, this NEVER returns credentials -- the response has credentialsAvailable:false instead. The new Motor Block is added to your authorization, but an access token minted before provisioning does not list it -- if a send returns \"Motor block is not covered by this authorization\", refresh the OAuth token and retry. Credentials become available via a dashboard link after motorical_sandbox_convert. Only the local @motorical/mcp stdio server (dashboard-JWT auth) still returns mk_live_ once, since it is the customer's own long-running process on their own infrastructure -- securing whatever it returns is the customer's own responsibility on that path. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "inputKeys": [
+      "channel",
+      "handle"
+    ],
+    "annotations": {
+      "title": "Provision developer sandbox",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_sandbox_status",
+    "description": "Get developer sandbox status (domain, Motor Block, outbound lock, allowlist). Check data.stage to determine provisioning state: \"not_started\" (no sandbox yet — call motorical_sandbox_provision), \"sandbox_active\" (sandbox exists, outbound-locked), or \"live\" (converted to production, no lock). allowlist/caps are always present in the response regardless of stage — do not infer provisioning state from their presence. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "inputKeys": [],
+    "annotations": {
+      "title": "Get developer sandbox status",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_send_email",
+    "description": "Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. Do not use OAuth access tokens or Bearer tokens here. For developer-sandbox accounts, a non-allowlisted recipient is redirected to the account email rather than rejected — check the response's sandboxRedirect field. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
+    "inputKeys": [
+      "confirmRealSend",
+      "dryRun",
+      "from",
+      "fromName",
+      "html",
+      "idempotencyKey",
+      "motorBlockId",
+      "subject",
+      "text",
+      "to"
+    ],
+    "annotations": {
+      "title": "Send transactional email",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_wait_for_outcome",
+    "description": "Wait for a real send's actual delivery outcome (not just the 202 acceptance). Bounded server-side wait with backoff, capped under typical client timeouts. If the result is still_pending, wait retryAfterMs and call this again with the same taskId. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "inputKeys": [
+      "includePII",
+      "taskId"
+    ],
+    "annotations": {
+      "title": "Wait for delivery outcome",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_web_handoff",
+    "description": "Mint a one-time CLI→browser handoff URL (POST /api/auth/web-handoff). Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT.",
+    "inputKeys": [
+      "path"
+    ],
+    "annotations": {
+      "title": "Create browser handoff link",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_webhook_create",
+    "description": "Register a new webhook endpoint on one Motor Block (POST /api/public/v1/motor-blocks/{id}/webhooks). The response includes the full signing secret exactly once — store it immediately, it is only masked on every later read. Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "inputKeys": [
+      "events",
+      "idempotencyKey",
+      "motorBlockId",
+      "url"
+    ],
+    "annotations": {
+      "title": "Create webhook endpoint",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_webhook_delete",
+    "description": "Delete a webhook endpoint (DELETE /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "inputKeys": [
+      "confirm",
+      "motorBlockId",
+      "webhookId"
+    ],
+    "annotations": {
+      "title": "Delete webhook endpoint",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_webhook_get_deliveries",
+    "description": "Recent delivery attempts for one webhook endpoint (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/deliveries). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.).",
+    "inputKeys": [
+      "limit",
+      "motorBlockId",
+      "webhookId"
+    ],
+    "annotations": {
+      "title": "Get webhook delivery attempts",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_webhook_get_stats",
+    "description": "Delivery success/failure counts and average latency for one webhook endpoint over a time window (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/stats). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.).",
+    "inputKeys": [
+      "hours",
+      "motorBlockId",
+      "webhookId"
+    ],
+    "annotations": {
+      "title": "Get webhook delivery stats",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_webhook_list",
+    "description": "List webhook endpoints registered on one Motor Block (GET /api/public/v1/motor-blocks/{id}/webhooks). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "List webhook endpoints",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_webhook_test",
+    "description": "Send a synthetic test delivery to a webhook endpoint (POST /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/test). Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "inputKeys": [
+      "motorBlockId",
+      "webhookId"
+    ],
+    "annotations": {
+      "title": "Send test webhook delivery",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_webhook_update",
+    "description": "Update a webhook endpoint's url, events, or enabled state (PUT /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Only the fields you pass are changed. Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "inputKeys": [
+      "enabled",
+      "events",
+      "idempotencyKey",
+      "motorBlockId",
+      "url",
+      "webhookId"
+    ],
+    "annotations": {
+      "title": "Update webhook endpoint",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  }
+]

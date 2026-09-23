@@ -417,7 +417,7 @@ test('domainAdd always POSTs /api/public/v1/domains — never branches to /api/d
 
 test('domainVerify always POSTs /api/public/v1/domains/:id/verify — never branches to /api/domains', async () => {
   const { client, calls } = clientWithMintedBearer('minted-bearer');
-  await client.domainVerify({ domainId: 'dom-1', method: 'dns', motorBlockId: 'mb-1' });
+  await client.domainVerify({ domainId: 'dom-1', method: 'dns', motorBlockId: 'mb-1', confirm: true });
   assert.equal(calls[0].method, 'POST');
   assert.match(calls[0].path, /^\/api\/public\/v1\/domains\/dom-1\/verify/);
   assert.equal(calls[0].opts.bearer, 'minted-bearer');
@@ -609,6 +609,22 @@ test('getAccountRateLimits still passes a block through when one is given', asyn
   assert.equal(seenPath, '/api/public/v1/account/rate-limits?motorBlockId=mb-1');
 });
 
+test('getAccountState needs no Motor Block, even on a multi-block session', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getAccountState();
+  assert.equal(seenPath, '/api/public/v1/account/state');
+});
+
+test('getAccountState still passes a block through when one is given', async () => {
+  const c = oauthClient();
+  let seenPath;
+  c.request = async (m, p) => { seenPath = p; return { success: true }; };
+  await c.getAccountState({ motorBlockId: 'mb-1' });
+  assert.equal(seenPath, '/api/public/v1/account/state?motorBlockId=mb-1');
+});
+
 test('getLogs passes its full filter set through', async () => {
   const c = oauthClient();
   let seenPath;
@@ -756,7 +772,7 @@ test('webhookDelete DELETEs the specific webhook', async () => {
   client.getBearer = async () => 'bearer-token';
   client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true }; };
 
-  await client.webhookDelete({ motorBlockId: 'mb-1', webhookId: 'wh-1' });
+  await client.webhookDelete({ motorBlockId: 'mb-1', webhookId: 'wh-1', confirm: true });
 
   assert.equal(calls[0].method, 'DELETE');
   assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks/wh-1');
@@ -808,4 +824,18 @@ test('webhookList appends motorBlockId under an OAuth session', async () => {
   await client.webhookList({ motorBlockId: 'mb-1' });
 
   assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks?motorBlockId=mb-1');
+});
+
+test('getMessageRecipients hits GET /api/public/v1/messages/{id}/recipients', async () => {
+  const { client, calls } = clientWithMintedBearer('minted-bearer');
+  await client.getMessageRecipients('msg-123', { motorBlockId: 'mb-1' });
+  assert.equal(calls[0].method, 'GET');
+  assert.match(calls[0].path, /^\/api\/public\/v1\/messages\/msg-123\/recipients/);
+  assert.equal(calls[0].opts.bearer, 'minted-bearer');
+});
+
+test('getMessageRecipients appends includePII=true only when asked', async () => {
+  const { client, calls } = clientWithMintedBearer('minted-bearer');
+  await client.getMessageRecipients('msg-123', { motorBlockId: 'mb-1', includePII: true });
+  assert.match(calls[0].path, /includePII=true/);
 });

@@ -299,15 +299,16 @@ export class MotoricalClient {
     return this.request('GET', this._scoped(path, motorBlockId), { bearer });
   }
 
-  async webhookCreate({ motorBlockId, url, events } = {}) {
+  async webhookCreate({ motorBlockId, url, events, idempotencyKey } = {}) {
     if (!url) throw new Error('url is required');
     const bearer = await this.getBearer({ motorBlockId });
     const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks`;
     const body = events !== undefined ? { url, events } : { url };
-    return this.request('POST', this._scoped(path, motorBlockId), { bearer, body });
+    const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined;
+    return this.request('POST', this._scoped(path, motorBlockId), { bearer, body, headers });
   }
 
-  async webhookUpdate({ motorBlockId, webhookId, url, events, enabled } = {}) {
+  async webhookUpdate({ motorBlockId, webhookId, url, events, enabled, idempotencyKey } = {}) {
     if (!webhookId) throw new Error('webhookId is required');
     const bearer = await this.getBearer({ motorBlockId });
     const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks/${encodeURIComponent(webhookId)}`;
@@ -315,11 +316,15 @@ export class MotoricalClient {
     if (url !== undefined) body.url = url;
     if (events !== undefined) body.events = events;
     if (enabled !== undefined) body.enabled = enabled;
-    return this.request('PUT', this._scoped(path, motorBlockId), { bearer, body });
+    const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined;
+    return this.request('PUT', this._scoped(path, motorBlockId), { bearer, body, headers });
   }
 
-  async webhookDelete({ motorBlockId, webhookId } = {}) {
+  async webhookDelete({ motorBlockId, webhookId, confirm } = {}) {
     if (!webhookId) throw new Error('webhookId is required');
+    if (confirm !== true) {
+      throw new Error(`Refusing to delete webhook ${webhookId}: pass confirm:true to proceed`);
+    }
     const bearer = await this.getBearer({ motorBlockId });
     const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/webhooks/${encodeURIComponent(webhookId)}`;
     return this.request('DELETE', this._scoped(path, motorBlockId), { bearer });
@@ -354,6 +359,16 @@ export class MotoricalClient {
     return this.request(
       'GET',
       this._accountPath('/api/public/v1/account/rate-limits', motorBlockId),
+      { bearer }
+    );
+  }
+
+  // Account-wide: same pattern as getAccountRateLimits.
+  async getAccountState({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request(
+      'GET',
+      this._accountPath('/api/public/v1/account/state', motorBlockId),
       { bearer }
     );
   }
@@ -450,21 +465,38 @@ export class MotoricalClient {
       ? `/v1/send?motorBlockId=${encodeURIComponent(payload.motorBlockId || this.config.motorBlockId)}`
       : '/v1/send';
 
-    return this.request('POST', sendPath, {
-      ...auth,
-      headers,
-      body: {
-        from: fromAddr,
-        ...(fromName ? { fromName } : {}),
-        to: Array.isArray(to) ? to : [to],
-        subject,
-        text,
-        html,
-        dryRun: dryRun !== false,
-        ...(customHeaders ? { headers: customHeaders } : {}),
-        ...rest
+    try {
+      return await this.request('POST', sendPath, {
+        ...auth,
+        headers,
+        body: {
+          from: fromAddr,
+          ...(fromName ? { fromName } : {}),
+          to: Array.isArray(to) ? to : [to],
+          subject,
+          text,
+          html,
+          dryRun: dryRun !== false,
+          ...(customHeaders ? { headers: customHeaders } : {}),
+          ...rest
+        }
+      });
+    } catch (err) {
+      // Do NOT return a value here: motorical_send_email's outputSchema
+      // requires success:boolean, and dispatch.js's tools/call success path
+      // hardcodes isError:false and always runs validateOutput() against a
+      // returned result -- a plain {isError:true,...} object has no
+      // `success` field, fails validation, and the whole payload (reason,
+      // retryAfterSeconds) is discarded in favor of a generic validation
+      // error. Throwing instead takes dispatch.js's catch path, which sets
+      // isError:true and deliberately SKIPS output-schema validation, so
+      // err.data (the parsed backend body, already carrying reason and
+      // retryAfterSeconds) reaches the caller intact as `details`.
+      if (err.status === 429) {
+        err.data = { ...err.data, nextAction: { tool: 'motorical_get_account_rate_limits', args: {} } };
       }
-    });
+      throw err;
+    }
   }
 
   async getMessage(messageId, { includePII = false, motorBlockId } = {}) {
@@ -481,6 +513,13 @@ export class MotoricalClient {
     return this.request('GET', this._scoped(`/api/public/v1/messages/${encodeURIComponent(messageId)}/events${q}`, motorBlockId), { bearer });
   }
 
+  async getMessageRecipients(messageId, { includePII = false, motorBlockId } = {}) {
+    if (!messageId) throw new Error('messageId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    const q = includePII ? '?includePII=true' : '';
+    return this.request('GET', this._scoped(`/api/public/v1/messages/${encodeURIComponent(messageId)}/recipients${q}`, motorBlockId), { bearer });
+  }
+
   async getSendApiStatus() {
     return this.request('GET', '/v1/status');
   }
@@ -495,6 +534,9 @@ export class MotoricalClient {
   }
 
   async sandboxStatus() {
+    if (this._delegated) {
+      return this.request('GET', '/api/public/v1/account/sandbox');
+    }
     const result = await this.request('GET', '/api/developer/sandbox', {
       bearer: this.requireDashboardJwt()
     });
@@ -506,6 +548,9 @@ export class MotoricalClient {
   }
 
   async sandboxProvision({ handle, channel = 'agent' } = {}) {
+    if (this._delegated) {
+      return this.request('POST', '/api/public/v1/account/sandbox/provision', { body: { handle, channel } });
+    }
     const result = await this.request('POST', '/api/developer/sandbox/provision', {
       bearer: this.requireDashboardJwt(),
       body: { handle, channel }
@@ -522,6 +567,9 @@ export class MotoricalClient {
 
   async sandboxConvert({ domainId }) {
     if (!domainId) throw new Error('domainId is required');
+    if (this._delegated) {
+      return this.request('POST', '/api/public/v1/account/sandbox/convert', { body: { domainId } });
+    }
     return this.request('POST', '/api/developer/sandbox/convert', {
       bearer: this.requireDashboardJwt(),
       body: { domainId }
@@ -562,23 +610,29 @@ export class MotoricalClient {
     return this.request('GET', this._accountPath('/api/public/v1/domains', motorBlockId), { bearer });
   }
 
-  async domainAdd({ domain, verificationMethod = 'dns', motorBlockId } = {}) {
+  async domainAdd({ domain, verificationMethod = 'dns', motorBlockId, idempotencyKey } = {}) {
     if (!domain) throw new Error('domain is required');
+    const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined;
     if (this.hasNoBlockToScopeAPublicToken(motorBlockId) && this.config.dashboardJwt) {
       return this.request('POST', '/api/domains', {
         bearer: this.requireDashboardJwt(),
-        body: { domain, verificationMethod }
+        body: { domain, verificationMethod },
+        headers,
       });
     }
     const bearer = await this.getBearer({ motorBlockId });
     return this.request('POST', this._accountPath('/api/public/v1/domains', motorBlockId), {
       bearer,
-      body: { domain, verificationMethod }
+      body: { domain, verificationMethod },
+      headers,
     });
   }
 
-  async domainVerify({ domainId, method = 'dns', motorBlockId } = {}) {
+  async domainVerify({ domainId, method = 'dns', motorBlockId, confirm } = {}) {
     if (!domainId) throw new Error('domainId is required');
+    if (confirm !== true) {
+      throw new Error(`Refusing to verify domain ${domainId}: pass confirm:true to proceed`);
+    }
     if (this.hasNoBlockToScopeAPublicToken(motorBlockId) && this.config.dashboardJwt) {
       return this.request('POST', `/api/domains/${encodeURIComponent(domainId)}/verify`, {
         bearer: this.requireDashboardJwt(),
@@ -631,6 +685,33 @@ export class MotoricalClient {
       bearer: this.requireDashboardJwt(),
       body: path ? { path } : {}
     });
+  }
+
+  // Unlike every other method here, deliberately unauthenticated: the caller
+  // has no Motorical account yet, so there is no credential to send. Backed
+  // by Task 1's two unauthenticated routes; only reachable in practice via
+  // the hosted `signup` server (servers.js SIGNUP_TOOLS), whose
+  // createUnauthenticatedClient wiring never attaches a bearer or API key to
+  // this client to begin with.
+  // Returns `{ status: 'ready' }` once the human has finished (verified account
+  // with a password set), and `{ status: 'awaiting_browser', url,
+  // continuationToken }` on every other outcome. An unknown or expired
+  // continuationToken is NOT one of those: /signup-handoff/status answers 404
+  // for it (backend final-review I1), so request() throws with `.status = 404`
+  // and the agent learns the handoff is gone instead of being told
+  // "awaiting_browser" forever against a record that no longer exists.
+  async signupHandoff({ clientId, redirectUri, resource, codeChallenge, codeChallengeMethod, scope, state, continuationToken } = {}) {
+    if (continuationToken) {
+      const result = await this.request('POST', '/api/auth/signup-handoff/status', {
+        body: { code: continuationToken },
+      });
+      if (result.status === 'ready') return { status: 'ready' };
+      return { status: 'awaiting_browser', url: result.url, continuationToken };
+    }
+    const result = await this.request('POST', '/api/auth/signup-handoff', {
+      body: { clientId, redirectUri, resource, codeChallenge, codeChallengeMethod, scope, state },
+    });
+    return { status: 'awaiting_browser', url: result.url, continuationToken: result.code };
   }
 
   async fetchDocs(path = '/llms.txt') {

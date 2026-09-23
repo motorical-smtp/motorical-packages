@@ -1,0 +1,110 @@
+{
+  "_comment": "One representative real-response sample per tool with a declared outputSchema (Task 4). Synthetic ids and example.com addresses only -- no real customer data. Shapes are taken from the committed API contract (docs-site/static/openapi.json) where it documents a response schema for the endpoint; where the contract's response entry carries no schema (GET /v1/status and GET /api/public/v1/messages/{id}/events both document only a bare 200 description), the shape below is taken from the backend route/service source instead (backend/src/routes/v1.js for /v1/status; backend/src/routes/public/index.js + backend/src/services/messageOutcome/index.js for the events envelope) -- see task-4-report.md.",
+
+  "motorical_send_email": {
+    "success": true,
+    "data": {
+      "id": "5b1f2b8e-1a2b-4c3d-9e0f-8a1b2c3d4e5f",
+      "acceptanceStatus": "queued",
+      "from": "sender@example.com",
+      "fromName": null,
+      "to": ["recipient@example.com"],
+      "subject": "Test subject",
+      "timestamp": "2026-09-04T12:00:00.000Z"
+    },
+    "message": "✅ Email queued for delivery successfully"
+  },
+
+  "motorical_wait_for_outcome": {
+    "status": "completed",
+    "result": {
+      "recipients": [
+        {
+          "address": "recipient@example.com",
+          "status": "delivered",
+          "dsnCode": "250",
+          "at": "2026-09-04T12:00:02.000Z"
+        }
+      ],
+      "expectedCount": 1,
+      "allTerminal": true
+    }
+  },
+
+  "motorical_get_send_status": {
+    "success": true,
+    "data": {
+      "service": "Motorical API v1",
+      "serviceStatus": "operational",
+      "version": "1.0.0",
+      "timestamp": "2026-09-04T12:00:00.000Z",
+      "endpoints": {
+        "POST /v1/test-email": "Test SMTP configuration",
+        "POST /v1/send": "Send production emails",
+        "GET /v1/status": "API status check"
+      }
+    },
+    "message": "Motorical API v1 is operational"
+  },
+
+  "motorical_get_message": {
+    "success": true,
+    "data": {
+      "id": "8c9d0e1f-2a3b-4c5d-6e7f-8a9b0c1d2e3f",
+      "smtpMessageId": "<abc123@example.com>",
+      "currentOutcome": "delivered",
+      "isTerminal": true,
+      "from": "sender@example.com",
+      "recipient": "r***@example.com",
+      "subject": "Test subject",
+      "queuedAt": "2026-09-04T12:00:00.000Z",
+      "processedAt": "2026-09-04T12:00:01.000Z",
+      "deliveredAt": "2026-09-04T12:00:02.000Z",
+      "bouncedAt": null,
+      "smtpCode": "250",
+      "smtpResponse": "2.0.0 OK"
+    }
+  },
+
+  "motorical_get_message_events": {
+    "success": true,
+    "data": {
+      "motorBlockId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "id": "8c9d0e1f-2a3b-4c5d-6e7f-8a9b0c1d2e3f",
+      "smtpMessageId": "<abc123@example.com>",
+      "currentOutcome": "delivered",
+      "isTerminal": true,
+      "from": "sender@example.com",
+      "recipient": "r***@example.com",
+      "subject": "Test subject",
+      "queuedAt": "2026-09-04T12:00:00.000Z",
+      "processedAt": "2026-09-04T12:00:01.000Z",
+      "deliveredAt": "2026-09-04T12:00:02.000Z",
+      "bouncedAt": null,
+      "smtpCode": "250",
+      "smtpResponse": "2.0.0 OK",
+      "events": [
+        {
+          "eventType": "queued",
+          "smtpCode": null,
+          "message": null,
+          "at": "2026-09-04T12:00:00.000Z",
+          "processedAt": null,
+          "deliveredAt": null,
+          "bouncedAt": null,
+          "retryCount": 0
+        },
+        {
+          "eventType": "delivered",
+          "smtpCode": "250",
+          "message": "2.0.0 OK",
+          "at": "2026-09-04T12:00:02.000Z",
+          "processedAt": "2026-09-04T12:00:01.000Z",
+          "deliveredAt": "2026-09-04T12:00:02.000Z",
+          "bouncedAt": null,
+          "retryCount": 0
+        }
+      ]
+    }
+  }
+}

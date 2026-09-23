@@ -4,6 +4,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createMotoricalMcpServer } from '../src/server.js';
 import { MotoricalClient } from '../src/client.js';
+import {
+  ACCOUNT_SCOPED_TOOLS, TOOL_SCOPES, LOCAL_ONLY_TOOLS, PROMPT_TOOLS, LOCAL_SERVER_TOOL_COUNT, SERVERS,
+} from '../src/servers.js';
 
 test('MCP server lists tools and resources', async () => {
   const fake = new MotoricalClient({
@@ -15,7 +18,9 @@ test('MCP server lists tools and resources', async () => {
     motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
     defaultFrom: 'a@example.com'
   });
-  fake.getSendApiStatus = async () => ({ status: 'ok' });
+  // `success` is the one field motorical_get_send_status's outputSchema
+  // requires (it's the field GET /v1/status genuinely always returns).
+  fake.getSendApiStatus = async () => ({ success: true, message: 'ok' });
   fake.fetchDocs = async (p) => (p.includes('openapi') ? '{"openapi":"3.1.0"}' : '# llms');
 
   const { server } = createMotoricalMcpServer({ client: fake });
@@ -43,6 +48,7 @@ test('MCP server lists tools and resources', async () => {
     'motorical_get_message_by_smtp_id',
     'motorical_get_message_events',
     'motorical_get_metrics',
+    'motorical_get_onboarding_state',
     'motorical_get_overview',
     'motorical_get_providers',
     'motorical_get_rate_limits',
@@ -56,6 +62,7 @@ test('MCP server lists tools and resources', async () => {
     'motorical_sandbox_provision',
     'motorical_sandbox_status',
     'motorical_send_email',
+    'motorical_wait_for_outcome',
     'motorical_web_handoff',
     'motorical_webhook_create',
     'motorical_webhook_delete',
@@ -107,9 +114,16 @@ async function registeredTools() {
   return (await client.listTools()).tools;
 }
 
-// The account-scoped-tools schema test lives in the private resource-server repo:
-// it reads ACCOUNT_SCOPED_TOOLS from servers.js, which is not part of this
-// published package. Stripped on every sync — see the repo README.
+test('no account-scoped tool advertises motorBlockId as conditionally required', async () => {
+  const tools = await registeredTools();
+  for (const name of ACCOUNT_SCOPED_TOOLS) {
+    const tool = tools.find((t) => t.name === name);
+    if (!tool) continue; // not exposed as a tool (e.g. registered as a prompt)
+    const desc = tool.inputSchema?.properties?.motorBlockId?.description || '';
+    assert.ok(!/required/i.test(desc),
+      `${name} is account-scoped but advertises motorBlockId as required: "${desc}"`);
+  }
+});
 
 test('block-scoped tools still state the requirement', async () => {
   const tools = await registeredTools();
@@ -170,4 +184,117 @@ test('webhook tools declare motorBlockId optional and webhookId where relevant',
     assert.ok((tool.inputSchema.required || []).includes('webhookId'), `${name} must require webhookId`);
     assert.ok(!(tool.inputSchema.required || []).includes('motorBlockId'), `${name} must not require motorBlockId`);
   }
+});
+
+test('legacy path lists the account-state resource and its templates', async () => {
+  const fake = new MotoricalClient({
+    apiBaseUrl: 'https://api.motorical.com',
+    docsBaseUrl: 'https://docs.motorical.com',
+    mkApiKey: 'mk_live_x',
+    akApiKey: 'ak_live_x',
+    bearerToken: '',
+    motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
+    defaultFrom: 'a@example.com'
+  });
+  fake.getAccountState = async () => ({
+    success: true,
+    data: { stage: 'no_domain', domains: [], motorBlocks: [] }
+  });
+
+  const { server } = createMotoricalMcpServer({ client: fake });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: 'resource-probe', version: '1.0.0' });
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+  const resources = await client.listResources();
+  const uris = resources.resources.map((r) => r.uri);
+  assert.ok(uris.includes('motorical://account/state'));
+
+  const templates = await client.listResourceTemplates();
+  const uriTemplates = templates.resourceTemplates.map((t) => t.uriTemplate);
+  assert.ok(uriTemplates.includes('motorical://domain/{domain}'));
+  assert.ok(uriTemplates.includes('motorical://motor-block/{id}'));
+
+  const read = await client.readResource({ uri: 'motorical://account/state' });
+  assert.match(read.contents[0].text, /no_domain/);
+
+  await client.close();
+  await server.close();
+});
+
+// Whole-branch review finding: the native dispatch path (dispatch.js) scopes
+// resources/resource-templates to the analytics server only
+// (`server.key === 'analytics'`), but this legacy-path registration loop used
+// to run unconditionally for EVERY server -- so a legacy-protocol client on
+// e.g. the `domains` server could list AND read `motorical://account/state`
+// even though the native path on that exact same server correctly refuses it
+// (proven live). This test builds the legacy server for a NON-analytics
+// server context and confirms it now agrees with the native path's own
+// scoping, mirroring resourcesDispatch.test.js's
+// 'resources/list returns nothing on a server this resource is not scoped to'.
+test('legacy path does not list or serve the account-state resource for a non-analytics server', async () => {
+  const domainsServer = SERVERS.find((s) => s.key === 'domains');
+  const fake = new MotoricalClient({
+    apiBaseUrl: 'https://api.motorical.com',
+    docsBaseUrl: 'https://docs.motorical.com',
+    mkApiKey: 'mk_live_x',
+    akApiKey: 'ak_live_x',
+    bearerToken: '',
+    motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
+    defaultFrom: 'a@example.com'
+  });
+  fake.getAccountState = async () => ({
+    success: true,
+    data: { stage: 'no_domain', domains: [], motorBlocks: [] }
+  });
+
+  const { server } = createMotoricalMcpServer({
+    client: fake,
+    allowedTools: domainsServer.tools,
+    serverKey: domainsServer.key,
+  });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: 'domains-resource-probe', version: '1.0.0' });
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+  const resources = await client.listResources();
+  const uris = resources.resources.map((r) => r.uri);
+  assert.ok(!uris.includes('motorical://account/state'),
+    'domains server must not list motorical://account/state -- it is analytics-only');
+
+  const templates = await client.listResourceTemplates();
+  assert.deepEqual(templates.resourceTemplates, [],
+    'domains server must not list any account-state resource templates');
+
+  await assert.rejects(
+    () => client.readResource({ uri: 'motorical://account/state' }),
+    /Resource .* not found|not found/i,
+    'domains server must refuse to read motorical://account/state'
+  );
+
+  await client.close();
+  await server.close();
+});
+
+// The docs pages state how many tools the local server registers, and the
+// docs gate checks that number against LOCAL_SERVER_TOOL_COUNT rather than
+// against a hand-typed literal. That only works while the declaration in
+// servers.js still matches what the server actually registers — which is what
+// this test pins. Without it, the declaration is just a second place to be
+// wrong. (The published count went stale at 30 while the real figure was 37;
+// nothing caught it, because nothing was comparing them.)
+test('the declared local-server tool count matches what the server registers', async () => {
+  const tools = await registeredTools();
+  const registered = tools.map((t) => t.name).sort();
+  const catalogue = Object.keys(TOOL_SCOPES).sort();
+
+  assert.equal(registered.length, LOCAL_SERVER_TOOL_COUNT,
+    `LOCAL_SERVER_TOOL_COUNT says ${LOCAL_SERVER_TOOL_COUNT} but the server registers ${registered.length}`);
+
+  // The two declared deltas must be exactly the difference between the
+  // published catalogue and the registered tool set — no more, no less.
+  assert.deepEqual(registered.filter((t) => !catalogue.includes(t)).sort(), [...LOCAL_ONLY_TOOLS].sort(),
+    'LOCAL_ONLY_TOOLS does not match the tools registered outside the catalogue');
+  assert.deepEqual(catalogue.filter((t) => !registered.includes(t)).sort(), [...PROMPT_TOOLS].sort(),
+    'PROMPT_TOOLS does not match the catalogue entries that are not registered as tools');
 });
