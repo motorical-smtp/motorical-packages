@@ -1,0 +1,36 @@
+{
+  "name": "@motorical/scope-catalog",
+  "version": "0.1.0",
+  "description": "Canonical MCP/OAuth scope metadata for Motorical — descriptions, Public API scope mapping, implied-read rules, and declarative tool/resource membership. One source of truth consumed by motorical-backend and @motorical/mcp.",
+  "main": "./src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {},
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "homepage": "https://docs.motorical.com/ai",
+  "bugs": {
+    "url": "https://github.com/motorical-smtp/motorical-backend/issues"
+  },
+  "keywords": [
+    "motorical",
+    "oauth",
+    "scopes",
+    "mcp"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motorical-smtp/motorical-packages.git",
+    "directory": "packages/motorical-scope-catalog"
+  }
+}
