@@ -39,6 +39,13 @@ const SCOPES = {
     agentDescription: 'Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.',
     customerAction: 'Add and verify sending domains',
   },
+  'manage:motor-blocks': {
+    resource: 'motor-blocks',
+    level: 'manage',
+    publicScopes: ['config.read', 'config.manage'],
+    agentDescription: 'List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.',
+    customerAction: 'Manage production Motor Blocks',
+  },
   'manage:sandbox': {
     resource: 'sandbox',
     level: 'manage',

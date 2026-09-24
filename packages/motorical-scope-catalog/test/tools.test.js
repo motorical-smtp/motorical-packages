@@ -32,15 +32,40 @@ test('scopesForTools unions TOOL_SCOPES over a tool list, deduplicated', () => {
   assert.deepEqual(scopesForTools(['motorical_signup_handoff']), []); // no TOOL_SCOPES entry -> []
 });
 
-test('RESOURCE_SCOPES has exactly the six authenticated servers, keyed by canonical URI, never signup', () => {
+test('RESOURCE_SCOPES has exactly the seven authenticated servers, keyed by canonical URI, never signup', () => {
   assert.deepEqual(Object.keys(RESOURCE_SCOPES).sort(), [
     'https://mcp.motorical.com/v1/motorical/mcp',
     'https://mcp.motorical.com/v1/motorical_analytics/mcp',
     'https://mcp.motorical.com/v1/motorical_domains/mcp',
+    'https://mcp.motorical.com/v1/motorical_motor_blocks/mcp',
     'https://mcp.motorical.com/v1/motorical_sandbox/mcp',
     'https://mcp.motorical.com/v1/motorical_transactional/mcp',
     'https://mcp.motorical.com/v1/motorical_webhooks/mcp',
   ]);
+});
+
+test('the Motor Blocks server exposes exactly the nine bounded lifecycle tools', () => {
+  assert.deepEqual(SERVER_TOOLS.motorBlocks, [
+    'motorical_motor_block_list',
+    'motorical_motor_block_create',
+    'motorical_motor_block_rename',
+    'motorical_motor_block_change_type',
+    'motorical_motor_block_assign_domain',
+    'motorical_motor_block_deactivate',
+    'motorical_motor_block_reactivate',
+    'motorical_motor_block_delete',
+    'motorical_motor_block_delete_status',
+  ]);
+  for (const tool of SERVER_TOOLS.motorBlocks) {
+    assert.deepEqual(TOOL_SCOPES[tool], ['manage:motor-blocks']);
+  }
+});
+
+test('the Motor Blocks resource allows exactly manage:motor-blocks', () => {
+  assert.deepEqual(
+    RESOURCE_SCOPES['https://mcp.motorical.com/v1/motorical_motor_blocks/mcp'],
+    ['manage:motor-blocks'],
+  );
 });
 
 test('the main/all-tools resource allows every grantable scope', () => {

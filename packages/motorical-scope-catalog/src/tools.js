@@ -66,8 +66,27 @@ const WEBHOOK_TOOLS = [
   'motorical_webhook_get_stats',
 ];
 
+const MOTOR_BLOCK_TOOLS = [
+  'motorical_motor_block_list',
+  'motorical_motor_block_create',
+  'motorical_motor_block_rename',
+  'motorical_motor_block_change_type',
+  'motorical_motor_block_assign_domain',
+  'motorical_motor_block_deactivate',
+  'motorical_motor_block_reactivate',
+  'motorical_motor_block_delete',
+  'motorical_motor_block_delete_status',
+];
+
 const ALL_TOOLS = [
-  ...new Set([...TRANSACTIONAL_TOOLS, ...ANALYTICS_TOOLS, ...DOMAIN_TOOLS, ...SANDBOX_TOOLS, ...WEBHOOK_TOOLS]),
+  ...new Set([
+    ...TRANSACTIONAL_TOOLS,
+    ...ANALYTICS_TOOLS,
+    ...DOMAIN_TOOLS,
+    ...SANDBOX_TOOLS,
+    ...WEBHOOK_TOOLS,
+    ...MOTOR_BLOCK_TOOLS,
+  ]),
 ];
 
 const SERVER_TOOLS = {
@@ -77,6 +96,7 @@ const SERVER_TOOLS = {
   domains: DOMAIN_TOOLS,
   sandbox: SANDBOX_TOOLS,
   webhooks: WEBHOOK_TOOLS,
+  motorBlocks: MOTOR_BLOCK_TOOLS,
   signup: ['motorical_signup_handoff'],
 };
 
@@ -120,6 +140,15 @@ const TOOL_SCOPES = {
   motorical_webhook_test: ['manage:webhooks'],
   motorical_webhook_get_deliveries: ['read:webhooks'],
   motorical_webhook_get_stats: ['read:webhooks'],
+  motorical_motor_block_list: ['manage:motor-blocks'],
+  motorical_motor_block_create: ['manage:motor-blocks'],
+  motorical_motor_block_rename: ['manage:motor-blocks'],
+  motorical_motor_block_change_type: ['manage:motor-blocks'],
+  motorical_motor_block_assign_domain: ['manage:motor-blocks'],
+  motorical_motor_block_deactivate: ['manage:motor-blocks'],
+  motorical_motor_block_reactivate: ['manage:motor-blocks'],
+  motorical_motor_block_delete: ['manage:motor-blocks'],
+  motorical_motor_block_delete_status: ['manage:motor-blocks'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */
@@ -134,6 +163,7 @@ const SERVER_SLUGS = {
   domains: 'motorical_domains',
   sandbox: 'motorical_sandbox',
   webhooks: 'motorical_webhooks',
+  motorBlocks: 'motorical_motor_blocks',
   signup: 'signup',
 };
 
