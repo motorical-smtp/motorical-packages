@@ -1,25 +1,10 @@
-# @motorical/cli
+# @motorical/cli — retired
 
-Developer onboarding for **Motorical Sending SMTP**: email/code signup → unpaid sandbox (`*.sandbox.motorical.com`) → dry-run / allowlisted sends → convert after Motorical Plan.
+This package is retired for now and is no longer documented or supported. The source is kept here, frozen, until it is upgraded to a usable level.
 
-```bash
-npm install -g https://registry.npmjs.org/@motorical/cli/-/cli-1.0.4.tgz
-# when named install works: npm install -g @motorical/cli
+**Use instead:**
 
-motorical signup you@example.com
-motorical verify <code>
-motorical sandbox provision
-motorical send --to you@example.com --from-name "Acme Billing"   # dry-run by default
-motorical open                        # browser handoff / set password
-motorical domain add example.com
-motorical domain check-dns <domainId>
-motorical convert --checkout
-motorical convert --domain-id <uuid>
-```
+- The hosted MCP server (recommended when a person is present): https://docs.motorical.com/ai-mcp-hosted
+- The REST API for scripts and shell-only agents: https://docs.motorical.com/ai
 
-`motorical send` accepts `--from-name` for the inbox display name (maps to HTTP `fromName`). Do not put a display name in `--from` or try to set a `From` header — use `--from-name`.
-
-Config: `~/.config/motorical/config.json`  
-API override: `MOTORICAL_API_BASE_URL`
-
-Docs: https://docs.motorical.com/ai · Journey: https://docs.motorical.com/onboarding-sandbox-journey.json
+Existing installs keep working while the underlying API endpoints exist, but they are not maintained.
