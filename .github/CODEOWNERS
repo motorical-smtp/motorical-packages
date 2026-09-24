@@ -1,0 +1,5 @@
+# Changes to anything that can publish, or that changes what gets published, need the owner's review.
+# Only enforced once a ruleset on `main` sets "Require review from Code Owners".
+/.github/                              @gliepins
+/packages/*/package.json               @gliepins
+/packages/*/package-lock.json          @gliepins

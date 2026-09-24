@@ -1,31 +1,45 @@
 name: Publish @motorical/mcp
 
+# Least-privilege publish (hardened 2026-09-25, after the Megalodon incident review).
+#
+# The job that installs and runs code (dependencies, tests, audit) has NO publish
+# credential. Only the final job holds the OIDC token, and it installs no
+# dependencies and checks out nothing: it publishes the exact tarball the verify
+# job built and tested. A compromised dependency or test can therefore no longer
+# mint the token and publish under this repo's provenance.
+#
+# Manual, deliberate trigger only. Run with dry_run=true first after changing
+# this file to exercise the whole pipeline without publishing.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate the whole pipeline without publishing (npm publish --dry-run)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: packages/motorical-mcp
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
 
-      - name: Ensure npm supports OIDC trusted publishing
-        run: npm install -g npm@latest
-
-      - name: Install dependencies
-        run: npm ci
+      # --ignore-scripts: no dependency install script runs in CI. (None declare one today;
+      # this keeps it that way if a dependency ever adds one.)
+      - name: Install dependencies (lifecycle scripts disabled)
+        run: npm ci --ignore-scripts
 
       - name: Run tests
         run: npm test
@@ -44,5 +58,51 @@ jobs:
             exit 1
           fi
 
-      - name: Publish
-        run: npm publish --provenance
+      # npm pack runs this package's own prepack (README version sync), not dependency scripts.
+      - name: Pack the tarball that will be published
+        run: |
+          mkdir -p "$RUNNER_TEMP/pkg"
+          npm pack --pack-destination "$RUNNER_TEMP/pkg"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: motorical-mcp-tarball
+          path: ${{ runner.temp }}/pkg/*.tgz
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    # Attach required reviewers / a main-only branch rule to this environment in repo settings.
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs npm >= 11.5.1. Pinned to an exact version, never @latest.
+      - name: Pin npm (trusted publishing requires >= 11.5.1)
+        run: npm install -g npm@11.20.0
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: motorical-mcp-tarball
+          path: ${{ runner.temp }}/pkg
+
+      - name: Publish the verified tarball
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          TARBALL=$(ls "$RUNNER_TEMP"/pkg/*.tgz)
+          echo "Publishing $TARBALL"
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish "$TARBALL" --provenance --access public --dry-run
+          else
+            npm publish "$TARBALL" --provenance --access public
+          fi
