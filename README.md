@@ -21,6 +21,11 @@ automation with API keys. Writing code that sends mail needs no package: see
 
 `@motorical/cli` is **retired** for now and is no longer documented or supported; its source is kept, frozen, in `packages/motorical-cli/`. Use the hosted MCP server or the REST API instead.
 
+## Examples
+
+Runnable transactional-email examples (HTTP send, SMTP with Nodemailer, webhook verification, Python, a
+Next.js contact form) live in [`examples/`](./examples). The HTTP send examples default to `dryRun: true`.
+
 ## Install
 
 ```bash

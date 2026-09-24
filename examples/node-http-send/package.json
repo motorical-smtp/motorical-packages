@@ -1,0 +1,11 @@
+{
+  "name": "motorical-smtp-node-http-send",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Send email with the Motorical SMTP HTTP Send API.",
+  "scripts": {
+    "send": "node send-email.js",
+    "check": "node --check send-email.js"
+  },
+  "license": "MIT"
+}

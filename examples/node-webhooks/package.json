@@ -1,0 +1,11 @@
+{
+  "name": "motorical-smtp-node-webhooks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Verify Motorical SMTP webhook signatures in Node.js.",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "license": "MIT"
+}
