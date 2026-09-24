@@ -21,7 +21,12 @@ test('MCP server lists tools and resources', async () => {
   // `success` is the one field motorical_get_send_status's outputSchema
   // requires (it's the field GET /v1/status genuinely always returns).
   fake.getSendApiStatus = async () => ({ success: true, message: 'ok' });
-  fake.fetchDocs = async (p) => (p.includes('openapi') ? '{"openapi":"3.1.0"}' : '# llms');
+  fake.fetchDocs = async (p) => {
+    if (p.includes('openapi')) return '{"openapi":"3.1.0"}';
+    if (p.includes('agents.json')) return '{"description":"agents playbook"}';
+    if (p.includes('agents.md')) return '# Motorical for Agents';
+    return '# llms';
+  };
 
   const { server } = createMotoricalMcpServer({ client: fake });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -90,6 +95,16 @@ test('MCP server lists tools and resources', async () => {
   const uris = resources.resources.map((r) => r.uri);
   assert.ok(uris.includes('motorical://docs/llms.txt'));
   assert.ok(uris.includes('motorical://docs/openapi.json'));
+  assert.ok(uris.includes('motorical://docs/agents-hub'));
+  assert.ok(uris.includes('motorical://docs/agents-playbook'));
+
+  const hub = await client.readResource({ uri: 'motorical://docs/agents-hub' });
+  assert.equal(hub.contents[0].mimeType, 'text/markdown');
+  assert.match(hub.contents[0].text, /Motorical for Agents/);
+
+  const playbook = await client.readResource({ uri: 'motorical://docs/agents-playbook' });
+  assert.equal(playbook.contents[0].mimeType, 'application/json');
+  assert.match(playbook.contents[0].text, /agents playbook/);
 
   await client.close();
   await server.close();

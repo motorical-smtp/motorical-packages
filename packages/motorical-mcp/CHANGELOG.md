@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.10.0] — 2026-09-24
+
+### Added
+
+- Every scoped server now has its own instructions, not just four of eight: `main`, `transactional`,
+  `motorBlocks`, and `signup` used to fall through to the two-sentence generic fallback (the
+  agent-ready-docs-and-positioning design's own audit named this gap). Every server's instructions now
+  also point at the new `motorical://docs/agents-hub` resource for the full route chooser and rulebook.
+- Two new resources, registered the same unconditional-on-every-server way as the existing
+  `motorical://docs/llms.txt`/`openapi.json`: `motorical://docs/agents-hub` (the Agent Hub, text/markdown)
+  and `motorical://docs/agents-playbook` (its machine twin, application/json) — both fetched live from
+  docs.motorical.com, not duplicated in this package.
+- `GET /` on the hosted server now answers with a landing page (every server, its transport URL, scopes,
+  tool count) instead of 404 — generated per request from this process's own running registry, so it
+  cannot go stale relative to what `/v1/:slug/mcp` actually serves.
+- `GET /v1/:slug` (no `/mcp` suffix — deliberately a different path from the transport endpoint, whose own
+  GET keeps its existing 405) now answers with a per-server card: scopes, full tool list, and whether the
+  server needs auth.
+
 ## [1.9.4] — 2026-09-24
 
 ### Fixed

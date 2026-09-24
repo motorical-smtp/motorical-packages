@@ -4,3 +4,4 @@ node_modules/
 
 # Eval harness reports -- working artifacts of live runs, never source.
 eval/results/
+eval/results-discovery/

@@ -19,6 +19,25 @@ describe('instructions', () => {
     assert.ok(text && text.length > 80);
   });
 
+  test('every server in the real catalogue has its OWN instructions, not the generic fallback', () => {
+    // design 2026-09-24 agent-ready-docs-and-positioning §5.3: "every server
+    // gets its own" -- the design's own audit found main, transactional,
+    // motorBlocks, and signup fell through to GENERIC. Checking every real
+    // SERVERS entry (not a hardcoded key list) means a ninth server added
+    // later without its own PER_SERVER entry fails this test immediately,
+    // rather than silently inheriting the two-sentence fallback.
+    const generic = instructionsFor('no_such_server');
+    for (const s of SERVERS) {
+      assert.notEqual(instructionsFor(s.key), generic, `${s.key}: still falls through to GENERIC`);
+    }
+  });
+
+  test('every server\'s instructions point at the hub resource', () => {
+    for (const s of SERVERS) {
+      assert.match(instructionsFor(s.key), /motorical:\/\/docs\/agents-hub/);
+    }
+  });
+
   test('the transactional server warns that acceptance is not delivery', () => {
     const text = instructionsFor('transactional');
     assert.match(text, /accepted/i);
@@ -34,11 +53,21 @@ describe('instructions', () => {
     }
   });
 
-  test('instructions never name a tool that does not exist yet', () => {
+  test('instructions never name a tool that is not on that server\'s own tools/list', () => {
+    // Generalizes the original "never mention wait_for_outcome" check (that
+    // tool has since shipped and is legitimately named in the transactional
+    // server's instructions) into something that stays correct as tools are
+    // added: any motorical_* identifier an instructions string names must be
+    // one THAT SERVER actually registers, or an agent hunts a tool it can't
+    // find in tools/list -- the exact failure this test exists to prevent.
     for (const s of SERVERS) {
-      // motorical_wait_for_outcome ships in P2. Promising it now sends agents
-      // hunting a tool that is absent from tools/list.
-      assert.doesNotMatch(instructionsFor(s.key), /wait_for_outcome/);
+      const named = instructionsFor(s.key).match(/\bmotorical_[a-zA-Z0-9_]+\b/g) || [];
+      for (const tool of new Set(named)) {
+        assert.ok(
+          s.tools.includes(tool),
+          `${s.key}: instructions name "${tool}", which is not in this server's own tools/list`
+        );
+      }
     }
   });
 

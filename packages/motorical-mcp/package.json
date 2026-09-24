@@ -1,6 +1,6 @@
 {
   "name": "@motorical/mcp",
-  "version": "1.9.4",
+  "version": "1.10.0",
   "description": "MCP server for Motorical transactional email API — dry-run/send, mint public tokens, list Motor Blocks, inspect delivery events",
   "type": "module",
   "bin": {
@@ -16,7 +16,9 @@
     "serve": "node src/serve.js",
     "test": "node --test test/*.test.js",
     "smoke": "node test/live-smoke.js",
-    "emit-catalogue": "node scripts/emit-catalogue.js"
+    "eval:tool-restriction": "node eval/toolRestrictionCheck.js",
+    "emit-catalogue": "node scripts/emit-catalogue.js",
+    "prepack": "node scripts/sync-readme-version.js"
   },
   "engines": {
     "node": ">=20"

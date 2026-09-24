@@ -27,6 +27,59 @@ export function createHttpApp({ verifier, signer, clientFactory }) {
 
   app.get('/healthz', (req, res) => res.json({ ok: true, servers: SERVERS.map((s) => s.key) }));
 
+  // Landing page and per-server card (design 2026-09-24
+  // agent-ready-docs-and-positioning §5.3 — "mcp.motorical.com gains a
+  // landing page and a server card generated per request from the running
+  // registry, so they cannot go stale"). Before this, GET / and GET on any
+  // server path with no /mcp suffix both 404'd — the design's own audit
+  // named this gap explicitly. Built from SERVERS (this process's own,
+  // already-imported registry) so there is no way for it to disagree with
+  // what /v1/:slug/mcp actually serves, and no dependency on docs-site's
+  // build at request time.
+  //
+  // Recorded deviation (independent review M2, 2026-09-24): the design also
+  // suggested a `.well-known/mcp/server-card.json`-style path. This ships
+  // GET / (fleet index) and GET /v1/:slug (per-server card) instead — no
+  // /.well-known/mcp/* route exists. Approved as a first cut in review; add
+  // the /.well-known path later only if an actual client expects it there
+  // (RFC 9728's oauth-protected-resource metadata below IS under
+  // /.well-known, since that one's a real standard with a fixed location).
+  app.get('/', (req, res) => {
+    res.json({
+      name: 'Motorical MCP',
+      description: 'Motorical is a transactional email API and SMTP provider. Each server below is a '
+        + 'distinct OAuth audience — connect the narrowest one that covers the task.',
+      hub: 'https://docs.motorical.com/agents',
+      hubMachineTwin: 'https://docs.motorical.com/agents.json',
+      servers: SERVERS.map((s) => ({
+        key: s.key,
+        card: `${MCP_HOST}/v1/${s.slug}`,
+        transport: s.canonicalUri,
+        scopes: s.scopes,
+        toolCount: s.tools.length,
+        public: Boolean(s.public),
+      })),
+    });
+  });
+
+  // One card per server, at its slug WITHOUT the transport's /mcp suffix —
+  // deliberately a different path from /v1/:slug/mcp, whose GET already has
+  // its own StreamableHTTP-spec meaning (session resumption; this stateless
+  // deployment answers 405 there, unchanged by this route).
+  app.get('/v1/:slug', (req, res) => {
+    const srv = SERVERS.find((s) => s.slug === req.params.slug);
+    if (!srv) return res.status(404).json({ error: 'not_found' });
+    res.json({
+      key: srv.key,
+      transport: srv.canonicalUri,
+      scopes: srv.scopes,
+      tools: srv.tools,
+      public: Boolean(srv.public),
+      hub: 'https://docs.motorical.com/agents',
+      protectedResourceMetadata: srv.public ? null : resourceMetadataUrl(srv.canonicalUri),
+    });
+  });
+
   // RFC 9728 protected resource metadata, one document per server. The path is
   // inserted after the well-known segment, which is the rule for a resource
   // whose canonical URI carries a path.

@@ -4,9 +4,11 @@ MCP tools for **transactional HTTP send and delivery inspection** on Motorical S
 
 Agents can **execute** Motorical APIs (not only read docs): dry-run / send email, manage production Motor Blocks, inspect message events, and guide sandbox-to-production setup. Discovery docs remain at [docs.motorical.com/llms.txt](https://docs.motorical.com/llms.txt).
 
+**Agents: start here.** Not sure this package is the right route? [docs.motorical.com/agents](https://docs.motorical.com/agents) has the route chooser (this local server vs. the hosted OAuth server at `mcp.motorical.com` vs. the plain HTTP API), a rulebook, and journeys for every starting situation.
+
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
-## Tools (v1)
+## Tools (v1.10.0)
 
 | Tool | Auth | Purpose |
 |------|------|---------|

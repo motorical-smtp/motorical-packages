@@ -108,6 +108,57 @@ test('healthz needs no auth, so the fleet check does not need a token', async ()
   s.close();
 });
 
+test('the landing page needs no auth and lists every server with a card link', async () => {
+  const s = await listen(app());
+  const res = await fetch(`${s.base}/`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.hub, 'https://docs.motorical.com/agents');
+  const keys = body.servers.map((entry) => entry.key).sort();
+  assert.deepEqual(keys, SERVERS.map((srv) => srv.key).sort());
+  for (const entry of body.servers) {
+    const srv = SERVERS.find((x) => x.key === entry.key);
+    assert.equal(entry.transport, srv.canonicalUri);
+    assert.equal(entry.toolCount, srv.tools.length);
+    assert.equal(entry.card, srv.canonicalUri.replace(/\/mcp$/, ''));
+  }
+  s.close();
+});
+
+test('a per-server card needs no auth, matches the registry, and never lists an unscoped tool', async () => {
+  const s = await listen(app());
+  for (const srv of SERVERS) {
+    const res = await fetch(`${s.base}/v1/${srv.slug}`);
+    assert.equal(res.status, 200, `${srv.key}: card missing`);
+    const card = await res.json();
+    assert.equal(card.key, srv.key);
+    assert.equal(card.transport, srv.canonicalUri);
+    assert.deepEqual(card.tools.sort(), [...srv.tools].sort());
+    assert.deepEqual(card.scopes, srv.scopes);
+    assert.equal(card.public, Boolean(srv.public));
+    if (srv.public) {
+      assert.equal(card.protectedResourceMetadata, null);
+    } else {
+      assert.match(card.protectedResourceMetadata, /oauth-protected-resource/);
+    }
+  }
+  s.close();
+});
+
+test('a server card 404s for an unknown slug, same as the transport path', async () => {
+  const s = await listen(app());
+  const res = await fetch(`${s.base}/v1/not_a_server`);
+  assert.equal(res.status, 404);
+  s.close();
+});
+
+test('GET on the transport path still answers 405, unaffected by the new card route', async () => {
+  const s = await listen(app());
+  const res = await fetch(`${s.base}/v1/motorical_transactional/mcp`);
+  assert.equal(res.status, 405);
+  s.close();
+});
+
 test('the inbound token is never echoed back to the caller', async () => {
   const s = await listen(app());
   const res = await fetch(`${s.base}/v1/motorical_transactional/mcp`, {

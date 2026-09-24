@@ -5,6 +5,62 @@ Runs five real Claude Code processes against the real hosted MCP server and
 scores them. The headline metric is **false-completion rate**: how often the
 agent asserted a success that did not happen.
 
+## Discovery scenarios (design 2026-09-24 agent-ready-docs-and-positioning §10, Level 2)
+
+A separate, simpler runner — `node eval/runDiscovery.js` — for a different
+question: does a genuinely cold agent (no Motorical account, no MCP server
+wired up) find its own way from a bare front door (motorical.com, the GitHub
+repo, the npm package, a bare `docs.motorical.com`, a bare `mcp.motorical.com`
+URL) to the right route? See `discoveryScenarios.js` and `gradeDiscovery.js`.
+
+**Written 2026-09-24 by a session with no EVAL_* credentials and no network
+path to the live front doors — UNTESTED against a real run.** The grading
+logic itself is unit-tested (`test/evalGradeDiscovery.test.js`, pure
+functions, no live run needed), but nothing here has been observed against a
+real `claude` child process. Dry-run one scenario first:
+
+    node eval/runDiscovery.js --only motorical_com_only
+
+and read its transcript (`eval/results-discovery/<run>/<scenario>.jsonl`)
+before trusting a full batch — same real-API-cost caveat as the scenarios
+below. No account credentials needed (unlike the rest of this harness): a
+discovery scenario has no `EVAL_EMAIL`/`EVAL_PASSWORD`/`EVAL_DATABASE_URL`
+requirement at all.
+
+**Run this only in a disposable environment (a fresh container or VM), never
+an operator's everyday shell.** `runDiscovery.js` spawns the child with
+`--permission-mode bypassPermissions` and points it at the open web
+(`--tools WebFetch,WebSearch`); a scenario prompt is graded on how it
+handles untrusted page content, so a prompt injection reaching the agent is
+an expected input, not an edge case. The child's env is filtered to an
+allowlist (see `CHILD_ENV_ALLOWLIST` in `runDiscovery.js`) so it cannot read
+this shell's own secrets even if steered at `env`/`printenv` — but that
+allowlist and the tool restriction are defense in depth, not a substitute
+for isolation. Bash is deliberately not in the enabled-tools list at all:
+every scenario asks the agent to investigate or describe steps, none need to
+actually run a command.
+
+**Use `--tools`, never `--allowedTools`, for this restriction.** Found
+2026-09-25 (independent review re-check): `--allowedTools` is a permission
+allow-list, which `--permission-mode bypassPermissions` makes a no-op — under
+bypass every tool is auto-approved regardless of what `--allowedTools` names,
+so Bash stays fully available despite the flag looking restrictive.
+`--tools` is the flag that actually defines which built-in tools exist for
+the session.
+
+    npm run eval:tool-restriction
+
+proves this behaviorally (`toolRestrictionCheck.js`) rather than trusting
+`claude --help` text: it runs a real scenario through the same
+`runDiscoveryScenario()` code path with a prompt that explicitly asks for a
+Bash command, then asserts no Bash `tool_use` appears in the transcript.
+Same real-API-cost caveat as the scenarios above — not part of `npm test`.
+**Not runnable as root/with sudo**: `--permission-mode bypassPermissions`
+maps to `--dangerously-skip-permissions`, which the `claude` CLI itself
+refuses under root for security reasons — run it as an unprivileged user in
+the disposable environment above. (This is also why the fix here could not
+be verified live in the session that made it: that session runs as root.)
+
 Not part of the published package (`eval/` is excluded from `package.json`'s
 `files`) -- this is a development/ops tool, not something that ships to npm.
 
