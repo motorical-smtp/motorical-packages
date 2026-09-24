@@ -68,7 +68,12 @@ const motorBlockDomainOutput = z.object({
   name: z.string().optional(),
   verified: z.boolean().optional(),
   sendReady: z.boolean().optional(),
-}).nullable().optional();
+}).passthrough().nullable().optional();
+// Output objects are deliberately open (.passthrough): the server validates with zod, which
+// ignores unknown keys, but a strict client validates the ADVERTISED JSON Schema, where a
+// closed object turns any newly returned field into "additional properties" and makes a
+// SUCCESSFUL call look like an error (first real create, 2026-09-24). Declare what we know;
+// never close the object.
 const motorBlockOutput = z.object({
   id: z.string().optional(),
   motorBlockId: z.string().optional(),
@@ -92,7 +97,10 @@ const motorBlockOutput = z.object({
   sendReady: z.boolean().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-});
+  limits: z.record(z.any()).optional(),
+  credentialsNote: z.string().optional(),
+  nextAction: z.record(z.any()).optional(),
+}).passthrough();
 
 export const TOOLS = [
   {
@@ -251,8 +259,8 @@ export const TOOLS = [
       success: z.boolean(),
       data: z.object({
         jobId: z.string(), status: z.string(), motorBlockName: z.string().optional(),
-        createdAt: z.string().optional(),
-      }),
+        createdAt: z.string().optional(), nextAction: z.record(z.any()).optional(),
+      }).passthrough(),
       message: z.string().optional(),
     },
     annotations: { title: 'Permanently delete Motor Block', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
@@ -271,9 +279,12 @@ export const TOOLS = [
       success: z.boolean(),
       data: z.object({
         id: z.string().optional(), jobId: z.string().optional(), motorBlockId: z.string().optional(),
+        motorBlockName: z.string().optional(),
         status: z.string(), deleteHistory: z.boolean().optional(), error: z.string().nullable().optional(),
-        createdAt: z.string().optional(), startedAt: z.string().nullable().optional(), completedAt: z.string().nullable().optional(),
-      }),
+        errorMessage: z.string().nullable().optional(), report: z.record(z.any()).optional(),
+        createdAt: z.string().optional(), updatedAt: z.string().optional(),
+        startedAt: z.string().nullable().optional(), completedAt: z.string().nullable().optional(),
+      }).passthrough(),
     },
     annotations: { title: 'Get Motor Block deletion status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.motorBlockDeleteStatus(args),

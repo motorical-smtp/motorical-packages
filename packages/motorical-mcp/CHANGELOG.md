@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.3] — 2026-09-24
+
+### Fixed
+
+- A **successful** `motorical_motor_block_create` reached a strict client as "Structured content does not match the tool's output schema: data must NOT have additional properties", even though the block had been created. The advertised output schemas for the nine Motor Block tools were closed objects that omitted fields the backend really returns (`limits`, `credentialsNote`, `nextAction` on create; `nextAction` on deactivate and delete; `report`, `errorMessage`, `updatedAt` and others on deletion status). A strict client validates the advertised JSON Schema; the server's own zod validation ignores unknown keys, so no server-side test caught it. The schemas now declare the real fields and are open, so a new field can no longer turn a successful call into a client error. Found by the first real Motor Block lifecycle run through a Claude client; new test `motorBlockRealResponses.test.js` validates realistic backend bodies against each tool's advertised schema.
+- Confirmation-gated tools (`change_type`, `assign_domain`, `deactivate`, `delete`, `webhook_delete`, `domain_verify`, `sandbox_convert`) could **never complete** on a client that does not implement the 2026-07-28 confirmation form: the native path ignored `confirm: true` and always replied `input_required`, which such a client reports as "did not return structured content". A client that declares its capabilities without `elicitation` now gets the plain route: without `confirm: true` the call returns a normal, actionable refusal (`confirmation_required`, "ask the user, then call again with confirm: true"); with it the action runs. A client that declares `elicitation`, or sends no capabilities, keeps the bound confirmation form, and a pre-filled `confirm: true` cannot bypass it. New test `mrtrClientFallback.test.js`.
+
+### Changed
+
+- The hosted server now logs the declared client capability **keys** (never values) whenever it answers `input_required` or falls back, to learn what real clients send.
+
 ## [1.9.2] — 2026-09-24
 
 ### Changed
