@@ -32,7 +32,7 @@ A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per
 **Resources:** `motorical://docs/llms.txt`, `motorical://docs/openapi.json`  
 **Prompt:** `motorical_integrate_send`
 
-Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Type/domain changes, deactivation, sandbox conversion, and permanent deletion use argument-bound MRTR confirmation. Sandbox conversion changes the SMTP username but preserves the password, API keys, and auth method. Ordinary rename never changes credentials. Optional `fromName` sets the inbox display name (same as HTTP `/v1/send` / CLI `--from-name`); do not put `From` in custom headers.
+Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Type/domain changes, deactivation, sandbox conversion, and permanent deletion use argument-bound MRTR confirmation. Sandbox conversion changes the SMTP username but preserves the password, API keys, and auth method. Ordinary rename never changes credentials. Optional `fromName` sets the inbox display name (same as HTTP `/v1/send`); do not put `From` in custom headers.
 
 The dedicated least-privilege hosted server is `https://mcp.motorical.com/v1/motorical_motor_blocks/mcp` with OAuth scope `manage:motor-blocks`. A newly created block is appended to the live grant and can be used immediately by explicit id without refreshing the access token.
 

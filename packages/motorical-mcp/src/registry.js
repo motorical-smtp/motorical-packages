@@ -715,7 +715,7 @@ export const TOOLS = [
   {
     name: 'motorical_web_handoff',
     description:
-      'Mint a one-time CLI→browser handoff URL (POST /api/auth/web-handoff). ' +
+      'Mint a one-time browser handoff URL (POST /api/auth/web-handoff). ' +
       'Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT.',
     inputSchema: {
       path: z.string().optional().describe('Optional in-app path after handoff, e.g. /usage')

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.2] — 2026-09-24
+
+### Changed
+
+- `motorical_web_handoff`'s description no longer says "CLI→browser": `@motorical/cli` is retired. The README no longer mentions the CLI's `--from-name` flag. No behavior change.
+
 ## [1.9.1] — 2026-09-24
 
 ### Fixed

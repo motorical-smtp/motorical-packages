@@ -621,7 +621,7 @@
   },
   {
     "name": "motorical_web_handoff",
-    "description": "Mint a one-time CLI→browser handoff URL (POST /api/auth/web-handoff). Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT.",
+    "description": "Mint a one-time browser handoff URL (POST /api/auth/web-handoff). Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT.",
     "inputKeys": [
       "path"
     ],
