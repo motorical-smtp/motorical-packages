@@ -2,6 +2,10 @@
 
 Public source for Motorical’s agent/developer tooling published on npm.
 
+**Agents: start here.** [docs.motorical.com/agents](https://docs.motorical.com/agents) has the route
+chooser, rulebook, and journeys for every situation — machine twin at
+[docs.motorical.com/agents.json](https://docs.motorical.com/agents.json).
+
 **Most agents should not install anything.** If your client supports remote MCP servers with OAuth
 (Claude Code, Cursor, Claude.ai connectors), connect the hosted server — no install, no keys held by the agent:
 [docs.motorical.com/ai-mcp-hosted](https://docs.motorical.com/ai-mcp-hosted). Use the local package below only
