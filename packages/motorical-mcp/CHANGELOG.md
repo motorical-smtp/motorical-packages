@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.10.1] — 2026-09-25
+
+### Fixed
+
+- Every tool's advertised `outputSchema` is now OPEN at every level (`additionalProperties` allowed), on both
+  the native (2026-07-28) and legacy (2025-11-25) paths. Until now the SDK's `objectFromShape` advertised the
+  TOP-LEVEL object of every output schema as closed (`additionalProperties:false`); 1.9.3 opened only the
+  nested `data` objects of the Motor Block tools. A strict client validates the advertised JSON Schema, so any
+  field the backend adds later (a new `nextAction`, `recipientSummary`, …) would have made a SUCCESSFUL call
+  look like an error, and an agent might then retry and duplicate the action. Declared fields keep their types,
+  required-ness, nullability and descriptions; only unknown fields are newly allowed. One choke point
+  (`src/openOutputSchema.js`) applies it to every schema-bearing tool, so a new tool is safe by construction.
+
+### Added
+
+- `test/strictClientOutputSchemas.test.js`: a generic gate over every server's `tools/list` proving (per tool)
+  no closed object in the advertised schema, its recorded real-response sample validates under Ajv (a strict
+  client), the same sample with an unknown field injected at every object level still validates, and the
+  legacy and native paths advertise identical schemas.
+
 ## [1.10.0] — 2026-09-24
 
 ### Added

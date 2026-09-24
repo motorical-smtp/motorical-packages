@@ -3,6 +3,7 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
 import { z } from 'zod';
 import { MotoricalClient, loadConfig } from './client.js';
 import { TOOLS } from './registry.js';
+import { openOutputSchema } from './openOutputSchema.js';
 import { HOSTED_ONLY_TOOLS } from './servers.js';
 import { RESOURCES, RESOURCE_TEMPLATES } from './resources.js';
 import { instructionsFor } from './instructions.js';
@@ -77,7 +78,8 @@ export function createMotoricalMcpServer(options = {}) {
         description: tool.description,
         inputSchema: tool.inputSchema,
         annotations: tool.annotations,
-        ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {})
+        // Open at every level, identical to the native path (openOutputSchema.js).
+        ...(tool.outputSchema ? { outputSchema: openOutputSchema(tool.outputSchema) } : {})
       },
       async (args) => {
         try {

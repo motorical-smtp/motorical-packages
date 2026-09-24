@@ -11,6 +11,7 @@ import {
 } from '@modelcontextprotocol/sdk/server/zod-compat.js';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { TOOLS, toolByName } from '../registry.js';
+import { openOutputSchema } from '../openOutputSchema.js';
 import { buildDiscoverResult } from './discover.js';
 import { resolveTask } from './taskResolver.js';
 import * as defaultTaskStore from './taskStore.js';
@@ -155,7 +156,12 @@ function toolDefinition(t) {
     // is presence, not shape size (getZodSchemaObject(undefined) is the only
     // thing that returns undefined here), so this mirrors that rather than a
     // stricter condition that happens to agree only by accident.
-    ...(t.outputSchema ? { outputSchema: jsonSchemaFromShape(t.outputSchema, 'output') } : {}),
+    // Advertised OPEN at every level (see openOutputSchema.js): a strict client
+    // validates this JSON Schema, and a closed object makes any later-added
+    // backend field turn a successful call into an apparent error.
+    ...(t.outputSchema
+      ? { outputSchema: toJsonSchemaCompat(openOutputSchema(t.outputSchema), { strictUnions: true, pipeStrategy: 'output' }) }
+      : {}),
   };
 }
 
@@ -209,7 +215,7 @@ async function validateOutput(tool, result) {
       `Output validation error: Tool ${tool.name} has an output schema but no structured content was provided`
     );
   }
-  const parsed = await safeParseAsync(objectFromShape(tool.outputSchema), result.structuredContent);
+  const parsed = await safeParseAsync(openOutputSchema(tool.outputSchema), result.structuredContent);
   if (parsed.success) return null;
   const detail = getParseErrorMessage('error' in parsed ? parsed.error : 'Unknown error');
   return validationErrorResult(
