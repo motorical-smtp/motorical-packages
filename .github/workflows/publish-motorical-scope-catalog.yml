@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Validate the whole pipeline without publishing (npm publish --dry-run)'
+        description: 'Validate the whole pipeline without publishing (npm publish --dry-run). Only passes at a version NOT yet on npm.'
         type: boolean
         default: false
 
@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: packages/motorical-scope-catalog
@@ -47,10 +47,7 @@ jobs:
       - name: Audit dependencies (high/critical only)
         run: npm audit --audit-level=high
 
-      # A dry run must be runnable for the version that is ALREADY published, so the pipeline can be
-      # exercised without bumping; a real run still refuses to republish.
       - name: Verify this version isn't already published
-        if: ${{ !inputs.dry_run }}
         run: |
           LOCAL_VERSION=$(node -p "require('./package.json').version")
           PUBLISHED_VERSION=$(npm view @motorical/scope-catalog version 2>/dev/null || echo "none")
@@ -76,7 +73,7 @@ jobs:
 
   publish:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Attach required reviewers / a main-only branch rule to this environment in repo settings.
     environment: npm-publish
     permissions:

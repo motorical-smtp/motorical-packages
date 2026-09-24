@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.10.2] — 2026-09-25
+
+### Changed
+
+- No code change. First release published through the hardened two-job workflow in `motorical-packages`
+  (verify job with no publish credential; the publish job holds the OIDC token, installs no dependencies and
+  publishes the exact tarball verify built). Released as its own version so the token exchange and provenance
+  signing from a tarball path are exercised at a version that is not yet on npm.
+
 ## [1.10.1] — 2026-09-25
 
 ### Fixed
