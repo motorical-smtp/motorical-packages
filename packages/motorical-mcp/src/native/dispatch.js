@@ -59,6 +59,21 @@ function capabilityKeys(caps) {
   return caps === null ? '(none sent)' : (Object.keys(caps).sort().join(',') || '(empty)');
 }
 
+// An `input_required` reply for a client that cannot answer the confirmation form must still tell the
+// model what to do, in plain text, instead of surfacing as a malformed result. A client that answers the
+// form ignores these fields; one that cannot shows them (isError keeps it from being schema-validated).
+function confirmationExplanation(tool, args) {
+  const payload = {
+    error: 'confirmation_required',
+    message: tool.mrtr.message(args),
+    nextAction: {
+      [tool.mrtr.confirmArg]: true,
+      instruction: 'Ask the user to confirm this exact action, then call again with confirm: true.',
+    },
+  };
+  return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }], structuredContent: payload, isError: true };
+}
+
 function declaresTasksCapability(body) {
   const meta = body.params?._meta;
   const capabilities = meta && typeof meta === 'object' ? meta[CLIENT_CAPABILITIES] : null;
@@ -264,34 +279,21 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
     // (Task 5's signRequestState/verifyRequestState) binds the confirmation
     // to those args' hash so a client can't send an "accept" alongside
     // different arguments than what the original prompt described.
-    // A client that declares its capabilities WITHOUT elicitation cannot answer a
-    // confirmation form, and would receive `input_required` as a malformed result that
-    // no action can ever complete (field report 2026-09-24). It gets the plain
-    // `confirm: true` route instead. A client that declares elicitation, or sends no
-    // capabilities at all, keeps the bound MRTR form: a pre-filled confirm:true must not
-    // be able to bypass a human prompt the client can actually show.
+    // Confirmation. Field evidence 2026-09-24 (server log clientCapabilityKeys=elicitation,roots): the
+    // Claude client declares elicitation yet cannot complete a native `input_required` reply, so no
+    // declared capability reliably means "this client can answer it", and gating on one only moved the
+    // failure. Every confirmation-gated tool (change_type, assign_domain, deactivate, delete,
+    // webhook_delete, domain_verify, sandbox_convert) was therefore impossible on the flagship client.
+    // `confirm: true` is honored for every client: the trust level every pre-2026 client already had,
+    // and the backend still enforces its own preconditions (e.g. a block must be deactivated before it
+    // can be deleted). Without it the bound MRTR form below is unchanged.
     const clientCaps = clientCapabilitiesOf(body);
-    const canAnswerForm = clientCaps === null || Boolean(clientCaps.elicitation);
-    if (tool.mrtr && !canAnswerForm) {
-      console.log(`[mrtr] client declares no elicitation; using the confirm argument tool=${name} clientCapabilityKeys=${capabilityKeys(clientCaps)}`);
-      if (validated.args[tool.mrtr.confirmArg] !== true) {
-        const payload = {
-          error: 'confirmation_required',
-          message: tool.mrtr.message(validated.args),
-          nextAction: {
-            [tool.mrtr.confirmArg]: true,
-            instruction: 'Ask the user to confirm this exact action, then call again with confirm: true.',
-          },
-        };
-        return ok(id, {
-          resultType: 'complete',
-          content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
-          structuredContent: payload,
-          isError: true,
-        });
-      }
+    const confirmedByArgument = tool.mrtr && validated.args[tool.mrtr.confirmArg] === true
+      && !body.params?.inputResponses?.[tool.mrtr.confirmArg];
+    if (confirmedByArgument) {
+      console.log(`[mrtr] confirm argument honored tool=${name} clientCapabilityKeys=${capabilityKeys(clientCaps)}`);
     }
-    if (tool.mrtr && canAnswerForm) {
+    if (tool.mrtr && !confirmedByArgument) {
       const inputResponse = body.params?.inputResponses?.[tool.mrtr.confirmArg];
       if (inputResponse) {
         const requestState = body.params?.requestState;
@@ -301,6 +303,7 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
           console.log(`[mrtr] input_required tool=${name} clientCapabilityKeys=${capabilityKeys(clientCaps)}`);
           return ok(id, {
             resultType: 'input_required',
+            ...confirmationExplanation(tool, validated.args),
             inputRequests: {
               [tool.mrtr.confirmArg]: {
                 method: 'elicitation/create',
@@ -320,6 +323,7 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
         console.log(`[mrtr] input_required tool=${name} clientCapabilityKeys=${capabilityKeys(clientCaps)}`);
         return ok(id, {
           resultType: 'input_required',
+            ...confirmationExplanation(tool, validated.args),
           inputRequests: {
             [tool.mrtr.confirmArg]: {
               method: 'elicitation/create',

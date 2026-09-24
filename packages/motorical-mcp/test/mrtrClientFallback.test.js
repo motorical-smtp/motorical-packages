@@ -3,13 +3,17 @@ import assert from 'node:assert/strict';
 import { dispatchNative } from '../src/native/dispatch.js';
 import { SERVERS } from '../src/servers.js';
 
-// Field report 2026-09-24: on a Claude client, motorical_motor_block_change_type (and
-// assign_domain, deactivate, delete, webhook_delete, ...) could never complete. The native
-// path ignored `confirm: true` and always answered resultType 'input_required'; the client
-// does not implement that flow and reported "has an output schema but did not return
-// structured content". A client that declares its capabilities WITHOUT elicitation cannot
-// answer a confirmation form, so it gets the plain `confirm: true` route instead. A client
-// that declares elicitation, or declares nothing (unknown), keeps the bound-confirmation form.
+// Field evidence 2026-09-24 (server log `[mrtr] ... clientCapabilityKeys=elicitation,roots`): the Claude
+// client DECLARES elicitation and roots, yet cannot complete a native `input_required` reply. Its
+// `elicitation` capability is the older server-initiated form, not the 2026-07-28 incomplete-result flow,
+// so no declared capability reliably says "this client can answer input_required". The consequence was
+// that change_type, assign_domain, deactivate, delete (and webhook_delete, domain_verify, sandbox_convert)
+// could never complete on the flagship client: the server ignored `confirm: true`.
+//
+// Decision (owner delegated it): `confirm: true` is honored for every client, the trust level every
+// pre-2026 client already had. Without it the server still replies `input_required` (the bound form is
+// untouched for a client that answers it) but the same result also carries a readable message and
+// isError, so a client that cannot handle the form shows the model plain instructions.
 const CAPS = 'io.modelcontextprotocol/clientCapabilities';
 const main = SERVERS.find((s) => s.key === 'main');
 const BLOCK_ID = '11111111-1111-4111-8111-111111111111';
@@ -22,47 +26,59 @@ const call = (args, caps, client) => dispatchNative(
   { server: main, client, version: '1.9.4' }
 ).then((r) => r.result);
 
-describe('confirmation for clients that cannot answer the native confirmation form', () => {
-  const recorder = () => {
-    const seen = [];
-    return { seen, client: { motorBlockChangeType: async (a) => { seen.push(a); return { success: true, data: { motorBlockId: BLOCK_ID, changed: true } }; } } };
-  };
+const recorder = () => {
+  const seen = [];
+  return { seen, client: { motorBlockChangeType: async (a) => { seen.push(a); return { success: true, data: { motorBlockId: BLOCK_ID, changed: true } }; } } };
+};
 
-  test('no elicitation declared + confirm:true -> the action runs, no form', async () => {
+describe('confirm: true completes a confirmation-gated tool on any client', () => {
+  test('a client that declares elicitation (as Claude does) + confirm:true -> the action runs', async () => {
     const { seen, client } = recorder();
-    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose', confirm: true }, {}, client);
+    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose', confirm: true }, { elicitation: {}, roots: {} }, client);
     assert.equal(res.resultType, 'complete');
     assert.equal(res.isError, false);
     assert.equal(seen.length, 1);
     assert.equal(seen[0].confirm, true);
   });
 
-  test('no elicitation declared + no confirm -> a plain, actionable refusal, handler not called', async () => {
+  test('a client that sends no capabilities + confirm:true -> the action runs', async () => {
     const { seen, client } = recorder();
-    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose' }, {}, client);
+    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose', confirm: true }, undefined, client);
     assert.equal(res.resultType, 'complete');
+    assert.equal(seen.length, 1);
+  });
+
+  test('confirm:false or absent never runs the action', async () => {
+    for (const confirm of [false, undefined]) {
+      const { seen, client } = recorder();
+      const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose', ...(confirm === undefined ? {} : { confirm }) }, { elicitation: {} }, client);
+      assert.equal(res.resultType, 'input_required');
+      assert.equal(seen.length, 0);
+    }
+  });
+});
+
+describe('without confirm the bound form is intact AND a form-less client gets readable instructions', () => {
+  test('input_required still carries the bound request and state', async () => {
+    const { client } = recorder();
+    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose' }, { elicitation: {} }, client);
+    assert.equal(res.resultType, 'input_required');
+    assert.ok(res.inputRequests.confirm);
+    assert.equal(typeof res.requestState, 'string');
+  });
+
+  test('the same result also explains, in plain text, what to do (for a client that cannot answer the form)', async () => {
+    const { client } = recorder();
+    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose' }, { elicitation: {} }, client);
     assert.equal(res.isError, true);
-    assert.equal(seen.length, 0);
-    assert.equal(res.structuredContent.error, 'confirmation_required');
     assert.match(res.content[0].text, /confirm: true/);
     assert.match(res.content[0].text, /general_purpose/);
+    assert.equal(res.structuredContent.error, 'confirmation_required');
   });
+});
 
-  test('a client that DECLARES elicitation keeps the form, and a pre-filled confirm:true cannot bypass it', async () => {
-    const { seen, client } = recorder();
-    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose', confirm: true }, { elicitation: {} }, client);
-    assert.equal(res.resultType, 'input_required');
-    assert.equal(seen.length, 0);
-  });
-
-  test('a client that declares no capabilities at all (unknown) keeps the form', async () => {
-    const { seen, client } = recorder();
-    const res = await call({ motorBlockId: BLOCK_ID, type: 'general_purpose' }, undefined, client);
-    assert.equal(res.resultType, 'input_required');
-    assert.equal(seen.length, 0);
-  });
-
-  test('logs only the declared capability KEYS (evidence for what real clients send), never values', async () => {
+describe('evidence logging', () => {
+  test('logs only the declared capability KEYS, never values', async () => {
     const log = mock.method(console, 'log', () => {});
     try {
       const { client } = recorder();

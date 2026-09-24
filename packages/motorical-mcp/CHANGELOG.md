@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.4] — 2026-09-24
+
+### Fixed
+
+- Confirmation-gated tools (`change_type`, `assign_domain`, `deactivate`, `delete`, `webhook_delete`, `domain_verify`, `sandbox_convert`) still could not complete on a Claude client after 1.9.3. 1.9.3 gated its fallback on the client not declaring `elicitation`; the hosted server log then showed the Claude client declares `elicitation` and `roots` yet still cannot complete a native `input_required` reply (its `elicitation` is the older server-initiated form, so no declared capability reliably means "can answer `input_required`"). **`confirm: true` is now honored for every client**, the trust level every pre-2026 client already had; the backend still enforces its own preconditions (for example a block must be deactivated before it can be deleted). Without `confirm: true` the bound `input_required` form is unchanged, and the same reply now also carries a plain-text `confirmation_required` explanation (with `isError`), so a client that cannot answer the form shows the model instructions instead of a cryptic "did not return structured content" error. Supersedes 1.9.3's capability gate. Test: `mrtrClientFallback.test.js`.
+
 ## [1.9.3] — 2026-09-24
 
 ### Fixed
