@@ -1,0 +1,11 @@
+{
+  "name": "motorical-smtp-nextjs-contact-form",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Next.js contact form route using Motorical SMTP server-side.",
+  "scripts": {
+    "check": "node --check app/api/contact/route.js"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "motorical-smtp-examples",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Runnable examples for integrating Motorical SMTP HTTP sending, SMTP credentials, and webhooks.",
+  "scripts": {
+    "check": "node --check node-http-send/send-email.js && node --check node-webhooks/server.js && node --check smtp-nodemailer/send-email.js && node --check nextjs-contact-form/app/api/contact/route.js && python3 -m py_compile python-http-send/send_email.py"
+  },
+  "keywords": [
+    "motorical",
+    "smtp",
+    "email",
+    "webhooks",
+    "transactional-email"
+  ],
+  "license": "MIT"
+}
