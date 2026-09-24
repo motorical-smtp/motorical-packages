@@ -47,7 +47,10 @@ jobs:
       - name: Audit dependencies (high/critical only)
         run: npm audit --audit-level=high
 
+      # A dry run must be runnable for the version that is ALREADY published, so the pipeline can be
+      # exercised without bumping; a real run still refuses to republish.
       - name: Verify this version isn't already published
+        if: ${{ !inputs.dry_run }}
         run: |
           LOCAL_VERSION=$(node -p "require('./package.json').version")
           PUBLISHED_VERSION=$(npm view @motorical/scope-catalog version 2>/dev/null || echo "none")
