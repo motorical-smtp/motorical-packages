@@ -62,6 +62,14 @@ export const RESOURCE_TEMPLATES = [
       return m ? { id: decodeURIComponent(m[1]) } : null;
     },
     handler: (client) => async ({ id }) => {
+      // Hosted account-state is account-scoped and can contain blocks outside
+      // this grant. Validate the explicitly named id against the live grant
+      // before fetching or filtering account data. Local stdio clients have a
+      // dashboard session rather than an OAuth grant and intentionally have no
+      // authorizeMotorBlock helper.
+      if (typeof client.authorizeMotorBlock === 'function') {
+        await client.authorizeMotorBlock(id);
+      }
       const raw = await client.getAccountState();
       // Same distinction as the domain template above: a missing
       // `motorBlocks` field means "can't verify", not "definitely doesn't

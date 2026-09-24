@@ -51,6 +51,15 @@ export const TOOL_FOR_METHOD = {
   sandboxStatus: 'motorical_sandbox_status',
   sandboxProvision: 'motorical_sandbox_provision',
   sandboxConvert: 'motorical_sandbox_convert',
+  motorBlockList: 'motorical_motor_block_list',
+  motorBlockCreate: 'motorical_motor_block_create',
+  motorBlockRename: 'motorical_motor_block_rename',
+  motorBlockChangeType: 'motorical_motor_block_change_type',
+  motorBlockAssignDomain: 'motorical_motor_block_assign_domain',
+  motorBlockDeactivate: 'motorical_motor_block_deactivate',
+  motorBlockReactivate: 'motorical_motor_block_reactivate',
+  motorBlockDelete: 'motorical_motor_block_delete',
+  motorBlockDeleteStatus: 'motorical_motor_block_delete_status',
 };
 
 /**
@@ -86,21 +95,6 @@ export const NO_CLIENT_METHOD_TOOLS = new Set([
 const PLACEHOLDER_CREDENTIAL = 'mcp-delegated';
 
 /**
- * The single authorization primitive for "is this Motor Block covered by
- * this caller's delegated authority" — the same rule resolveBlock and
- * optionalBlock enforce for every tool call, extracted so a second caller
- * (dispatch.js's native `tasks/list`, which has no client method to hang a
- * check off) can enforce the exact same rule instead of a parallel,
- * differently-shaped one. Throws on denial rather than returning a boolean so
- * every call site gets the same message a delegation failure has always had.
- */
-export function assertMotorBlockAuthorized(motorBlockIds, motorBlockId) {
-  if (!motorBlockIds.includes(String(motorBlockId))) {
-    throw new Error('Motor block is not covered by this authorization');
-  }
-}
-
-/**
  * The public `signup` server's client: no claims, no delegation, because the
  * caller has no account yet. Its one tool (motorical_signup_handoff) makes
  * an unauthenticated backend call itself -- this is a plain, credential-less
@@ -130,10 +124,10 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl }) {
     oauthCredentials: null,
   });
 
-  // Exposes the caller's own delegated block set directly on the client, so
-  // a caller holding this object (dispatch.js, for `tasks/list`) can enforce
-  // the same authorization rule below without needing a client method or the
-  // raw `claims` object threaded through a call it doesn't otherwise need.
+  // The access token's block array is a frozen mint-time convenience only.
+  // Keep it for the one-block default and task indexing; never use it as
+  // current authority for an explicitly named block. The backend's live,
+  // non-revoked grant row plus ownership check is authoritative.
   client.motorBlockIds = blocks;
 
   function resolveBlock(explicit) {
@@ -143,7 +137,6 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl }) {
         'motorBlockId is required: this authorization covers multiple Motor Blocks'
       );
     }
-    assertMotorBlockAuthorized(blocks, id);
     return String(id);
   }
 
@@ -154,7 +147,6 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl }) {
    */
   function optionalBlock(explicit) {
     if (!explicit) return undefined;
-    assertMotorBlockAuthorized(blocks, explicit);
     return String(explicit);
   }
 
@@ -222,6 +214,20 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl }) {
     ));
     return view;
   }
+
+  // Private infrastructure method, deliberately absent from TOOL_FOR_METHOD:
+  // native tasks/list and Motor Block resource reads need a live authorization
+  // decision before touching local state, but exposing this as an MCP tool
+  // would turn an internal coverage check into a probing surface.
+  client.authorizeMotorBlock = async (motorBlockId) => {
+    if (!motorBlockId) throw new Error('motorBlockId is required');
+    const id = String(motorBlockId);
+    const view = callView(authFor(id), id);
+    return await view.request(
+      'GET',
+      `/api/public/v1/account/authorization/motor-blocks/${encodeURIComponent(id)}`
+    );
+  };
 
   // Wrap each method: gate on the server's tool list, resolve the single
   // block being acted on, then run the original method against a call view

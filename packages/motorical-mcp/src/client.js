@@ -32,6 +32,7 @@ export function loadConfig(env = process.env) {
     bearerToken: env.MOTORICAL_BEARER_TOKEN || '',
     dashboardJwt: env.MOTORICAL_JWT || '',
     motorBlockId: env.MOTORICAL_MOTOR_BLOCK_ID || '',
+    smtpUsername: env.MOTORICAL_SMTP_USERNAME || '',
     defaultFrom: env.MOTORICAL_DEFAULT_FROM || '',
     // A grant from `motorical-mcp login`, when one exists.
     oauthCredentials: loadCredentials()
@@ -417,6 +418,146 @@ export class MotoricalClient {
     return this.request('GET', this._accountPath('/api/public/v1/motor-blocks', motorBlockId), { bearer });
   }
 
+  _motorBlockDashboardResult(result, dataKey) {
+    if (dataKey && Array.isArray(result?.[dataKey])) {
+      return { success: true, data: result[dataKey] };
+    }
+    if (result?.data !== undefined) return result;
+    const data = result?.motorBlock ?? result?.job ?? result;
+    return {
+      success: result?.success !== false,
+      data,
+      ...(result?.message ? { message: result.message } : {}),
+    };
+  }
+
+  _managedMotorBlockId(motorBlockId) {
+    const id = motorBlockId || this.config.motorBlockId;
+    if (!id) throw new Error('motorBlockId is required');
+    return String(id);
+  }
+
+  async motorBlockList() {
+    if (this._delegated) {
+      return this.request('GET', '/api/public/v1/account/motor-blocks');
+    }
+    const result = await this.request('GET', '/api/motor-blocks', { bearer: this.requireDashboardJwt() });
+    return this._motorBlockDashboardResult(result, 'motorBlocks');
+  }
+
+  async motorBlockCreate({ name, domainId, type = 'general_purpose', description, idempotencyKey } = {}) {
+    const body = {
+      name,
+      domainId,
+      type,
+      ...(description !== undefined ? { description } : {}),
+    };
+    if (this._delegated) {
+      const headers = {};
+      if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+      return this.request('POST', '/api/public/v1/account/motor-blocks', { body, headers });
+    }
+    const result = await this.request('POST', '/api/motor-blocks', {
+      bearer: this.requireDashboardJwt(),
+      body,
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
+  async motorBlockRename({ motorBlockId, name } = {}) {
+    motorBlockId = this._managedMotorBlockId(motorBlockId);
+    if (this._delegated) {
+      return this.request('PATCH', `/api/public/v1/account/motor-blocks/${encodeURIComponent(motorBlockId)}/name`, {
+        body: { name },
+      });
+    }
+    const result = await this.request('PUT', `/api/motor-blocks/${encodeURIComponent(motorBlockId)}`, {
+      bearer: this.requireDashboardJwt(), body: { name },
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
+  async motorBlockChangeType({ motorBlockId, type, confirm } = {}) {
+    motorBlockId = this._managedMotorBlockId(motorBlockId);
+    if (confirm !== true) throw new Error('confirm:true is required to change a Motor Block type');
+    if (this._delegated) {
+      return this.request('PATCH', `/api/public/v1/account/motor-blocks/${encodeURIComponent(motorBlockId)}/type`, {
+        body: { type, confirm: true },
+      });
+    }
+    const result = await this.request('PUT', `/api/motor-blocks/${encodeURIComponent(motorBlockId)}`, {
+      bearer: this.requireDashboardJwt(), body: { type },
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
+  async motorBlockAssignDomain({ motorBlockId, domainId, confirm } = {}) {
+    motorBlockId = this._managedMotorBlockId(motorBlockId);
+    if (confirm !== true) throw new Error('confirm:true is required to assign a Motor Block domain');
+    if (this._delegated) {
+      return this.request('POST', `/api/public/v1/account/motor-blocks/${encodeURIComponent(motorBlockId)}/assign-domain`, {
+        body: { domainId, confirm: true },
+      });
+    }
+    const result = await this.request('PUT', `/api/motor-blocks/${encodeURIComponent(motorBlockId)}`, {
+      bearer: this.requireDashboardJwt(), body: { domainId },
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
+  async motorBlockDeactivate({ motorBlockId, confirm } = {}) {
+    motorBlockId = this._managedMotorBlockId(motorBlockId);
+    if (confirm !== true) throw new Error('confirm:true is required to deactivate a Motor Block');
+    if (this._delegated) {
+      return this.request('POST', `/api/public/v1/account/motor-blocks/${encodeURIComponent(motorBlockId)}/deactivate`, {
+        body: { confirm: true },
+      });
+    }
+    const result = await this.request('PUT', `/api/motor-blocks/${encodeURIComponent(motorBlockId)}`, {
+      bearer: this.requireDashboardJwt(), body: { active: false },
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
+  async motorBlockReactivate({ motorBlockId } = {}) {
+    motorBlockId = this._managedMotorBlockId(motorBlockId);
+    if (this._delegated) {
+      return this.request('POST', `/api/public/v1/account/motor-blocks/${encodeURIComponent(motorBlockId)}/reactivate`, {
+        body: {},
+      });
+    }
+    const result = await this.request('PUT', `/api/motor-blocks/${encodeURIComponent(motorBlockId)}`, {
+      bearer: this.requireDashboardJwt(), body: { active: true },
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
+  async motorBlockDelete({ motorBlockId, deleteHistory, confirm } = {}) {
+    motorBlockId = this._managedMotorBlockId(motorBlockId);
+    if (confirm !== true) throw new Error('confirm:true is required to permanently delete a Motor Block');
+    if (typeof deleteHistory !== 'boolean') throw new Error('deleteHistory must be true or false');
+    if (this._delegated) {
+      return this.request('DELETE', `/api/public/v1/account/motor-blocks/${encodeURIComponent(motorBlockId)}`, {
+        body: { deleteHistory, confirm: true },
+      });
+    }
+    const result = await this.request('DELETE', `/api/motor-blocks/${encodeURIComponent(motorBlockId)}/purge`, {
+      bearer: this.requireDashboardJwt(), body: { force: deleteHistory },
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
+  async motorBlockDeleteStatus({ jobId } = {}) {
+    if (this._delegated) {
+      return this.request('GET', `/api/public/v1/account/motor-block-deletions/${encodeURIComponent(jobId)}`);
+    }
+    const result = await this.request('GET', `/api/motor-blocks/purge-jobs/${encodeURIComponent(jobId)}`, {
+      bearer: this.requireDashboardJwt(),
+    });
+    return this._motorBlockDashboardResult(result);
+  }
+
   async sendEmail(payload) {
     const {
       from,
@@ -565,15 +706,26 @@ export class MotoricalClient {
     return result;
   }
 
-  async sandboxConvert({ domainId }) {
+  async sandboxConvert({ domainId, name, type, confirm } = {}) {
     if (!domainId) throw new Error('domainId is required');
+    if (confirm !== true) throw new Error('confirm:true is required to convert a sandbox Motor Block');
+    const body = {
+      domainId,
+      ...(name !== undefined ? { name } : {}),
+      ...(type !== undefined ? { type } : {}),
+    };
     if (this._delegated) {
-      return this.request('POST', '/api/public/v1/account/sandbox/convert', { body: { domainId } });
+      return this.request('POST', '/api/public/v1/account/sandbox/convert', { body });
     }
-    return this.request('POST', '/api/developer/sandbox/convert', {
+    const result = await this.request('POST', '/api/developer/sandbox/convert', {
       bearer: this.requireDashboardJwt(),
-      body: { domainId }
+      body,
     });
+    const converted = result?.data || {};
+    if (converted.motorBlockId && !this.config.motorBlockId) this.config.motorBlockId = converted.motorBlockId;
+    if (converted.smtpUsername && !this.config.smtpUsername) this.config.smtpUsername = converted.smtpUsername;
+    if (converted.domain && !this.config.defaultFrom) this.config.defaultFrom = `noreply@${converted.domain}`;
+    return result;
   }
 
   // These four target the public API the same way listMotorBlocks/getMessage

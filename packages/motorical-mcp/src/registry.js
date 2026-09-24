@@ -43,11 +43,10 @@ function effectiveMotorBlockId(client, args, result) {
   //    that is the most authoritative answer available and this picks it up
   //    without another change here.
   if (result?.data?.motorBlockId) return String(result.data.motorBlockId);
-  // 3. A single-block authorization's only possible answer. createDelegatedClient
-  //    sets client.motorBlockIds to the caller's own delegated set (and
-  //    resolveBlock() would have refused the send outright if that set had
-  //    more than one member and no explicit arg), so a lone member here is
-  //    the block this send actually went out on.
+  // 3. A single-block access token's mint-time default. The backend already
+  //    authorized the send against the live grant before this code runs; this
+  //    frozen claim is used only to index the resulting task when the caller
+  //    omitted an explicit id, never as an authorization decision.
   const authorized = client?.motorBlockIds;
   if (Array.isArray(authorized) && authorized.length === 1) return String(authorized[0]);
   // 4. The stdio/local path's configured default (MOTORICAL_MOTOR_BLOCK_ID),
@@ -57,6 +56,43 @@ function effectiveMotorBlockId(client, args, result) {
 }
 const isoDate = (bound) => z.string().optional().describe(`ISO date or datetime, ${bound}`);
 const webhookIdArg = z.string().describe('The webhook endpoint id, from motorical_webhook_list or the create response');
+const motorBlockIdArg = blockSelector.describe('Motor Block id from motorical_motor_block_list or create; optional only when the authorization has exactly one block.');
+const motorBlockTypeArg = z.enum(['transactional', 'general_purpose']);
+const confirmationArg = z.boolean().optional().describe('Supplied as true only after the human confirms the exact displayed action.');
+const uuidV4Arg = z.string().uuid().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  'Must be a UUID v4'
+);
+const motorBlockDomainOutput = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  verified: z.boolean().optional(),
+  sendReady: z.boolean().optional(),
+}).nullable().optional();
+const motorBlockOutput = z.object({
+  id: z.string().optional(),
+  motorBlockId: z.string().optional(),
+  name: z.string().optional(),
+  previousName: z.string().optional(),
+  description: z.string().nullable().optional(),
+  type: z.string().optional(),
+  previousType: z.string().optional(),
+  active: z.boolean().optional(),
+  changed: z.boolean().optional(),
+  recoverable: z.boolean().optional(),
+  deletionMode: z.string().optional(),
+  smtpUsername: z.string().optional(),
+  smtpUsernameChanged: z.boolean().optional(),
+  domain: motorBlockDomainOutput,
+  previousDomain: motorBlockDomainOutput,
+  activeAuthMethod: z.string().optional(),
+  credentialsAvailable: z.boolean().optional(),
+  credentialsLocation: z.string().optional(),
+  authorizationUpdated: z.boolean().optional(),
+  sendReady: z.boolean().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
 
 export const TOOLS = [
   {
@@ -108,6 +144,137 @@ export const TOOLS = [
     },
     annotations: { title: 'List Motor Blocks', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.listMotorBlocks(args),
+  },
+
+  {
+    name: 'motorical_motor_block_list',
+    description:
+      'List ordinary production Motor Blocks (isolated sending streams) this account can manage. ' +
+      'Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks.',
+    inputSchema: {},
+    outputSchema: { success: z.boolean(), data: z.array(motorBlockOutput) },
+    annotations: { title: 'List production Motor Blocks', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async () => client.motorBlockList(),
+  },
+
+  {
+    name: 'motorical_motor_block_create',
+    description:
+      'Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; ' +
+      'use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. ' +
+      'A UUID-v4 idempotencyKey makes retries return the original result.',
+    inputSchema: {
+      name: z.string().min(3).max(50),
+      domainId: z.string().uuid(),
+      type: motorBlockTypeArg.optional(),
+      description: z.string().max(500).optional(),
+      idempotencyKey: uuidV4Arg.describe('Required UUID v4 for hosted creation; reused unchanged on retry.'),
+    },
+    outputSchema: { success: z.boolean(), data: motorBlockOutput, message: z.string().optional() },
+    annotations: { title: 'Create production Motor Block', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    handler: (client) => async (args) => client.motorBlockCreate(args),
+  },
+
+  {
+    name: 'motorical_motor_block_rename',
+    description:
+      'Rename a production Motor Block for display and organization. This never changes its SMTP username, password, API keys, or auth method.',
+    inputSchema: { motorBlockId: motorBlockIdArg, name: z.string().min(3).max(50) },
+    outputSchema: { success: z.boolean(), data: motorBlockOutput, message: z.string().optional() },
+    annotations: { title: 'Rename Motor Block', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async (args) => client.motorBlockRename(args),
+  },
+
+  {
+    name: 'motorical_motor_block_change_type',
+    description:
+      'Change a production Motor Block between transactional and general_purpose. This changes the intended traffic classification, not credentials.',
+    inputSchema: { motorBlockId: motorBlockIdArg, type: motorBlockTypeArg, confirm: confirmationArg },
+    outputSchema: { success: z.boolean(), data: motorBlockOutput, message: z.string().optional() },
+    annotations: { title: 'Change Motor Block type', readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    mrtr: {
+      confirmArg: 'confirm',
+      message: (args) => `Change Motor Block ${args.motorBlockId} to ${args.type}? This changes its sending classification.`,
+    },
+    handler: (client) => async (args) => client.motorBlockChangeType(args),
+  },
+
+  {
+    name: 'motorical_motor_block_assign_domain',
+    description:
+      'Assign a different verified production domain to a Motor Block. The block is reactivated on the new domain; verify sendReady before sending.',
+    inputSchema: { motorBlockId: motorBlockIdArg, domainId: z.string().uuid(), confirm: confirmationArg },
+    outputSchema: { success: z.boolean(), data: motorBlockOutput, message: z.string().optional() },
+    annotations: { title: 'Assign Motor Block domain', readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    mrtr: {
+      confirmArg: 'confirm',
+      message: (args) => `Assign domain ${args.domainId} to Motor Block ${args.motorBlockId}? This changes its sending identity.`,
+    },
+    handler: (client) => async (args) => client.motorBlockAssignDomain(args),
+  },
+
+  {
+    name: 'motorical_motor_block_deactivate',
+    description:
+      'Deactivate (pause) a production Motor Block. This is reversible and does not delete history or credentials; sending stops until reactivated.',
+    inputSchema: { motorBlockId: motorBlockIdArg, confirm: confirmationArg },
+    outputSchema: { success: z.boolean(), data: motorBlockOutput, message: z.string().optional() },
+    annotations: { title: 'Deactivate Motor Block', readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    mrtr: {
+      confirmArg: 'confirm',
+      message: (args) => `Deactivate Motor Block ${args.motorBlockId}? Sending will stop until it is reactivated.`,
+    },
+    handler: (client) => async (args) => client.motorBlockDeactivate(args),
+  },
+
+  {
+    name: 'motorical_motor_block_reactivate',
+    description: 'Reactivate a previously deactivated production Motor Block. A verified production domain is required.',
+    inputSchema: { motorBlockId: motorBlockIdArg },
+    outputSchema: { success: z.boolean(), data: motorBlockOutput, message: z.string().optional() },
+    annotations: { title: 'Reactivate Motor Block', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async (args) => client.motorBlockReactivate(args),
+  },
+
+  {
+    name: 'motorical_motor_block_delete',
+    description:
+      'Permanently delete an inactive Motor Block asynchronously. This is irrecoverable. Set deleteHistory explicitly; then poll the returned job with motorical_motor_block_delete_status.',
+    inputSchema: {
+      motorBlockId: motorBlockIdArg,
+      deleteHistory: z.boolean().describe('Whether delivery logs/events may also be permanently deleted.'),
+      confirm: confirmationArg,
+    },
+    outputSchema: {
+      success: z.boolean(),
+      data: z.object({
+        jobId: z.string(), status: z.string(), motorBlockName: z.string().optional(),
+        createdAt: z.string().optional(),
+      }),
+      message: z.string().optional(),
+    },
+    annotations: { title: 'Permanently delete Motor Block', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    mrtr: {
+      confirmArg: 'confirm',
+      message: (args) => `Permanently delete Motor Block ${args.motorBlockId}${args.deleteHistory ? ' and its delivery history' : ' while retaining history'}? This cannot be undone.`,
+    },
+    handler: (client) => async (args) => client.motorBlockDelete(args),
+  },
+
+  {
+    name: 'motorical_motor_block_delete_status',
+    description: 'Read the current state and final report for an asynchronous permanent Motor Block deletion job.',
+    inputSchema: { jobId: z.string().uuid() },
+    outputSchema: {
+      success: z.boolean(),
+      data: z.object({
+        id: z.string().optional(), jobId: z.string().optional(), motorBlockId: z.string().optional(),
+        status: z.string(), deleteHistory: z.boolean().optional(), error: z.string().nullable().optional(),
+        createdAt: z.string().optional(), startedAt: z.string().nullable().optional(), completedAt: z.string().nullable().optional(),
+      }),
+    },
+    annotations: { title: 'Get Motor Block deletion status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async (args) => client.motorBlockDeleteStatus(args),
   },
 
   {
@@ -423,9 +590,8 @@ export const TOOLS = [
     description:
       'Provision unpaid developer sandbox (*.sandbox.motorical.com + outbound-locked Motor Block). ' +
       'Over hosted OAuth, this NEVER returns credentials -- the response has credentialsAvailable:false ' +
-      'instead. The new Motor Block is added to your authorization, but an access token minted before ' +
-      'provisioning does not list it -- if a send returns "Motor block is not covered by this authorization", ' +
-      'refresh the OAuth token and retry. Credentials become available via a dashboard link after ' +
+      'instead. The new Motor Block is added to the live authorization and is immediately usable by explicit id, ' +
+      'without refreshing an access token minted before provisioning. Credentials become available via a dashboard link after ' +
       'motorical_sandbox_convert. Only the local @motorical/mcp stdio server (dashboard-JWT auth) ' +
       'still returns mk_live_ once, since it is the customer\'s own long-running process on their own ' +
       'infrastructure -- securing whatever it returns is the customer\'s own responsibility on that path.',
@@ -447,12 +613,21 @@ export const TOOLS = [
       'motorical_sandbox_provision instead; this endpoint returns 404 "No developer sandbox to convert" otherwise. ' +
       'The response always includes activeAuthMethod (the Motor Block\'s configured auth method -- ' +
       '"Password", "API Key", "OAuth 2.0", or "mTLS" -- read-only, changing it is dashboard-only). ' +
+      'Conversion is a production identity transition: choose name/type or accept backend defaults; the SMTP username changes, ' +
+      'so SMTP clients must be updated, while the existing SMTP password, API keys, and auth method remain unchanged. ' +
       'Over hosted OAuth it also includes credentialsLocation, a link to the dashboard where the customer ' +
       'can view or regenerate the actual credential value -- this tool never returns the raw value itself.',
     inputSchema: {
-      domainId: z.string().uuid()
+      domainId: z.string().uuid(),
+      name: z.string().min(3).max(50).optional(),
+      type: motorBlockTypeArg.optional(),
+      confirm: confirmationArg,
     },
     annotations: { title: 'Convert sandbox to production', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    mrtr: {
+      confirmArg: 'confirm',
+      message: (args) => `Convert the sandbox to production on domain ${args.domainId}${args.name ? ` as “${args.name}”` : ''}${args.type ? ` (${args.type})` : ''}? The SMTP username changes; the password and API keys do not.`,
+    },
     handler: (client) => async (args) => client.sandboxConvert(args),
   },
 

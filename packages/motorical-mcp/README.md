@@ -2,7 +2,7 @@
 
 MCP tools for **transactional HTTP send and delivery inspection** on Motorical Sending SMTP (same job class as SendGrid/Postmark-style email APIs).
 
-Agents can **execute** Motorical APIs (not only read docs): dry-run / send email, mint public tokens, list Motor Blocks, inspect message events. Discovery docs remain at [docs.motorical.com/llms.txt](https://docs.motorical.com/llms.txt).
+Agents can **execute** Motorical APIs (not only read docs): dry-run / send email, manage production Motor Blocks, inspect message events, and guide sandbox-to-production setup. Discovery docs remain at [docs.motorical.com/llms.txt](https://docs.motorical.com/llms.txt).
 
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
@@ -19,11 +19,22 @@ A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per
 | `motorical_sandbox_status` | `MOTORICAL_JWT` | Developer sandbox status |
 | `motorical_sandbox_provision` | `MOTORICAL_JWT` | Provision `*.sandbox.motorical.com` |
 | `motorical_sandbox_convert` | `MOTORICAL_JWT` | Convert sandbox → verified domain |
+| `motorical_motor_block_list` | dashboard JWT / OAuth | List manageable production blocks |
+| `motorical_motor_block_create` | dashboard JWT / OAuth | Create a transactional or general-purpose block |
+| `motorical_motor_block_rename` | dashboard JWT / OAuth | Rename display identity; SMTP username is unchanged |
+| `motorical_motor_block_change_type` | dashboard JWT / OAuth | Switch transactional ↔ general-purpose (confirmation required) |
+| `motorical_motor_block_assign_domain` | dashboard JWT / OAuth | Assign a verified production domain (confirmation required) |
+| `motorical_motor_block_deactivate` | dashboard JWT / OAuth | Reversibly pause sending (confirmation required) |
+| `motorical_motor_block_reactivate` | dashboard JWT / OAuth | Resume a deactivated block |
+| `motorical_motor_block_delete` | dashboard JWT / OAuth | Queue irreversible permanent deletion (confirmation required) |
+| `motorical_motor_block_delete_status` | dashboard JWT / OAuth | Poll an asynchronous deletion job |
 
 **Resources:** `motorical://docs/llms.txt`, `motorical://docs/openapi.json`  
 **Prompt:** `motorical_integrate_send`
 
-Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Sandbox outbound is allowlist-locked until convert. Optional `fromName` sets the inbox display name (same as HTTP `/v1/send` / CLI `--from-name`); do not put `From` in custom headers.
+Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Type/domain changes, deactivation, sandbox conversion, and permanent deletion use argument-bound MRTR confirmation. Sandbox conversion changes the SMTP username but preserves the password, API keys, and auth method. Ordinary rename never changes credentials. Optional `fromName` sets the inbox display name (same as HTTP `/v1/send` / CLI `--from-name`); do not put `From` in custom headers.
+
+The dedicated least-privilege hosted server is `https://mcp.motorical.com/v1/motorical_motor_blocks/mcp` with OAuth scope `manage:motor-blocks`. A newly created block is appended to the live grant and can be used immediately by explicit id without refreshing the access token.
 
 ## Authorization (recommended)
 
@@ -66,6 +77,7 @@ it takes precedence over them.
 | `MOTORICAL_AK_API_KEY` | for public API tools | Account key `ak_live_…` |
 | `MOTORICAL_JWT` | for sandbox tools | Dashboard JWT from signup/login |
 | `MOTORICAL_MOTOR_BLOCK_ID` | recommended | UUID used when minting tokens |
+| `MOTORICAL_SMTP_USERNAME` | optional | Cached local SMTP username; sandbox conversion will not overwrite an explicit value |
 | `MOTORICAL_DEFAULT_FROM` | optional | Default From address |
 | `MOTORICAL_BEARER_TOKEN` | optional | Pre-minted public bearer |
 | `MOTORICAL_API_BASE_URL` | optional | default `https://api.motorical.com` |

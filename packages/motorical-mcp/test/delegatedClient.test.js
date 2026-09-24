@@ -84,15 +84,57 @@ test('getMessageEvents resolves motorBlockId from its options argument, not args
   assert.equal(decoded.motorBlockId, 'mb-2');
 });
 
-test('a block outside the grant, passed positionally in args[1], is still refused', async () => {
-  // The new scan-every-argument lookup must not bypass the coverage check —
-  // finding the selector in a later argument is not the same as trusting it.
-  const c = client({ claims: { ...claims, motorBlockIds: ['mb-1', 'mb-2'] } });
-  c.request = async () => { throw new Error('must not call upstream'); };
-  await assert.rejects(
-    () => c.getMessage('msg-1', { motorBlockId: 'mb-99' }),
-    /not covered by this authorization/
+test('an explicit newly appended block bypasses the stale claim and travels to backend authority', async () => {
+  const c = client({ claims: { ...claims, motorBlockIds: ['mb-old'] } });
+  let seen;
+  c.request = async (method, path, opts) => { seen = { method, path, opts }; return { success: true }; };
+
+  await c.getMessage('msg-1', { motorBlockId: 'mb-new' });
+
+  assert.equal(seen.path, '/api/public/v1/messages/msg-1');
+  const token = seen.opts.headers.Authorization.slice('Delegation '.length);
+  const decoded = jwt.verify(token, publicKey, {
+    algorithms: ['RS256'], audience: 'https://api.motorical.com/internal/mcp',
+  });
+  assert.equal(decoded.motorBlockId, 'mb-new');
+});
+
+test('the private live-authorization method calls the backend endpoint with Delegation', async () => {
+  const c = client({ claims: { ...claims, motorBlockIds: ['mb-old'] } });
+  let seen;
+  c.request = async (method, path, opts) => { seen = { method, path, opts }; return { success: true }; };
+
+  await c.authorizeMotorBlock('mb-new');
+
+  assert.equal(seen.method, 'GET');
+  assert.equal(seen.path, '/api/public/v1/account/authorization/motor-blocks/mb-new');
+  const decoded = jwt.verify(
+    seen.opts.headers.Authorization.slice('Delegation '.length),
+    publicKey,
+    { algorithms: ['RS256'], audience: 'https://api.motorical.com/internal/mcp' }
   );
+  assert.equal(decoded.motorBlockId, 'mb-new');
+});
+
+test('backend live-authorization denials propagate for uncovered, foreign, deleted, and revoked blocks', async () => {
+  for (const denial of [
+    { status: 403, code: 'motor_block_not_authorized' },
+    { status: 403, code: 'motor_block_not_owned' },
+    { status: 403, code: 'motor_block_not_found' },
+    { status: 401, code: 'authorization_revoked' },
+  ]) {
+    const c = client({ claims: { ...claims, motorBlockIds: ['mb-old'] } });
+    c.request = async () => {
+      const error = new Error(denial.code);
+      error.status = denial.status;
+      error.data = { code: denial.code, message: denial.code };
+      throw error;
+    };
+    await assert.rejects(
+      () => c.authorizeMotorBlock('mb-new'),
+      (error) => error.status === denial.status && error.data.code === denial.code
+    );
+  }
 });
 
 test('tools this server does not delegate refuse outright, never reaching the network', async () => {
@@ -162,17 +204,16 @@ test('an account-wide tool works on a grant covering zero blocks', async () => {
   assert.equal(called, true);
 });
 
-test('an explicit block on an account-wide tool is still coverage-checked', async () => {
+test('an explicit block on an account-wide tool is delegated to the live backend check', async () => {
   const c = createDelegatedClient({
     claims: { ...claims, scopes: ['manage:domains'], motorBlockIds: ['mb-1'] },
     server: domains, signer, apiBaseUrl: 'http://127.0.0.1:3001',
   });
-  c.request = async () => { throw new Error('must not call upstream'); };
+  let called = false;
+  c.request = async () => { called = true; return { success: true, data: [] }; };
 
-  await assert.rejects(
-    () => c.domainList({ motorBlockId: 'mb-999' }),
-    /not covered by this authorization/
-  );
+  await c.domainList({ motorBlockId: 'mb-new' });
+  assert.equal(called, true);
 });
 
 test('a block-scoped tool still demands a selector on a multi-block grant', async () => {
@@ -290,4 +331,46 @@ test('webhookUpdate routes to the specific webhook URL, not the collection', asy
   c.request = async (method, path, opts) => { calls.push({ method, path, opts }); return {}; };
   await c.webhookUpdate({ motorBlockId: 'mb-1', webhookId: 'wh-1', enabled: false });
   assert.equal(calls[0].path, '/api/public/v1/motor-blocks/mb-1/webhooks/wh-1');
+});
+
+const motorBlocksServer = SERVERS.find((s) => s.key === 'motorBlocks');
+function motorBlocksClient(over = {}) {
+  return createDelegatedClient({
+    claims: { ...claims, scopes: ['manage:motor-blocks'] },
+    server: motorBlocksServer,
+    signer,
+    apiBaseUrl: 'http://127.0.0.1:3001',
+    ...over,
+  });
+}
+
+test('motorBlockCreate is account-scoped and sends idempotency only as a header', async () => {
+  const c = motorBlocksClient({ claims: { ...claims, scopes: ['manage:motor-blocks'], motorBlockIds: [] } });
+  const calls = [];
+  c.request = async (method, path, opts) => { calls.push({ method, path, opts }); return {}; };
+  await c.motorBlockCreate({
+    name: 'Orders', domainId: '22222222-2222-4222-8222-222222222222',
+    type: 'transactional', idempotencyKey: '44444444-4444-4444-8444-444444444444',
+  });
+  assert.equal(calls[0].path, '/api/public/v1/account/motor-blocks');
+  assert.equal(calls[0].opts.headers['Idempotency-Key'], '44444444-4444-4444-8444-444444444444');
+  assert.equal('idempotencyKey' in calls[0].opts.body, false);
+  const token = calls[0].opts.headers.Authorization.slice('Delegation '.length);
+  const decoded = jwt.verify(token, publicKey, {
+    algorithms: ['RS256'], audience: 'https://api.motorical.com/internal/mcp',
+  });
+  assert.equal(decoded.motorBlockId, undefined);
+});
+
+test('Motor Block mutation delegates the explicit id even when it is absent from the frozen claim', async () => {
+  const c = motorBlocksClient({ claims: { ...claims, scopes: ['manage:motor-blocks'], motorBlockIds: ['old-block'] } });
+  const calls = [];
+  c.request = async (method, path, opts) => { calls.push({ method, path, opts }); return {}; };
+  await c.motorBlockRename({ motorBlockId: 'new-live-block', name: 'Receipts' });
+  assert.equal(calls[0].path, '/api/public/v1/account/motor-blocks/new-live-block/name');
+  const token = calls[0].opts.headers.Authorization.slice('Delegation '.length);
+  const decoded = jwt.verify(token, publicKey, {
+    algorithms: ['RS256'], audience: 'https://api.motorical.com/internal/mcp',
+  });
+  assert.equal(decoded.motorBlockId, 'new-live-block');
 });

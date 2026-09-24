@@ -1,6 +1,6 @@
 {
   "name": "@motorical/mcp",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "MCP server for Motorical transactional email API — dry-run/send, mint public tokens, list Motor Blocks, inspect delivery events",
   "type": "module",
   "bin": {
@@ -33,7 +33,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@motorical/scope-catalog": "^0.1.0",
+    "@motorical/scope-catalog": "^0.2.0",
     "express": "^4.22.2",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.3",
@@ -48,7 +48,7 @@
   },
   "homepage": "https://docs.motorical.com/ai-mcp",
   "bugs": {
-    "url": "https://github.com/motorical-smtp/motorical-backend/issues"
+    "url": "https://github.com/motorical-smtp/motorical-packages/issues"
   },
   "repository": {
     "type": "git",

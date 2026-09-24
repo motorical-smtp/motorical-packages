@@ -14,7 +14,6 @@ import { TOOLS, toolByName } from '../registry.js';
 import { buildDiscoverResult } from './discover.js';
 import { resolveTask } from './taskResolver.js';
 import * as defaultTaskStore from './taskStore.js';
-import { assertMotorBlockAuthorized } from '../delegatedClient.js';
 import { RESOURCES, RESOURCE_TEMPLATES, resourceByUri, matchResourceTemplate } from '../resources.js';
 import { signRequestState, verifyRequestState } from './requestState.js';
 
@@ -341,17 +340,17 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
   if (method === 'tasks/list' && declaresTasksCapability(body)) {
     const motorBlockId = body.params?.motorBlockId;
     if (!motorBlockId) return fail(id, -32602, 'motorBlockId is required');
-    // Authority check, same discipline as tools/call's "Unknown tool for this
-    // server" refusal a few lines up: a motorBlockId not covered by the
-    // caller's own delegated authority must be refused before the store is
-    // ever touched, or any caller with a valid token for this path could read
-    // another tenant's live task ids just by naming their motorBlockId.
-    // client.motorBlockIds is set by delegatedClient.js's createDelegatedClient
-    // to the caller's own authorized set; assertMotorBlockAuthorized is the
-    // SAME check resolveBlock/optionalBlock enforce for every tool call, not a
-    // parallel one built for this method.
+    // Unlike ordinary tool calls, tasks/list has no upstream operation whose
+    // normal block-scoped middleware can make the live grant decision. Ask the
+    // private backend endpoint BEFORE touching the local task index. The
+    // access token's frozen motorBlockIds claim is deliberately irrelevant:
+    // a block appended after token mint must work, while revoked/removed/
+    // foreign ids must fail immediately from the live grant row.
     try {
-      assertMotorBlockAuthorized(client.motorBlockIds ?? [], motorBlockId);
+      if (typeof client.authorizeMotorBlock !== 'function') {
+        throw new Error('Live Motor Block authorization is unavailable');
+      }
+      await client.authorizeMotorBlock(motorBlockId);
     } catch (err) {
       return fail(id, -32602, err.message);
     }

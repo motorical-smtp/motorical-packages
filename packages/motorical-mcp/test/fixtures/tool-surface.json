@@ -373,6 +373,142 @@
     }
   },
   {
+    "name": "motorical_motor_block_assign_domain",
+    "description": "Assign a different verified production domain to a Motor Block. The block is reactivated on the new domain; verify sendReady before sending. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "confirm",
+      "domainId",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Assign Motor Block domain",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_change_type",
+    "description": "Change a production Motor Block between transactional and general_purpose. This changes the intended traffic classification, not credentials. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "confirm",
+      "motorBlockId",
+      "type"
+    ],
+    "annotations": {
+      "title": "Change Motor Block type",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_create",
+    "description": "Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. A UUID-v4 idempotencyKey makes retries return the original result. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "description",
+      "domainId",
+      "idempotencyKey",
+      "name",
+      "type"
+    ],
+    "annotations": {
+      "title": "Create production Motor Block",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_deactivate",
+    "description": "Deactivate (pause) a production Motor Block. This is reversible and does not delete history or credentials; sending stops until reactivated. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "confirm",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Deactivate Motor Block",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_delete",
+    "description": "Permanently delete an inactive Motor Block asynchronously. This is irrecoverable. Set deleteHistory explicitly; then poll the returned job with motorical_motor_block_delete_status. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "confirm",
+      "deleteHistory",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Permanently delete Motor Block",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_delete_status",
+    "description": "Read the current state and final report for an asynchronous permanent Motor Block deletion job. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "jobId"
+    ],
+    "annotations": {
+      "title": "Get Motor Block deletion status",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_list",
+    "description": "List ordinary production Motor Blocks (isolated sending streams) this account can manage. Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [],
+    "annotations": {
+      "title": "List production Motor Blocks",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_reactivate",
+    "description": "Reactivate a previously deactivated production Motor Block. A verified production domain is required. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Reactivate Motor Block",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_motor_block_rename",
+    "description": "Rename a production Motor Block for display and organization. This never changes its SMTP username, password, API keys, or auth method. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "inputKeys": [
+      "motorBlockId",
+      "name"
+    ],
+    "annotations": {
+      "title": "Rename Motor Block",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
     "name": "motorical_sandbox_allowlist_confirm",
     "description": "Confirm a sandbox allowlist recipient using the 6-digit code sent by motorical_sandbox_allowlist_request. On success the address is added to the allowlist and can receive real (non-dryRun) sandbox sends. Requires MOTORICAL_JWT. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.). Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.",
     "inputKeys": [
@@ -403,9 +539,12 @@
   },
   {
     "name": "motorical_sandbox_convert",
-    "description": "Convert sandbox Motor Block onto a verified customer domain. Requires an active Motorical plan -- if none exists, this call throws with err.data.code === \"subscription_required\" and err.data.upgradeUrl naming where a human can subscribe; retry this same call once they have. If no sandbox exists yet (check motorical_sandbox_status first -- data.stage: \"not_started\"), call motorical_sandbox_provision instead; this endpoint returns 404 \"No developer sandbox to convert\" otherwise. The response always includes activeAuthMethod (the Motor Block's configured auth method -- \"Password\", \"API Key\", \"OAuth 2.0\", or \"mTLS\" -- read-only, changing it is dashboard-only). Over hosted OAuth it also includes credentialsLocation, a link to the dashboard where the customer can view or regenerate the actual credential value -- this tool never returns the raw value itself. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "description": "Convert sandbox Motor Block onto a verified customer domain. Requires an active Motorical plan -- if none exists, this call throws with err.data.code === \"subscription_required\" and err.data.upgradeUrl naming where a human can subscribe; retry this same call once they have. If no sandbox exists yet (check motorical_sandbox_status first -- data.stage: \"not_started\"), call motorical_sandbox_provision instead; this endpoint returns 404 \"No developer sandbox to convert\" otherwise. The response always includes activeAuthMethod (the Motor Block's configured auth method -- \"Password\", \"API Key\", \"OAuth 2.0\", or \"mTLS\" -- read-only, changing it is dashboard-only). Conversion is a production identity transition: choose name/type or accept backend defaults; the SMTP username changes, so SMTP clients must be updated, while the existing SMTP password, API keys, and auth method remain unchanged. Over hosted OAuth it also includes credentialsLocation, a link to the dashboard where the customer can view or regenerate the actual credential value -- this tool never returns the raw value itself. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
     "inputKeys": [
-      "domainId"
+      "confirm",
+      "domainId",
+      "name",
+      "type"
     ],
     "annotations": {
       "title": "Convert sandbox to production",
@@ -417,7 +556,7 @@
   },
   {
     "name": "motorical_sandbox_provision",
-    "description": "Provision unpaid developer sandbox (*.sandbox.motorical.com + outbound-locked Motor Block). Over hosted OAuth, this NEVER returns credentials -- the response has credentialsAvailable:false instead. The new Motor Block is added to your authorization, but an access token minted before provisioning does not list it -- if a send returns \"Motor block is not covered by this authorization\", refresh the OAuth token and retry. Credentials become available via a dashboard link after motorical_sandbox_convert. Only the local @motorical/mcp stdio server (dashboard-JWT auth) still returns mk_live_ once, since it is the customer's own long-running process on their own infrastructure -- securing whatever it returns is the customer's own responsibility on that path. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "description": "Provision unpaid developer sandbox (*.sandbox.motorical.com + outbound-locked Motor Block). Over hosted OAuth, this NEVER returns credentials -- the response has credentialsAvailable:false instead. The new Motor Block is added to the live authorization and is immediately usable by explicit id, without refreshing an access token minted before provisioning. Credentials become available via a dashboard link after motorical_sandbox_convert. Only the local @motorical/mcp stdio server (dashboard-JWT auth) still returns mk_live_ once, since it is the customer's own long-running process on their own infrastructure -- securing whatever it returns is the customer's own responsibility on that path. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
     "inputKeys": [
       "channel",
       "handle"

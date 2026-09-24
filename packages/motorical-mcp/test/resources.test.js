@@ -63,6 +63,33 @@ describe('resources registry', () => {
     assert.match(result.contents[0].text, /abc/);
   });
 
+  test('the hosted motor-block template performs live authorization before account-state lookup', async () => {
+    const template = RESOURCE_TEMPLATES.find((t) => t.uriTemplate === 'motorical://motor-block/{id}');
+    const events = [];
+    const fakeClient = {
+      motorBlockIds: ['stale-old-id'],
+      authorizeMotorBlock: async (id) => { events.push(`authorize:${id}`); },
+      getAccountState: async () => {
+        events.push('account-state');
+        return { success: true, data: { motorBlocks: [{ id: 'new-id', active: true }] } };
+      },
+    };
+    const result = await template.handler(fakeClient)({ id: 'new-id' });
+    assert.match(result.contents[0].text, /new-id/);
+    assert.deepEqual(events, ['authorize:new-id', 'account-state']);
+  });
+
+  test('the hosted motor-block template returns no account data after a live denial', async () => {
+    const template = RESOURCE_TEMPLATES.find((t) => t.uriTemplate === 'motorical://motor-block/{id}');
+    let accountStateRead = false;
+    const fakeClient = {
+      authorizeMotorBlock: async () => { throw new Error('authorization_revoked'); },
+      getAccountState: async () => { accountStateRead = true; return { success: true, data: {} }; },
+    };
+    await assert.rejects(() => template.handler(fakeClient)({ id: 'new-id' }), /authorization_revoked/);
+    assert.equal(accountStateRead, false);
+  });
+
   test('the motor-block resource template handler throws a clear error for an unknown id', async () => {
     const template = RESOURCE_TEMPLATES.find((t) => t.uriTemplate === 'motorical://motor-block/{id}');
     const fakeClient = { getAccountState: async () => ({ success: true, data: { motorBlocks: [] } }) };

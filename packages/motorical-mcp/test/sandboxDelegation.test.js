@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { createDelegatedClient } from '../src/delegatedClient.js';
+import { signRequestState } from '../src/native/requestState.js';
 
 // mintDelegation (delegation.js) signs RS256, so the signer needs a real key
 // -- not the literal `{}` the task brief's snippet used, which fails with
@@ -73,13 +74,16 @@ test('sandbox_convert surfaces subscription_required with err.data intact throug
     text: async () => JSON.stringify(upstreamBody),
   });
 
+  const args = { domainId: '11111111-1111-1111-1111-111111111111' };
   const response = await dispatchNative({
     jsonrpc: '2.0',
     id: 42,
     method: 'tools/call',
     params: {
       name: 'motorical_sandbox_convert',
-      arguments: { domainId: '11111111-1111-1111-1111-111111111111' },
+      arguments: args,
+      inputResponses: { confirm: { action: 'accept', content: {} } },
+      requestState: signRequestState({ tool: 'motorical_sandbox_convert', args }),
     },
   }, { server, client, version: '1.0.0' });
 

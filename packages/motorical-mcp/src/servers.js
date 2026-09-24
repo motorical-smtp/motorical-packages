@@ -21,6 +21,7 @@ const ANALYTICS_TOOLS = SERVER_TOOLS.analytics;
 const DOMAIN_TOOLS = SERVER_TOOLS.domains;
 const SANDBOX_TOOLS = SERVER_TOOLS.sandbox;
 const WEBHOOK_TOOLS = SERVER_TOOLS.webhooks;
+const MOTOR_BLOCK_TOOLS = SERVER_TOOLS.motorBlocks;
 
 export const ALL_TOOLS = SERVER_TOOLS.main;
 
@@ -94,6 +95,9 @@ export const ACCOUNT_SCOPED_TOOLS = new Set([
   'motorical_sandbox_status',
   'motorical_sandbox_provision',
   'motorical_sandbox_convert',
+  'motorical_motor_block_list',
+  'motorical_motor_block_create',
+  'motorical_motor_block_delete_status',
 ]);
 
 /** An account-scoped entry naming no real tool is a typo, not a feature. */
@@ -160,6 +164,16 @@ export const TOOL_ROUTES = {
   motorical_sandbox_allowlist_request: null,
   motorical_sandbox_allowlist_confirm: null,
 
+  motorical_motor_block_list: { method: 'GET', path: '/api/public/v1/account/motor-blocks' },
+  motorical_motor_block_create: { method: 'POST', path: '/api/public/v1/account/motor-blocks' },
+  motorical_motor_block_rename: { method: 'PATCH', path: '/api/public/v1/account/motor-blocks/{id}/name' },
+  motorical_motor_block_change_type: { method: 'PATCH', path: '/api/public/v1/account/motor-blocks/{id}/type' },
+  motorical_motor_block_assign_domain: { method: 'POST', path: '/api/public/v1/account/motor-blocks/{id}/assign-domain' },
+  motorical_motor_block_deactivate: { method: 'POST', path: '/api/public/v1/account/motor-blocks/{id}/deactivate' },
+  motorical_motor_block_reactivate: { method: 'POST', path: '/api/public/v1/account/motor-blocks/{id}/reactivate' },
+  motorical_motor_block_delete: { method: 'DELETE', path: '/api/public/v1/account/motor-blocks/{id}' },
+  motorical_motor_block_delete_status: { method: 'GET', path: '/api/public/v1/account/motor-block-deletions/{jobId}' },
+
   // A prompt, not a tool — returns instructional text, calls nothing.
   motorical_integrate_send: null,
 };
@@ -183,6 +197,7 @@ export const SERVERS = [
   server('domains', 'motorical_domains', DOMAIN_TOOLS),
   server('sandbox', 'motorical_sandbox', SANDBOX_TOOLS),
   server('webhooks', 'motorical_webhooks', WEBHOOK_TOOLS),
+  server('motorBlocks', 'motorical_motor_blocks', MOTOR_BLOCK_TOOLS),
   // The one deliberate exception: `public: true` is read by authenticateMcp
   // (http.js) and clientFactory (serve.js) to skip bearer verification
   // entirely for this ONE server -- a caller with no Motorical account yet

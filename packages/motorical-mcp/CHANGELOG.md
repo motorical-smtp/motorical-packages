@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] — 2026-09-24
+
+### Added
+
+- Added nine production Motor Block lifecycle tools: list, create, rename, change type, assign domain, deactivate, reactivate, permanently delete, and deletion-status polling.
+- Added the least-privilege `motorical_motor_blocks` hosted server and `manage:motor-blocks` scope.
+- Added argument-bound MRTR confirmation for type changes, domain assignment, deactivation, permanent deletion, and sandbox conversion.
+
+### Changed
+
+- Explicit Motor Block ids are authorized from the backend's live grant state instead of the access token's frozen block list. Newly created blocks therefore work immediately without a token refresh.
+- Sandbox conversion accepts a production name and type and clearly reports the SMTP username transition. Local stdio updates only implicit cached block/username/default-From metadata; hosted OAuth still exposes no credential secret.
+- Ordinary rename is display-only. It never changes the SMTP username or other credential material.
+
+### Security
+
+- Permanent deletion is asynchronous, explicitly distinguishes history deletion, and requires confirmation bound to the exact arguments shown to the user.
+- Hosted create responses and idempotency replays remain credential-redacted.
+
 ## [1.8.0] — 2026-09-23
 
 ### Added

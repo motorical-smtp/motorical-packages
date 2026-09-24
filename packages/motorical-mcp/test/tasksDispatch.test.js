@@ -52,13 +52,11 @@ describe('native tasks/get and tasks/list', () => {
     const { taskId: mine } = await taskStore.createTask({ emailLogId: 'el-1', motorBlockId: 'mb-1' });
     await taskStore.createTask({ emailLogId: 'el-2', motorBlockId: 'mb-other' });
 
-    // client.motorBlockIds is how delegatedClient.js's createDelegatedClient
-    // conveys the caller's own delegated authority to dispatch.js -- see the
-    // authorization tests below. This client is authorized for 'mb-1', the
-    // block it's requesting, so this stays a happy-path test.
+    let authorized = false;
     const res = await dispatchNative(
       { jsonrpc: '2.0', id: 2, method: 'tasks/list', params: { motorBlockId: 'mb-1', _meta: DECLARES_TASKS } },
-      { server: transactional, client: { motorBlockIds: ['mb-1'] }, version: '1.5.0', taskStore });
+      { server: transactional, client: { authorizeMotorBlock: async () => { authorized = true; } }, version: '1.5.0', taskStore });
+    assert.equal(authorized, true);
     assert.deepEqual(res.result.tasks.map((t) => t.taskId), [mine]);
     assert.equal(res.result.resultType, 'complete');
   });
@@ -72,18 +70,47 @@ describe('native tasks/get and tasks/list', () => {
   // construction uses (see createDelegatedClient's `blocks` /
   // `client.motorBlockIds`): a client authorized for exactly one motor block,
   // asked here about a DIFFERENT one.
-  test('tasks/list refuses a motorBlockId outside the caller\'s delegated authority', async () => {
-    const taskStore = __testOnly_withClient(new FakeRedis());
-    await taskStore.createTask({ emailLogId: 'el-1', motorBlockId: 'mb-other' });
+  for (const denial of [
+    'motor_block_not_authorized',
+    'motor_block_not_owned',
+    'motor_block_not_found',
+    'authorization_revoked',
+  ]) {
+    test(`tasks/list propagates ${denial} before touching protected task state`, async () => {
+      let touched = false;
+      const taskStore = {
+        listTasksForMotorBlock: async () => { touched = true; return ['must-not-leak']; },
+      };
+      const client = {
+        motorBlockIds: ['stale-old-id'],
+        authorizeMotorBlock: async () => { throw new Error(denial); },
+      };
 
+      const res = await dispatchNative(
+        { jsonrpc: '2.0', id: 3, method: 'tasks/list', params: { motorBlockId: 'mb-new', _meta: DECLARES_TASKS } },
+        { server: transactional, client, version: '1.5.0', taskStore });
+
+      assert.equal(touched, false);
+      assert.equal(res.result, undefined);
+      assert.equal(res.error.code, -32602);
+      assert.match(res.error.message, new RegExp(denial));
+    });
+  }
+
+  test('tasks/list accepts a live-appended id absent from the frozen client claim', async () => {
+    let requested;
+    const taskStore = {
+      listTasksForMotorBlock: async (id) => { requested = id; return ['task-new']; },
+    };
+    const client = {
+      motorBlockIds: ['mb-old'],
+      authorizeMotorBlock: async (id) => assert.equal(id, 'mb-new'),
+    };
     const res = await dispatchNative(
-      { jsonrpc: '2.0', id: 3, method: 'tasks/list', params: { motorBlockId: 'mb-other', _meta: DECLARES_TASKS } },
-      { server: transactional, client: { motorBlockIds: ['mb-1'] }, version: '1.5.0', taskStore });
-
-    assert.ok(res.error, 'must be a clean JSON-RPC error, not the other tenant\'s task data');
-    assert.equal(res.result, undefined);
-    assert.equal(res.error.code, -32602);
-    assert.match(res.error.message, /not covered by this authorization/);
+      { jsonrpc: '2.0', id: 31, method: 'tasks/list', params: { motorBlockId: 'mb-new', _meta: DECLARES_TASKS } },
+      { server: transactional, client, version: '1.5.0', taskStore });
+    assert.equal(requested, 'mb-new');
+    assert.deepEqual(res.result.tasks, [{ taskId: 'task-new' }]);
   });
 
   // Finding 2: tasks/get had no try/catch around resolveTask, unlike
@@ -132,7 +159,7 @@ describe('native tasks/get and tasks/list', () => {
 
     const res = await dispatchNative(
       { jsonrpc: '2.0', id: 30, method: 'tasks/list', params: { motorBlockId: 'mb-1', _meta: {} } },
-      { server: transactional, client: { motorBlockIds: ['mb-1'] }, version: '1.5.0', taskStore });
+      { server: transactional, client: { authorizeMotorBlock: async () => {} }, version: '1.5.0', taskStore });
 
     assert.equal(res.result, undefined, 'must not return task data to an undeclaring caller');
     assert.equal(res.error?.code, -32601,
