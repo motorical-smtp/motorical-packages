@@ -239,7 +239,11 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
     // -- whose whole discipline is that they must agree -- accept different
     // arguments for the same tool name.
     const validated = await validateArguments(tool, body.params?.arguments ?? {});
-    if (!validated.ok) return ok(id, validated.result);
+    // validationErrorResult() is shared with the legacy path, which has no
+    // resultType; every native tools/call result must carry one (2026-07-28),
+    // refusals included, or a strict client rejects it as malformed and the
+    // agent never sees why its arguments were refused.
+    if (!validated.ok) return ok(id, { resultType: 'complete', ...validated.result });
 
     // MRTR interception: a tool flagged in the registry with an `mrtr` block
     // must not run its handler until the caller has explicitly confirmed, on
@@ -293,7 +297,8 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
         structuredContent: data && typeof data === 'object' ? data : { value: data },
         isError: false,
       };
-      return ok(id, (await validateOutput(tool, result)) ?? result);
+      const refusal = await validateOutput(tool, result);
+      return ok(id, refusal ? { resultType: 'complete', ...refusal } : result);
     } catch (err) {
       // A failing upstream call is a TOOL error the model can reason about,
       // never a transport error that kills the session. Note: the SDK skips

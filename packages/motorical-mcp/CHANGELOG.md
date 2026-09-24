@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.1] — 2026-09-24
+
+### Fixed
+
+- Hosted (protocol revision 2026-07-28) `tools/call` refusals — an input-validation failure such as a too-short `name` or a non-UUID `jobId`, and an output-validation failure — were returned without `resultType` and rejected by strict clients as "missing required resultType", so an agent never saw why its call was refused. They now carry `resultType: "complete"` with `isError: true`. Present since 1.2.x on every tool; found by the first real agent run against the Motor Blocks server. The legacy (2025-11-25) response is unchanged.
+
+### Changed
+
+- `motorical_motor_block_create` now says where a `domainId` comes from (`motorical_domain_list` on the Domains server, and how to add and verify one when the account has none).
+
 ## [1.9.0] — 2026-09-24
 
 ### Added

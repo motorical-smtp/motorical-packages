@@ -162,10 +162,12 @@ export const TOOLS = [
     description:
       'Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; ' +
       'use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. ' +
-      'A UUID-v4 idempotencyKey makes retries return the original result.',
+      'A UUID-v4 idempotencyKey makes retries return the original result. ' +
+      'The domainId must be a verified, non-sandbox domain the account owns; this server cannot list or add domains, ' +
+      'so get it from motorical_domain_list on the Domains server (add and verify one first with motorical_domain_add / motorical_domain_verify if the account has none).',
     inputSchema: {
       name: z.string().min(3).max(50),
-      domainId: z.string().uuid(),
+      domainId: z.string().uuid().describe('Id of a verified, non-sandbox domain from motorical_domain_list (Domains server).'),
       type: motorBlockTypeArg.optional(),
       description: z.string().max(500).optional(),
       idempotencyKey: uuidV4Arg.describe('Required UUID v4 for hosted creation; reused unchanged on retry.'),

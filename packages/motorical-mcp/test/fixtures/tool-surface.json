@@ -406,7 +406,7 @@
   },
   {
     "name": "motorical_motor_block_create",
-    "description": "Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. A UUID-v4 idempotencyKey makes retries return the original result. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. A UUID-v4 idempotencyKey makes retries return the original result. The domainId must be a verified, non-sandbox domain the account owns; this server cannot list or add domains, so get it from motorical_domain_list on the Domains server (add and verify one first with motorical_domain_add / motorical_domain_verify if the account has none). Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
     "inputKeys": [
       "description",
       "domainId",

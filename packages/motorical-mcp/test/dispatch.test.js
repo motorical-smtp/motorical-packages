@@ -556,3 +556,51 @@ describe('native dispatch never answers a JSON-RPC notification', () => {
     assert.equal(res.id, 0);
   });
 });
+
+// Field report 2026-09-24 (first real agent run against the Motor Blocks server):
+// motorical_motor_block_rename with a too-short name, and delete_status with a
+// non-UUID jobId, each came back to a 2026-07-28 client as "Invalid result for
+// tools/call: missing required resultType". Cause: validationErrorResult() is
+// shared with the legacy path and carries no resultType, and the native
+// dispatcher returned it (and the output-validation refusal) as-is, while every
+// other native result adds resultType: 'complete'. Since 09-05, all tools.
+describe('every native tools/call result carries resultType, including refusals', () => {
+  const motorBlocks = SERVERS.find((s) => s.key === 'motorBlocks');
+  const call = (server, client, name, args) => dispatchNative(
+    { jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name, arguments: args } },
+    { server, client, version: '1.9.0' }
+  ).then((r) => r.result);
+  const neverCalled = new Proxy({}, { get: () => async () => { throw new Error('handler must not run'); } });
+
+  test('an input-validation refusal (rename name too short) is a complete, isError result', async () => {
+    const res = await call(motorBlocks, neverCalled, 'motorical_motor_block_rename',
+      { motorBlockId: '00000000-0000-4000-8000-000000000002', name: 'x' });
+    assert.equal(res.isError, true);
+    assert.match(res.content[0].text, /name/);
+    assert.equal(res.resultType, 'complete');
+  });
+
+  test('an input-validation refusal (delete_status jobId not a UUID) is a complete, isError result', async () => {
+    const res = await call(motorBlocks, neverCalled, 'motorical_motor_block_delete_status', { jobId: 'does-not-exist' });
+    assert.equal(res.isError, true);
+    assert.match(res.content[0].text, /jobId/);
+    assert.equal(res.resultType, 'complete');
+  });
+
+  test('an output-validation refusal is a complete, isError result', async () => {
+    const junk = new Proxy({}, { get: () => async () => ({ definitely: 'not the declared shape' }) });
+    const res = await call(motorBlocks, junk, 'motorical_motor_block_list', {});
+    assert.equal(res.isError, true);
+    assert.match(res.content[0].text, /Output validation error/);
+    assert.equal(res.resultType, 'complete');
+  });
+
+  test('a successful call and an upstream failure still carry resultType', async () => {
+    const ok = new Proxy({}, { get: () => async () => ({ success: true, data: [] }) });
+    assert.equal((await call(motorBlocks, ok, 'motorical_motor_block_list', {})).resultType, 'complete');
+    const boom = new Proxy({}, { get: () => async () => { throw Object.assign(new Error('nope'), { status: 404, data: { code: 'x' } }); } });
+    const res = await call(motorBlocks, boom, 'motorical_motor_block_list', {});
+    assert.equal(res.isError, true);
+    assert.equal(res.resultType, 'complete');
+  });
+});
