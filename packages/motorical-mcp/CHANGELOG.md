@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.2] — 2026-10-13
+
+### Changed
+
+- `motorical_free_recipient_add` now returns the address and its status (`data.recipient`), and its description says a
+  person must still click the emailed link.
+- `motorical_send_email` explains that real sandbox sends go only to the effective allowlist, how to unlock a
+  recipient, and that `motorical_wait_for_outcome` takes the `taskId` from `nextAction`, which is not the message id.
+- `motorical_sandbox_status` adds `allowlistOnly` and says `outboundLocked: true` means allowlist-only, not send-nothing.
+- `motorical_free_recipient_list` adds `limitsNote` (the caps are the Free-plan caps for non-sandbox Motor Blocks).
+- Docs state which host serves the HTTP Send API, the Public API and the dashboard/auth API, and the `dryRun`
+  defaults of `POST /v1/send` and `motorical_send_email`.
+- The sandbox onboarding journey explains how to read delivery status with a minted read token.
+- `motorical_web_handoff` notes that the link is short-lived and what to do when it has expired.
+
 ## [1.11.1] — 2026-10-13
 
 ### Changed

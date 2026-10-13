@@ -65,7 +65,7 @@
   },
   {
     "name": "motorical_free_recipient_add",
-    "description": "Ask a person to allow test email from this account. Sends them a confirmation email with a link; THEY must open it and click the button, and this tool never confirms on their behalf. Until they confirm, a sandbox allowlist refuses sends to that address, and so do the non-sandbox Motor Blocks of a Free account (when Free enforcement is on); a paid account is not affected. Their address is then also allowed for the sandbox. A recipient who clicked \"stop\" cannot be re-requested; the response is identical either way. Requires OAuth scope manage:recipients (separate from manage:sandbox; an existing sandbox authorization must be re-approved to include it). Requires OAuth scope: manage:recipients (Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.).",
+    "description": "Ask a person to allow test email from this account. Sends them a confirmation email with a link; THEY must open it and click the button, and this tool never confirms on their behalf. Until they confirm, a sandbox allowlist refuses sends to that address, and so do the non-sandbox Motor Blocks of a Free account (when Free enforcement is on); a paid account is not affected. Their address is then also allowed for the sandbox. A recipient who clicked \"stop\" cannot be re-requested; the response is identical either way. The response includes data.recipient with the address and its status (pending until they click, or confirmed if already confirmed); a person must still click the emailed link. Requires OAuth scope manage:recipients (separate from manage:sandbox; an existing sandbox authorization must be re-approved to include it). Requires OAuth scope: manage:recipients (Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.).",
     "inputKeys": [
       "email"
     ],
@@ -79,7 +79,7 @@
   },
   {
     "name": "motorical_free_recipient_list",
-    "description": "List the addresses this account has asked to allow test email, with each status (pending, confirmed or stopped), the recipient limit and current usage. Requires OAuth scope manage:recipients. Requires OAuth scope: manage:recipients (Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.).",
+    "description": "List the addresses this account has asked to allow test email, with each status (pending, confirmed or stopped), the recipient limit and current usage. The hourly, daily and monthly numbers are the Free-plan caps for non-sandbox Motor Blocks (see limitsNote in the response); a sandbox Motor Block is governed by the sandbox caps shown in motorical_sandbox_status. Requires OAuth scope manage:recipients. Requires OAuth scope: manage:recipients (Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.).",
     "inputKeys": [],
     "annotations": {
       "title": "List allowed test recipients",
@@ -612,7 +612,7 @@
   },
   {
     "name": "motorical_sandbox_status",
-    "description": "Get developer sandbox status (domain, Motor Block, outbound lock, allowlist). Check data.stage to determine provisioning state: \"not_started\" (no sandbox yet — call motorical_sandbox_provision), \"sandbox_active\" (sandbox exists, outbound-locked), or \"live\" (converted to production, no lock). allowlist/caps are always present in the response regardless of stage — do not infer provisioning state from their presence. The allowlist is the EFFECTIVE list: sandbox recipients, link-confirmed recipients, the account address and the test sink, minus any address that clicked stop. domain.sandbox true means the Motorical-owned sandbox domain; domain.sandbox false means your own domain. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.).",
+    "description": "Get developer sandbox status (domain, Motor Block, outbound lock, allowlist). Check data.stage to determine provisioning state: \"not_started\" (no sandbox yet — call motorical_sandbox_provision), \"sandbox_active\" (sandbox exists, outbound-locked), or \"live\" (converted to production, no lock). allowlist/caps are always present in the response regardless of stage — do not infer provisioning state from their presence. The allowlist is the EFFECTIVE list: sandbox recipients, link-confirmed recipients, the account address and the test sink, minus any address that clicked stop. domain.sandbox true means the Motorical-owned sandbox domain; domain.sandbox false means your own domain. outboundLocked true means real sends are limited to the allowlist, not that nothing can be sent. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.).",
     "inputKeys": [],
     "annotations": {
       "title": "Get developer sandbox status",
@@ -624,7 +624,7 @@
   },
   {
     "name": "motorical_send_email",
-    "description": "Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. Do not use OAuth access tokens or Bearer tokens here. For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); it is never redirected, so add the recipient to the allowlist first. A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). from must be an address at the domain your Motor Block is assigned to, which must be a verified, send-ready domain you own (see motorical_get_onboarding_state sendFrom); any local part works. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
+    "description": "Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. Do not use OAuth access tokens or Bearer tokens here. For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); it is never redirected, so add the recipient to the allowlist first. Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). To follow a real send, pass the taskId from this response's nextAction to motorical_wait_for_outcome; that taskId is NOT the message id. A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). from must be an address at the domain your Motor Block is assigned to, which must be a verified, send-ready domain you own (see motorical_get_onboarding_state sendFrom); any local part works. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
     "inputKeys": [
       "confirmRealSend",
       "dryRun",
@@ -662,7 +662,7 @@
   },
   {
     "name": "motorical_web_handoff",
-    "description": "Mint a one-time browser handoff URL (POST /api/auth/web-handoff). Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT.",
+    "description": "Mint a one-time browser handoff URL (POST /api/auth/web-handoff). Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT. The link is short-lived (the response has expiresInSeconds): open it right away; if it says expired, ask for a new link or sign in with your password.",
     "inputKeys": [
       "path"
     ],
