@@ -5,7 +5,7 @@ import { MotoricalClient, loadConfig } from './client.js';
 import { TOOLS } from './registry.js';
 import { openOutputSchema } from './openOutputSchema.js';
 import { HOSTED_ONLY_TOOLS } from './servers.js';
-import { RESOURCES, RESOURCE_TEMPLATES } from './resources.js';
+import { RESOURCES, RESOURCE_TEMPLATES, DOC_RESOURCES } from './resources.js';
 import { instructionsFor } from './instructions.js';
 
 const PACKAGE_VERSION = JSON.parse(
@@ -91,86 +91,19 @@ export function createMotoricalMcpServer(options = {}) {
     );
   }
 
-  server.registerResource(
-    'motorical-llms',
-    'motorical://docs/llms.txt',
-    {
-      description: 'Motorical llms.txt — transactional email API discovery index for agents',
-      mimeType: 'text/plain'
-    },
-    async () => ({
-      contents: [
-        {
-          uri: 'motorical://docs/llms.txt',
-          mimeType: 'text/plain',
-          text: await client.fetchDocs('/llms.txt')
-        }
-      ]
-    })
-  );
-
-  server.registerResource(
-    'motorical-openapi',
-    'motorical://docs/openapi.json',
-    {
-      description: 'Motorical OpenAPI snapshot from docs.motorical.com',
-      mimeType: 'application/json'
-    },
-    async () => ({
-      contents: [
-        {
-          uri: 'motorical://docs/openapi.json',
-          mimeType: 'application/json',
-          text: await client.fetchDocs('/openapi.json')
-        }
-      ]
-    })
-  );
-
-  // Agent Hub and its machine twin (design 2026-09-24
-  // agent-ready-docs-and-positioning §5.3 — "the hub text and the machine
-  // playbook are served as MCP resources"). Same unconditional-on-every-server
-  // treatment as llms.txt/openapi.json above: routing guidance is useful
-  // regardless of which scoped server a client connected to, not just
-  // analytics. Fetched live from docs.motorical.com rather than duplicated
-  // here, so there is exactly one place (the docs site build) that renders
-  // this content — see instructions.js's HUB_POINTER, which every server's
-  // instructions carry.
-  server.registerResource(
-    'motorical-agents-hub',
-    'motorical://docs/agents-hub',
-    {
-      description: 'Motorical Agent Hub — route chooser, rulebook, and journeys, from docs.motorical.com/agents',
-      mimeType: 'text/markdown'
-    },
-    async () => ({
-      contents: [
-        {
-          uri: 'motorical://docs/agents-hub',
-          mimeType: 'text/markdown',
-          text: await client.fetchDocs('/agents.md')
-        }
-      ]
-    })
-  );
-
-  server.registerResource(
-    'motorical-agents-playbook',
-    'motorical://docs/agents-playbook',
-    {
-      description: 'Machine-readable twin of the Agent Hub: journeys, scopes, human-required flags, stop conditions',
-      mimeType: 'application/json'
-    },
-    async () => ({
-      contents: [
-        {
-          uri: 'motorical://docs/agents-playbook',
-          mimeType: 'application/json',
-          text: await client.fetchDocs('/agents.json')
-        }
-      ]
-    })
-  );
+  // The public docs resources (llms.txt, llms-full.txt, openapi.json,
+  // agents-hub, agents-playbook) come from the one declarative table in
+  // resources.js, unconditionally on every server -- the native dispatcher
+  // reads the same table. Routing guidance is useful regardless of which
+  // scoped server a client connected to (instructions.js's HUB_POINTER).
+  for (const doc of DOC_RESOURCES) {
+    server.registerResource(
+      doc.name.toLowerCase().replace(/\s+/g, '-'),
+      doc.uri,
+      { description: doc.description, mimeType: doc.mimeType },
+      async () => doc.handler(client)()
+    );
+  }
 
   // Resources/resource-templates are analytics-server-only (Global
   // Constraints), exactly the way the native dispatch path gates them via

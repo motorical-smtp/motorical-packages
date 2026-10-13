@@ -15,7 +15,7 @@ import { openOutputSchema } from '../openOutputSchema.js';
 import { buildDiscoverResult } from './discover.js';
 import { resolveTask } from './taskResolver.js';
 import * as defaultTaskStore from './taskStore.js';
-import { RESOURCES, RESOURCE_TEMPLATES, resourceByUri, matchResourceTemplate } from '../resources.js';
+import { RESOURCES, RESOURCE_TEMPLATES, DOC_RESOURCES, docResourceByUri, resourceByUri, matchResourceTemplate } from '../resources.js';
 import { signRequestState, verifyRequestState } from './requestState.js';
 
 const TOOLS_TTL_MS = 3600000;
@@ -427,7 +427,9 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
   // server/resources, fetched 2026-09-06) -- NOT -32601, which is reserved
   // for a genuinely unrecognized method.
   if (method === 'resources/list') {
-    const resources = server.key === 'analytics' ? RESOURCES.map(({ handler, ...meta }) => meta) : [];
+    // Public docs resources on every server; account-state ones on analytics only.
+    const visible = server.key === 'analytics' ? [...DOC_RESOURCES, ...RESOURCES] : DOC_RESOURCES;
+    const resources = visible.map(({ handler, docsPath, ...meta }) => meta);
     return ok(id, { resultType: 'complete', resources, ttlMs: RESOURCES_TTL_MS, cacheScope: 'private' });
   }
 
@@ -439,9 +441,23 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
   }
 
   if (method === 'resources/read') {
-    if (server.key !== 'analytics') return fail(id, -32602, `Resource not found: ${body.params?.uri}`);
     const uri = body.params?.uri;
     if (!uri) return fail(id, -32602, 'uri is required');
+
+    // Public docs resources: every server, including the unauthenticated
+    // signup server (nothing here touches account data). A failed docs fetch
+    // is an upstream problem, -32603, not a missing resource.
+    const docResource = docResourceByUri(uri);
+    if (docResource) {
+      try {
+        const result = await docResource.handler(client)();
+        return ok(id, { resultType: 'complete', ...result, ttlMs: RESOURCES_TTL_MS, cacheScope: 'public' });
+      } catch (err) {
+        return fail(id, -32603, err.message);
+      }
+    }
+
+    if (server.key !== 'analytics') return fail(id, -32602, `Resource not found: ${uri}`);
 
     const staticResource = resourceByUri(uri);
     const templateMatch = matchResourceTemplate(uri);

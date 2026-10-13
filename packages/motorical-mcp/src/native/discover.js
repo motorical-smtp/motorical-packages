@@ -15,10 +15,10 @@ export function buildDiscoverResult({ server, version }) {
     // the whole truthful set. `resources` was measured returning -32601 Method
     // not found before Task 8 implemented native resource dispatch for the
     // analytics server (the one tool motorical_get_onboarding_state that needs
-    // them). It is now genuinely served, so it is advertised SCOPED to that one
-    // server, not broadcast to all six paths -- mirroring exactly why Tasks
-    // ended up not advertised on every path: it can only be created by
-    // motorical_send_email, which analytics-scoped paths do not expose at all.
+    // them). Now EVERY server serves the public docs resources
+    // (motorical://docs/*, which instructions.js tells every agent to read),
+    // so `resources` is advertised on all paths; the account-state resources
+    // and templates remain analytics-only inside dispatch.js.
     //
     // `prompts` was also measured returning -32601 and stays withheld until
     // native dispatch is implemented for it.
@@ -50,7 +50,7 @@ export function buildDiscoverResult({ server, version }) {
     // `extensions: { 'io.modelcontextprotocol/tasks': {} }` here deliberately.
     capabilities: {
       tools: {},
-      ...(server.key === 'analytics' ? { resources: {} } : {}),
+      resources: {},
     },
     _meta: {
       'io.modelcontextprotocol/serverInfo': { name: `motorical-${server.key}`, version },

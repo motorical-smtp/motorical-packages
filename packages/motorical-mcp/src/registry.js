@@ -797,6 +797,7 @@ export const TOOLS = [
   {
     name: 'motorical_signup_handoff',
     description:
+      'FOR APPS THAT IMPLEMENT AN OAUTH CLIENT (hosts, embedded agent apps) -- NOT for chat agents. It needs your own client\'s OAuth values (clientId, a registered redirectUri, PKCE codeChallenge, resource); if you are an agent in Claude Code, Claude Desktop or another chat client you cannot supply them, so do not invent them: connect the main motorical server and authenticate it instead (the browser opens the sign-in page, the person creates the account and sets up MFA there, then authenticates again to reach consent). ' +
       'Bridge a human with no Motorical account onto this OAuth client (POST /api/auth/signup-handoff). ' +
       'Call with no continuationToken first: returns a one-time URL for the human to open in a browser, ' +
       'which runs signup if needed and then the normal OAuth consent screen for this client -- one ' +

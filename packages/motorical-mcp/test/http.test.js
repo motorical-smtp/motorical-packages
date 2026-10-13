@@ -483,3 +483,65 @@ test('a native JSON-RPC notification gets 202 with no body, never an error objec
   assert.equal(res.status, 202);
   assert.equal(res.body, null, 'a notification must get no response body at all');
 });
+
+// MCP authorization step-up: a tools/call refused only because the token lacks
+// the tool's scope is answered 403 + WWW-Authenticate insufficient_scope, so a
+// client can start a scope upgrade instead of reusing the stale grant. The
+// JSON-RPC body still carries the explanation for clients that ignore headers.
+describe('insufficient_scope step-up challenge', () => {
+  const MAIN = '/v1/motorical/mcp';
+  const recipientCall = (extra = {}) => ({
+    jsonrpc: '2.0', id: 7, method: 'tools/call',
+    params: { name: 'motorical_free_recipient_add', arguments: { email: 'a@example.com' }, ...extra },
+  });
+  const mainServer = SERVERS.find((s) => s.key === 'main');
+
+  for (const [label, params] of [
+    ['legacy', {}],
+    ['native', { _meta: { 'io.modelcontextprotocol/clientCapabilities': {} } }],
+  ]) {
+    test(`${label}: missing scope is HTTP 403 with an insufficient_scope Bearer challenge and a readable body`, async () => {
+      const res = await postMcp(MAIN, recipientCall(params));
+      assert.equal(res.status, 403);
+      const challenge = res.headers['www-authenticate'];
+      assert.match(challenge, /^Bearer /);
+      assert.match(challenge, /error="insufficient_scope"/);
+      assert.match(challenge, /scope="manage:recipients"/);
+      assert.ok(challenge.includes(`resource_metadata="https://mcp.motorical.com/.well-known/oauth-protected-resource${mainServer.path}"`)
+        || challenge.includes(`/.well-known/oauth-protected-resource${mainServer.path}"`), challenge);
+      assert.equal(res.body.jsonrpc, '2.0');
+      assert.equal(res.body.id, 7);
+      const text = JSON.stringify(res.body);
+      assert.match(text, /Missing scope: manage:recipients/);
+    });
+  }
+
+  test('a tool whose scope IS granted is not challenged', async () => {
+    const res = await postMcp('/v1/motorical_analytics/mcp', {
+      jsonrpc: '2.0', id: 8, method: 'tools/call',
+      params: { name: 'motorical_get_metrics', arguments: {}, _meta: { 'io.modelcontextprotocol/clientCapabilities': {} } },
+    });
+    assert.notEqual(res.status, 403);
+    assert.equal(res.headers['www-authenticate'], undefined);
+  });
+
+  test('a tool absent from this server is not an insufficient_scope case', async () => {
+    const res = await postMcp('/v1/motorical_analytics/mcp', {
+      jsonrpc: '2.0', id: 9, method: 'tools/call',
+      params: { name: 'motorical_send_email', arguments: {}, _meta: { 'io.modelcontextprotocol/clientCapabilities': {} } },
+    });
+    assert.notEqual(res.status, 403);
+    assert.equal(res.headers['www-authenticate'], undefined);
+  });
+
+  test('non tools/call requests are never challenged', async () => {
+    const res = await postMcp(MAIN, { jsonrpc: '2.0', id: 10, method: 'tools/list', params: { _meta: { 'io.modelcontextprotocol/clientCapabilities': {} } } });
+    assert.notEqual(res.status, 403);
+  });
+
+  test('the 401 path is unchanged', async () => {
+    const res = await postMcpNoAuth(MAIN, recipientCall());
+    assert.equal(res.status, 401);
+    assert.doesNotMatch(res.headers['www-authenticate'] || '', /insufficient_scope/);
+  });
+});
