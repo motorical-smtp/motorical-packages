@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.1] — 2026-10-13
+
+### Changed
+
+- Sandbox recipient refusals now name the `manage:recipients` scope and the re-approval step (remove and re-add the
+  connection when `missing_scope` is returned).
+- `motorical_sandbox_allowlist_request` and `motorical_sandbox_allowlist_confirm` now lead with their OAuth
+  limitation and point at `motorical_free_recipient_add`.
+- A `dryRun` on a sandbox block now reports `sandboxPreview` (recipients a real send would refuse).
+- `motorical_send_email` explains which `from` address to use.
+- `motorical_get_onboarding_state` adds `hints` and `sendFrom` for a sandbox account.
+- `motorical_sandbox_status` adds `allowlistNote`.
+
 ## [1.11.0] — 2026-10-13
 
 ### Added
