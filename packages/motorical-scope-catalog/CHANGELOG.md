@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 2026-10-13
+
+Text only: rewrite the `manage:sandbox` `agentDescription`, which was confusing
+("this scope alone does not make that callable over OAuth"). It now says plainly
+that allowlisting by 6-digit code is dashboard-only and not available over OAuth,
+and that `manage:recipients` is the scope for allowing recipients over OAuth.
+No scope, mapping or behavior change.
+
 ## 0.3.0 — 2026-10-13
 
 Add the `manage:recipients` scope (public scope `recipients.manage`) and map the
