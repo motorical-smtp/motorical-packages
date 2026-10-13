@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.0] — 2026-10-13
+
+### Added
+
+- Three Free-recipient tools: `motorical_free_recipient_add`, `motorical_free_recipient_list` and
+  `motorical_free_recipient_remove`. Hosted (OAuth) server only, behind the new scope `manage:recipients`.
+  Adding a recipient is request-only: the recipient confirms by clicking the link in the emailed message. An
+  authorization granted before this scope existed must be re-approved to include it.
+
+### Changed
+
+- Tool descriptions and server instructions now describe both onboarding paths and the points where a human
+  must act.
+- Sending to a sandbox recipient that is not permitted is now refused with `sandbox_outbound_locked` or
+  `sandbox_recipient_denied` instead of being redirected.
+- `motorical_get_onboarding_state` now returns `path`, `options`, `choose` and `humanRequired`.
+- Clearer errors when a grant covers no Motor Block.
+- Depends on `@motorical/scope-catalog` `^0.3.0`.
+
 ## [1.10.2] — 2026-09-25
 
 ### Changed

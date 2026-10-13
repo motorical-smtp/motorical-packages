@@ -1,7 +1,7 @@
 [
   {
     "name": "motorical_domain_add",
-    "description": "Add a customer domain (POST /api/domains). Returns verification DNS instructions. For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). On 409 (domain already registered), call motorical_domain_list first to check whether it is already on this account before asking the user to resolve the conflict. Requires MOTORICAL_JWT. Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "description": "Add a customer domain (POST /api/domains). Returns verification DNS instructions. For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). On 409 (domain already registered), call motorical_domain_list first to check whether it is already on this account before asking the user to resolve the conflict. A Free account may have one domain; adding another returns free_domain_limit with a nextAction. Requires MOTORICAL_JWT. Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
     "inputKeys": [
       "domain",
       "idempotencyKey",
@@ -61,6 +61,47 @@
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_free_recipient_add",
+    "description": "Ask a person to allow test email from this account. Sends them a confirmation email with a link; THEY must open it and click the button, and this tool never confirms on their behalf. Until they confirm, a sandbox allowlist refuses sends to that address, and so do the non-sandbox Motor Blocks of a Free account (when Free enforcement is on); a paid account is not affected. Their address is then also allowed for the sandbox. A recipient who clicked \"stop\" cannot be re-requested; the response is identical either way. Requires OAuth scope manage:recipients (separate from manage:sandbox; an existing sandbox authorization must be re-approved to include it). Requires OAuth scope: manage:recipients (Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.).",
+    "inputKeys": [
+      "email"
+    ],
+    "annotations": {
+      "title": "Ask a recipient to allow test email",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_free_recipient_list",
+    "description": "List the addresses this account has asked to allow test email, with each status (pending, confirmed or stopped), the recipient limit and current usage. Requires OAuth scope manage:recipients. Requires OAuth scope: manage:recipients (Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.).",
+    "inputKeys": [],
+    "annotations": {
+      "title": "List allowed test recipients",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_free_recipient_remove",
+    "description": "Remove an address from this account's test recipients, by the id returned from motorical_free_recipient_list. Requires OAuth scope manage:recipients. Requires OAuth scope: manage:recipients (Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.).",
+    "inputKeys": [
+      "confirm",
+      "id"
+    ],
+    "annotations": {
+      "title": "Remove a test recipient",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
     }
   },
   {
@@ -257,7 +298,7 @@
   },
   {
     "name": "motorical_get_onboarding_state",
-    "description": "Where this account stands right now: stage, whether it can actually send (ready_to_send), what's blocking it, and the one next tool to call to move forward (GET /api/public/v1/account/state). Account-scoped: no Motor Block needed. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "description": "Where this account stands right now: stage, whether it can actually send (ready_to_send), what's blocking it, and the one next tool to call to move forward (GET /api/public/v1/account/state). Account-scoped: no Motor Block needed. Each blocker carries humanRequired (a person must act) and, where there is one, a nextAction. For an account with no plan and no domain the response also lists two onboarding options, own_domain and sandbox_domain, and a choose rule for picking between them: state the choice and the reason, and the person may override. Confirming recipients by emailed link needs the manage:recipients scope; an existing authorization must be re-approved to include it. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -510,7 +551,7 @@
   },
   {
     "name": "motorical_sandbox_allowlist_confirm",
-    "description": "Confirm a sandbox allowlist recipient using the 6-digit code sent by motorical_sandbox_allowlist_request. On success the address is added to the allowlist and can receive real (non-dryRun) sandbox sends. Requires MOTORICAL_JWT. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.). Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.",
+    "description": "Confirm a sandbox allowlist recipient using the 6-digit code sent by motorical_sandbox_allowlist_request. On success the address is added to the allowlist and can receive real (non-dryRun) sandbox sends. Requires MOTORICAL_JWT. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.). Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.",
     "inputKeys": [
       "code",
       "email"
@@ -525,7 +566,7 @@
   },
   {
     "name": "motorical_sandbox_allowlist_request",
-    "description": "Request to add a new recipient to the developer sandbox outbound allowlist. Sends a 6-digit confirmation code to that address (not the account owner) — call motorical_sandbox_allowlist_confirm with the code the recipient receives. Requires MOTORICAL_JWT. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.). Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.",
+    "description": "Request to add a new recipient to the developer sandbox outbound allowlist. Sends a 6-digit confirmation code to that address (not the account owner) — call motorical_sandbox_allowlist_confirm with the code the recipient receives. Requires MOTORICAL_JWT. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.). Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.",
     "inputKeys": [
       "email"
     ],
@@ -539,7 +580,7 @@
   },
   {
     "name": "motorical_sandbox_convert",
-    "description": "Convert sandbox Motor Block onto a verified customer domain. Requires an active Motorical plan -- if none exists, this call throws with err.data.code === \"subscription_required\" and err.data.upgradeUrl naming where a human can subscribe; retry this same call once they have. If no sandbox exists yet (check motorical_sandbox_status first -- data.stage: \"not_started\"), call motorical_sandbox_provision instead; this endpoint returns 404 \"No developer sandbox to convert\" otherwise. The response always includes activeAuthMethod (the Motor Block's configured auth method -- \"Password\", \"API Key\", \"OAuth 2.0\", or \"mTLS\" -- read-only, changing it is dashboard-only). Conversion is a production identity transition: choose name/type or accept backend defaults; the SMTP username changes, so SMTP clients must be updated, while the existing SMTP password, API keys, and auth method remain unchanged. Over hosted OAuth it also includes credentialsLocation, a link to the dashboard where the customer can view or regenerate the actual credential value -- this tool never returns the raw value itself. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "description": "Convert sandbox Motor Block onto a verified customer domain (the target must be a verified real domain, never a .sandbox domain). A sandbox that already sits on your own verified domain converts onto that same domain, which needs no DNS change. Requires an active Motorical plan -- if none exists, this call throws with err.data.code === \"subscription_required\" and err.data.upgradeUrl naming where a human can subscribe; retry this same call once they have. If no sandbox exists yet (check motorical_sandbox_status first -- data.stage: \"not_started\"), call motorical_sandbox_provision instead; this endpoint returns 404 \"No developer sandbox to convert\" otherwise. The response always includes activeAuthMethod (the Motor Block's configured auth method -- \"Password\", \"API Key\", \"OAuth 2.0\", or \"mTLS\" -- read-only, changing it is dashboard-only). Conversion is a production identity transition: choose name/type or accept backend defaults; the SMTP username changes, so SMTP clients must be updated, while the existing SMTP password, API keys, and auth method remain unchanged. Over hosted OAuth it also includes credentialsLocation, a link to the dashboard where the customer can view or regenerate the actual credential value -- this tool never returns the raw value itself. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.).",
     "inputKeys": [
       "confirm",
       "domainId",
@@ -556,7 +597,7 @@
   },
   {
     "name": "motorical_sandbox_provision",
-    "description": "Provision unpaid developer sandbox (*.sandbox.motorical.com + outbound-locked Motor Block). Over hosted OAuth, this NEVER returns credentials -- the response has credentialsAvailable:false instead. The new Motor Block is added to the live authorization and is immediately usable by explicit id, without refreshing an access token minted before provisioning. Credentials become available via a dashboard link after motorical_sandbox_convert. Only the local @motorical/mcp stdio server (dashboard-JWT auth) still returns mk_live_ once, since it is the customer's own long-running process on their own infrastructure -- securing whatever it returns is the customer's own responsibility on that path. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "description": "Provision the unpaid developer sandbox on a Motorical-owned .sandbox domain (Path 1: instant, no DNS) with an outbound-locked Motor Block. A Free account that adds and fully verifies its own domain (Path 2) gets a sandbox Motor Block on that domain automatically once DKIM and SPF pass, with no provisioning call, when automatic provisioning is enabled; if none appears on its own, call this tool (it creates one on the Motorical-owned domain). Over hosted OAuth, this NEVER returns credentials -- the response has credentialsAvailable:false instead. The new Motor Block is added to the live authorization and is immediately usable by explicit id, without refreshing an access token minted before provisioning. Credentials become available via a dashboard link after motorical_sandbox_convert. Only the local @motorical/mcp stdio server (dashboard-JWT auth) still returns mk_live_ once, since it is the customer's own long-running process on their own infrastructure -- securing whatever it returns is the customer's own responsibility on that path. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.).",
     "inputKeys": [
       "channel",
       "handle"
@@ -571,7 +612,7 @@
   },
   {
     "name": "motorical_sandbox_status",
-    "description": "Get developer sandbox status (domain, Motor Block, outbound lock, allowlist). Check data.stage to determine provisioning state: \"not_started\" (no sandbox yet — call motorical_sandbox_provision), \"sandbox_active\" (sandbox exists, outbound-locked), or \"live\" (converted to production, no lock). allowlist/caps are always present in the response regardless of stage — do not infer provisioning state from their presence. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.).",
+    "description": "Get developer sandbox status (domain, Motor Block, outbound lock, allowlist). Check data.stage to determine provisioning state: \"not_started\" (no sandbox yet — call motorical_sandbox_provision), \"sandbox_active\" (sandbox exists, outbound-locked), or \"live\" (converted to production, no lock). allowlist/caps are always present in the response regardless of stage — do not infer provisioning state from their presence. The allowlist is the EFFECTIVE list: sandbox recipients, link-confirmed recipients, the account address and the test sink, minus any address that clicked stop. domain.sandbox true means the Motorical-owned sandbox domain; domain.sandbox false means your own domain. Requires OAuth scope: manage:sandbox (Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.).",
     "inputKeys": [],
     "annotations": {
       "title": "Get developer sandbox status",
@@ -583,7 +624,7 @@
   },
   {
     "name": "motorical_send_email",
-    "description": "Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. Do not use OAuth access tokens or Bearer tokens here. For developer-sandbox accounts, a non-allowlisted recipient is redirected to the account email rather than rejected — check the response's sandboxRedirect field. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
+    "description": "Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. Do not use OAuth access tokens or Bearer tokens here. For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); it is never redirected, so add the recipient to the allowlist first. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
     "inputKeys": [
       "confirmRealSend",
       "dryRun",

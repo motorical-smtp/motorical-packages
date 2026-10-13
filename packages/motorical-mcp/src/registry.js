@@ -296,8 +296,9 @@ export const TOOLS = [
       'Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). ' +
       'Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. ' +
       'Do not use OAuth access tokens or Bearer tokens here. ' +
-      'For developer-sandbox accounts, a non-allowlisted recipient is redirected to the account ' +
-      'email rather than rejected — check the response\'s sandboxRedirect field.',
+      'For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 ' +
+      'sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); ' +
+      'it is never redirected, so add the recipient to the allowlist first.',
     inputSchema: {
       from: z.string().email().optional().describe('Defaults to MOTORICAL_DEFAULT_FROM'),
       fromName: z
@@ -565,7 +566,10 @@ export const TOOLS = [
       'Check data.stage to determine provisioning state: "not_started" (no sandbox yet — call ' +
       'motorical_sandbox_provision), "sandbox_active" (sandbox exists, outbound-locked), or "live" ' +
       '(converted to production, no lock). allowlist/caps are always present in the response regardless ' +
-      'of stage — do not infer provisioning state from their presence.',
+      'of stage — do not infer provisioning state from their presence. The allowlist is the EFFECTIVE list: ' +
+      'sandbox recipients, link-confirmed recipients, the account address and the test sink, minus any address ' +
+      'that clicked stop. domain.sandbox true means the Motorical-owned sandbox domain; domain.sandbox false ' +
+      'means your own domain.',
     inputSchema: {},
     annotations: { title: 'Get developer sandbox status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async () => client.sandboxStatus(),
@@ -601,7 +605,10 @@ export const TOOLS = [
   {
     name: 'motorical_sandbox_provision',
     description:
-      'Provision unpaid developer sandbox (*.sandbox.motorical.com + outbound-locked Motor Block). ' +
+      'Provision the unpaid developer sandbox on a Motorical-owned .sandbox domain (Path 1: instant, no DNS) with an ' +
+      'outbound-locked Motor Block. A Free account that adds and fully verifies its own domain (Path 2) gets a sandbox ' +
+      'Motor Block on that domain automatically once DKIM and SPF pass, with no provisioning call, when automatic ' +
+      'provisioning is enabled; if none appears on its own, call this tool (it creates one on the Motorical-owned domain). ' +
       'Over hosted OAuth, this NEVER returns credentials -- the response has credentialsAvailable:false ' +
       'instead. The new Motor Block is added to the live authorization and is immediately usable by explicit id, ' +
       'without refreshing an access token minted before provisioning. Credentials become available via a dashboard link after ' +
@@ -619,7 +626,8 @@ export const TOOLS = [
   {
     name: 'motorical_sandbox_convert',
     description:
-      'Convert sandbox Motor Block onto a verified customer domain. Requires an active Motorical ' +
+      'Convert sandbox Motor Block onto a verified customer domain (the target must be a verified real domain, never a .sandbox domain). ' +
+      'A sandbox that already sits on your own verified domain converts onto that same domain, which needs no DNS change. Requires an active Motorical ' +
       'plan -- if none exists, this call throws with err.data.code === "subscription_required" and ' +
       'err.data.upgradeUrl naming where a human can subscribe; retry this same call once they have. ' +
       'If no sandbox exists yet (check motorical_sandbox_status first -- data.stage: "not_started"), call ' +
@@ -645,12 +653,52 @@ export const TOOLS = [
   },
 
   {
+    name: 'motorical_free_recipient_add',
+    description:
+      'Ask a person to allow test email from this account. Sends them a confirmation email with a link; THEY must open it and click the button, ' +
+      'and this tool never confirms on their behalf. Until they confirm, a sandbox allowlist refuses sends to that address, and so do the non-sandbox Motor Blocks of a Free account (when Free enforcement is on); a paid account is not affected. ' +
+      'Their address is then also allowed for the sandbox. A recipient who clicked "stop" cannot be re-requested; the response is identical either way. ' +
+      'Requires OAuth scope manage:recipients (separate from manage:sandbox; an existing sandbox authorization must be re-approved to include it).',
+    inputSchema: { email: z.string().email() },
+    annotations: { title: 'Ask a recipient to allow test email', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    handler: (client) => async (args) => client.freeRecipientAdd(args),
+  },
+
+  {
+    name: 'motorical_free_recipient_list',
+    description:
+      'List the addresses this account has asked to allow test email, with each status (pending, confirmed or stopped), ' +
+      'the recipient limit and current usage. Requires OAuth scope manage:recipients.',
+    inputSchema: {},
+    annotations: { title: 'List allowed test recipients', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async () => client.freeRecipientList(),
+  },
+
+  {
+    name: 'motorical_free_recipient_remove',
+    description:
+      'Remove an address from this account\'s test recipients, by the id returned from motorical_free_recipient_list. ' +
+      'Requires OAuth scope manage:recipients.',
+    inputSchema: {
+      id: z.string().uuid().describe('Recipient id from motorical_free_recipient_list'),
+      confirm: z.boolean().optional().describe('Required: true. Confirms this destructive action.'),
+    },
+    annotations: { title: 'Remove a test recipient', readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    mrtr: {
+      confirmArg: 'confirm',
+      message: (args) => `Remove test recipient ${args.id}? Sends to that address will be refused until it is confirmed again.`,
+    },
+    handler: (client) => async (args) => client.freeRecipientRemove(args),
+  },
+
+  {
     name: 'motorical_domain_add',
     description:
       'Add a customer domain (POST /api/domains). Returns verification DNS instructions. ' +
       'For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). ' +
       'On 409 (domain already registered), call motorical_domain_list first to check whether it is already on ' +
-      'this account before asking the user to resolve the conflict. Requires MOTORICAL_JWT.',
+      'this account before asking the user to resolve the conflict. A Free account may have one domain; adding ' +
+      'another returns free_domain_limit with a nextAction. Requires MOTORICAL_JWT.',
     inputSchema: {
       domain: z.string().min(3),
       verificationMethod: z.enum(['dns', 'email']).optional(),
@@ -896,7 +944,12 @@ export const TOOLS = [
     description:
       'Where this account stands right now: stage, whether it can actually send '
       + '(ready_to_send), what\'s blocking it, and the one next tool to call to move forward '
-      + '(GET /api/public/v1/account/state). Account-scoped: no Motor Block needed.',
+      + '(GET /api/public/v1/account/state). Account-scoped: no Motor Block needed. Each blocker carries '
+      + 'humanRequired (a person must act) and, where there is one, a nextAction. For an account with no plan and '
+      + 'no domain the response also lists two onboarding options, own_domain and sandbox_domain, and a choose rule '
+      + 'for picking between them: state the choice and the reason, and the person may override. '
+      + 'Confirming recipients by emailed link needs the manage:recipients scope; an existing authorization must be '
+      + 're-approved to include it.',
     inputSchema: {
       motorBlockId: z.string().uuid().optional()
         .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
