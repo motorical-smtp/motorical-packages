@@ -55,6 +55,21 @@ test('the add description says it never confirms, names the recipient, and carri
   assert.doesNotMatch(tool.description, /\d/);
 });
 
+test('add, list and send descriptions carry the cold-walk clarifications', () => {
+  const by = (n) => REGISTRY.find((t) => t.name === n).description;
+  assert.match(by('motorical_free_recipient_add'), /data\.recipient/);
+  assert.match(by('motorical_free_recipient_add'), /still click/);
+  assert.match(by('motorical_free_recipient_list'), /non-sandbox Motor Blocks/);
+  assert.match(by('motorical_free_recipient_list'), /motorical_sandbox_status/);
+  assert.match(by('motorical_send_email'), /effective allowlist/);
+  assert.match(by('motorical_send_email'), /motorical_free_recipient_add/);
+  assert.match(by('motorical_send_email'), /taskId.*NOT the message id/);
+  assert.match(by('motorical_sandbox_status'), /not that nothing can be sent/);
+  assert.match(by('motorical_web_handoff'), /if it says expired/);
+  assert.doesNotMatch(by('motorical_free_recipient_add'), /\d/);
+  assert.doesNotMatch(by('motorical_free_recipient_list'), /\d/);
+});
+
 test('remove requires confirmation like the webhook delete does, and add/list do not', async () => {
   const main = SERVERS.find((s) => s.key === 'main');
   let called = false;

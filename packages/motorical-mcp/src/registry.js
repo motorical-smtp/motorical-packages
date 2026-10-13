@@ -299,6 +299,9 @@ export const TOOLS = [
       'For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 ' +
       'sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); ' +
       'it is never redirected, so add the recipient to the allowlist first. ' +
+      'Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with ' +
+      'motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). ' +
+      'To follow a real send, pass the taskId from this response\'s nextAction to motorical_wait_for_outcome; that taskId is NOT the message id. ' +
       'A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). ' +
       'from must be an address at the domain your Motor Block is assigned to, which must be a verified, send-ready domain you own (see motorical_get_onboarding_state sendFrom); any local part works.',
     inputSchema: {
@@ -571,7 +574,7 @@ export const TOOLS = [
       'of stage — do not infer provisioning state from their presence. The allowlist is the EFFECTIVE list: ' +
       'sandbox recipients, link-confirmed recipients, the account address and the test sink, minus any address ' +
       'that clicked stop. domain.sandbox true means the Motorical-owned sandbox domain; domain.sandbox false ' +
-      'means your own domain.',
+      'means your own domain. outboundLocked true means real sends are limited to the allowlist, not that nothing can be sent.',
     inputSchema: {},
     annotations: { title: 'Get developer sandbox status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async () => client.sandboxStatus(),
@@ -662,6 +665,7 @@ export const TOOLS = [
       'Ask a person to allow test email from this account. Sends them a confirmation email with a link; THEY must open it and click the button, ' +
       'and this tool never confirms on their behalf. Until they confirm, a sandbox allowlist refuses sends to that address, and so do the non-sandbox Motor Blocks of a Free account (when Free enforcement is on); a paid account is not affected. ' +
       'Their address is then also allowed for the sandbox. A recipient who clicked "stop" cannot be re-requested; the response is identical either way. ' +
+      'The response includes data.recipient with the address and its status (pending until they click, or confirmed if already confirmed); a person must still click the emailed link. ' +
       'Requires OAuth scope manage:recipients (separate from manage:sandbox; an existing sandbox authorization must be re-approved to include it).',
     inputSchema: { email: z.string().email() },
     annotations: { title: 'Ask a recipient to allow test email', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -672,7 +676,9 @@ export const TOOLS = [
     name: 'motorical_free_recipient_list',
     description:
       'List the addresses this account has asked to allow test email, with each status (pending, confirmed or stopped), ' +
-      'the recipient limit and current usage. Requires OAuth scope manage:recipients.',
+      'the recipient limit and current usage. The hourly, daily and monthly numbers are the Free-plan caps for non-sandbox Motor Blocks ' +
+      '(see limitsNote in the response); a sandbox Motor Block is governed by the sandbox caps shown in motorical_sandbox_status. ' +
+      'Requires OAuth scope manage:recipients.',
     inputSchema: {},
     annotations: { title: 'List allowed test recipients', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async () => client.freeRecipientList(),
@@ -779,7 +785,8 @@ export const TOOLS = [
     name: 'motorical_web_handoff',
     description:
       'Mint a one-time browser handoff URL (POST /api/auth/web-handoff). ' +
-      'Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT.',
+      'Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT. ' +
+      'The link is short-lived (the response has expiresInSeconds): open it right away; if it says expired, ask for a new link or sign in with your password.',
     inputSchema: {
       path: z.string().optional().describe('Optional in-app path after handoff, e.g. /usage')
     },
