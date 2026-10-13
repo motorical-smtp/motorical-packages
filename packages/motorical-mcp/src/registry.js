@@ -298,7 +298,9 @@ export const TOOLS = [
       'Do not use OAuth access tokens or Bearer tokens here. ' +
       'For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 ' +
       'sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); ' +
-      'it is never redirected, so add the recipient to the allowlist first.',
+      'it is never redirected, so add the recipient to the allowlist first. ' +
+      'A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). ' +
+      'from must be an address at the domain your Motor Block is assigned to, which must be a verified, send-ready domain you own (see motorical_get_onboarding_state sendFrom); any local part works.',
     inputSchema: {
       from: z.string().email().optional().describe('Defaults to MOTORICAL_DEFAULT_FROM'),
       fromName: z
@@ -578,6 +580,7 @@ export const TOOLS = [
   {
     name: 'motorical_sandbox_allowlist_request',
     description:
+      'NOT AVAILABLE over hosted OAuth (dashboard session only): use motorical_free_recipient_add instead. ' +
       'Request to add a new recipient to the developer sandbox outbound allowlist. ' +
       'Sends a 6-digit confirmation code to that address (not the account owner) — ' +
       'call motorical_sandbox_allowlist_confirm with the code the recipient receives. Requires MOTORICAL_JWT.',
@@ -591,6 +594,7 @@ export const TOOLS = [
   {
     name: 'motorical_sandbox_allowlist_confirm',
     description:
+      'NOT AVAILABLE over hosted OAuth (dashboard session only): use motorical_free_recipient_add instead. ' +
       'Confirm a sandbox allowlist recipient using the 6-digit code sent by ' +
       'motorical_sandbox_allowlist_request. On success the address is added to the ' +
       'allowlist and can receive real (non-dryRun) sandbox sends. Requires MOTORICAL_JWT.',
