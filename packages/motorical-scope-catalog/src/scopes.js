@@ -50,7 +50,7 @@ const SCOPES = {
     resource: 'sandbox',
     level: 'manage',
     publicScopes: ['sandbox.manage'],
-    agentDescription: 'Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.',
+    agentDescription: 'Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code is dashboard-only and not available over OAuth; to allow recipients over OAuth use the manage:recipients scope.',
     customerAction: 'Manage your developer sandbox',
   },
   'manage:recipients': {
