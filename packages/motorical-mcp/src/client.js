@@ -185,8 +185,8 @@ export class MotoricalClient {
     const id = motorBlockId || this.config.motorBlockId;
     if (!id) {
       throw new Error(
-        'motorBlockId is required: your Motorical authorization covers multiple Motor Blocks. '
-        + 'Pass motorBlockId, or set MOTORICAL_MOTOR_BLOCK_ID.'
+        'motorBlockId is required: your Motorical authorization names no single Motor Block (it covers several, or none yet). '
+        + 'Pass motorBlockId, or set MOTORICAL_MOTOR_BLOCK_ID; if it covers none yet, reconnect (re-authorize) this client.'
       );
     }
     const sep = path.includes('?') ? '&' : '?';
@@ -435,6 +435,30 @@ export class MotoricalClient {
     const id = motorBlockId || this.config.motorBlockId;
     if (!id) throw new Error('motorBlockId is required');
     return String(id);
+  }
+
+  // Free-account recipients. Hosted/OAuth uses the Public API route; the local (dashboard-JWT) client uses the
+  // dashboard route, which has the same request/response shape. Neither can confirm: that is the recipient's click.
+  async freeRecipientAdd({ email } = {}) {
+    if (this._delegated) {
+      return this.request('POST', '/api/public/v1/account/free-recipients', { body: { email } });
+    }
+    return this.request('POST', '/api/free/recipients', { bearer: this.requireDashboardJwt(), body: { email } });
+  }
+
+  async freeRecipientList() {
+    if (this._delegated) {
+      return this.request('GET', '/api/public/v1/account/free-recipients');
+    }
+    return this.request('GET', '/api/free/recipients', { bearer: this.requireDashboardJwt() });
+  }
+
+  async freeRecipientRemove({ id } = {}) {
+    if (!id) throw new Error('id is required');
+    if (this._delegated) {
+      return this.request('DELETE', `/api/public/v1/account/free-recipients/${encodeURIComponent(id)}`);
+    }
+    return this.request('DELETE', `/api/free/recipients/${encodeURIComponent(id)}`, { bearer: this.requireDashboardJwt() });
   }
 
   async motorBlockList() {

@@ -95,6 +95,9 @@ export const ACCOUNT_SCOPED_TOOLS = new Set([
   'motorical_sandbox_status',
   'motorical_sandbox_provision',
   'motorical_sandbox_convert',
+  'motorical_free_recipient_add',
+  'motorical_free_recipient_list',
+  'motorical_free_recipient_remove',
   'motorical_motor_block_list',
   'motorical_motor_block_create',
   'motorical_motor_block_delete_status',
@@ -163,6 +166,11 @@ export const TOOL_ROUTES = {
   motorical_sandbox_convert: { method: 'POST', path: '/api/public/v1/account/sandbox/convert' },
   motorical_sandbox_allowlist_request: null,
   motorical_sandbox_allowlist_confirm: null,
+
+  // Free-account recipient confirmation: request / list / remove. Never confirm or stop (that is the recipient's click).
+  motorical_free_recipient_add: { method: 'POST', path: '/api/public/v1/account/free-recipients' },
+  motorical_free_recipient_list: { method: 'GET', path: '/api/public/v1/account/free-recipients' },
+  motorical_free_recipient_remove: { method: 'DELETE', path: '/api/public/v1/account/free-recipients/{id}' },
 
   motorical_motor_block_list: { method: 'GET', path: '/api/public/v1/account/motor-blocks' },
   motorical_motor_block_create: { method: 'POST', path: '/api/public/v1/account/motor-blocks' },

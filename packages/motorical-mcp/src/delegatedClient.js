@@ -51,6 +51,9 @@ export const TOOL_FOR_METHOD = {
   sandboxStatus: 'motorical_sandbox_status',
   sandboxProvision: 'motorical_sandbox_provision',
   sandboxConvert: 'motorical_sandbox_convert',
+  freeRecipientAdd: 'motorical_free_recipient_add',
+  freeRecipientList: 'motorical_free_recipient_list',
+  freeRecipientRemove: 'motorical_free_recipient_remove',
   motorBlockList: 'motorical_motor_block_list',
   motorBlockCreate: 'motorical_motor_block_create',
   motorBlockRename: 'motorical_motor_block_rename',
@@ -133,6 +136,11 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl }) {
   function resolveBlock(explicit) {
     const id = explicit || (blocks.length === 1 ? blocks[0] : null);
     if (!id) {
+      if (blocks.length === 0) {
+        throw new Error(
+          'This authorization covers no Motor Blocks yet. Reconnect (re-authorize) this client to grant access to your Motor Blocks.'
+        );
+      }
       throw new Error(
         'motorBlockId is required: this authorization covers multiple Motor Blocks'
       );

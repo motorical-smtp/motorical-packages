@@ -78,6 +78,9 @@ test('the account-scoped set is exactly the account-wide operations', () => {
     'motorical_domain_check_dns',
     'motorical_domain_list',
     'motorical_domain_verify',
+    'motorical_free_recipient_add',
+    'motorical_free_recipient_list',
+    'motorical_free_recipient_remove',
     'motorical_get_account_rate_limits',
     'motorical_get_onboarding_state',
     'motorical_list_motor_blocks',
@@ -148,5 +151,21 @@ test('the webhook tools live on their own server, not analytics or domains', () 
   for (const t of expected) {
     assert.ok(!analytics.tools.includes(t), `${t} must not be on analytics`);
     assert.ok(!domains.tools.includes(t), `${t} must not be on domains`);
+  }
+});
+
+test('the free-recipient tools are account-scoped, need only manage:recipients, and live on main and sandbox only', () => {
+  const names = ['motorical_free_recipient_add', 'motorical_free_recipient_list', 'motorical_free_recipient_remove'];
+  for (const n of names) {
+    assert.ok(ACCOUNT_SCOPED_TOOLS.has(n), `${n} must be account-scoped`);
+    assert.deepEqual(TOOL_SCOPES[n], ['manage:recipients']);
+    assert.ok(TOOL_ROUTES[n] && TOOL_ROUTES[n].path.startsWith('/api/public/v1/account/free-recipients'));
+    for (const s of SERVERS) {
+      const has = s.tools.includes(n);
+      assert.equal(has, s.key === 'main' || s.key === 'sandbox', `${n} on ${s.key}`);
+    }
+  }
+  for (const s of SERVERS) {
+    assert.equal(s.scopes.includes('manage:recipients'), s.key === 'main' || s.key === 'sandbox', `scope on ${s.key}`);
   }
 });

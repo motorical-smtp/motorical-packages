@@ -8,7 +8,7 @@ Agents can **execute** Motorical APIs (not only read docs): dry-run / send email
 
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
-## Tools (v1.10.2)
+## Tools (v1.11.0)
 
 | Tool | Auth | Purpose |
 |------|------|---------|
@@ -19,7 +19,7 @@ A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per
 | `motorical_get_message` | bearer | Message by UUID |
 | `motorical_get_message_events` | bearer | Delivery lifecycle events |
 | `motorical_sandbox_status` | `MOTORICAL_JWT` | Developer sandbox status |
-| `motorical_sandbox_provision` | `MOTORICAL_JWT` | Provision `*.sandbox.motorical.com` |
+| `motorical_sandbox_provision` | `MOTORICAL_JWT` | Provision the sandbox on a Motorical-owned `.sandbox` domain (a Free account with its own fully verified domain gets one on it automatically when automatic provisioning is enabled) |
 | `motorical_sandbox_convert` | `MOTORICAL_JWT` | Convert sandbox → verified domain |
 | `motorical_motor_block_list` | dashboard JWT / OAuth | List manageable production blocks |
 | `motorical_motor_block_create` | dashboard JWT / OAuth | Create a transactional or general-purpose block |

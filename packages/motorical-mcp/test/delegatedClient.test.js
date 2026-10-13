@@ -51,6 +51,19 @@ test('a tool outside this server is refused before any upstream call', async () 
   await assert.rejects(() => c.domainAdd({ domain: 'x.com' }), /not available on this server/);
 });
 
+test('0, 1 and 2 covered blocks: only 2+ says "covers multiple"; 0 says reconnect', async () => {
+  const send = (c) => c.sendEmail({ from: 'a@b.com', to: 'c@d.com', subject: 's', text: 't' });
+  const none = client({ claims: { ...claims, motorBlockIds: [] } });
+  none.request = async () => ({});
+  await assert.rejects(() => send(none), (e) => /covers no Motor Blocks yet/.test(e.message) && /Reconnect/.test(e.message) && !/multiple/.test(e.message));
+  const one = client({ claims: { ...claims, motorBlockIds: ['mb-1'] } });
+  one.request = async () => ({});
+  await send(one);
+  const two = client({ claims: { ...claims, motorBlockIds: ['mb-1', 'mb-2'] } });
+  two.request = async () => ({});
+  await assert.rejects(() => send(two), /covers multiple Motor Blocks/);
+});
+
 test('a multi-block grant with no selection is an explicit error, not a guess', async () => {
   const c = client({ claims: { ...claims, motorBlockIds: ['mb-1', 'mb-2'] } });
   c.request = async () => ({});
