@@ -10,7 +10,7 @@ import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMotoricalMcpServer, PACKAGE_VERSION } from './server.js';
 import { SERVERS, byPath, MCP_HOST } from './servers.js';
-import { resourceMetadataUrl } from './resourceAuth.js';
+import { resourceMetadataUrl, assertToolAllowed } from './resourceAuth.js';
 import { detectRevision } from './native/revision.js';
 import { dispatchNative } from './native/dispatch.js';
 import { createSignupRateLimiter } from './signupRateLimit.js';
@@ -187,6 +187,38 @@ export function createHttpApp({ verifier, signer, clientFactory }) {
         if (typeof method === 'string' && SAFE_HEADER_VALUE.test(method)) res.set('Mcp-Method', method);
         const toolName = req.body.params?.name;
         if (typeof toolName === 'string' && SAFE_HEADER_VALUE.test(toolName)) res.set('Mcp-Name', toolName);
+      }
+
+      // MCP authorization step-up. A tools/call that is refused ONLY because the
+      // token lacks the tool's scope gets HTTP 403 plus a WWW-Authenticate
+      // `insufficient_scope` challenge (built by resourceAuth's own
+      // bearerChallenge, the same builder as the 401 path), so a client can
+      // start a scope upgrade instead of silently reusing a grant that
+      // predates the scope. The JSON-RPC body keeps the same explanation the
+      // in-handler refusal produces, for clients that ignore the header.
+      // Nothing else is challenged: unknown tools, tool_not_available, other
+      // methods and batches fall through unchanged, and the 401 path above is
+      // not touched.
+      const body = req.body;
+      if (claims && body && typeof body === 'object' && !Array.isArray(body)
+          && body.method === 'tools/call' && typeof body.params?.name === 'string'
+          && srv.tools.includes(body.params.name)) {
+        try {
+          assertToolAllowed(srv, body.params.name, claims.scopes);
+        } catch (err) {
+          if (err.code === 'insufficient_scope') {
+            if (err.challenge) res.set('WWW-Authenticate', err.challenge);
+            const payload = { error: err.message, status: err.status, details: null };
+            const result = {
+              ...(detectRevision(body) === 'native' ? { resultType: 'complete' } : {}),
+              content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
+              structuredContent: payload,
+              isError: true,
+            };
+            return res.status(403).json({ jsonrpc: '2.0', id: body.id ?? null, result });
+          }
+          // Any other refusal keeps its existing handling downstream.
+        }
       }
 
       // The fork. Tie-break is legacy (see native/revision.js) -- a native

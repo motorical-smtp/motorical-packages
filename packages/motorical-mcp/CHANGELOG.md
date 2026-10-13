@@ -2,6 +2,43 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.3] — 2026-10-13
+
+### Changed
+
+- The agent hub, `motorical_signup_handoff` and the `signup` server instructions now say who the `signup` server is for:
+  apps that implement an OAuth client (hosts, embedded agent apps), which can supply the client id, registered redirect
+  URI, PKCE challenge and resource it needs. A person using Claude Code, Claude Desktop or another chat client with no
+  account connects the main `motorical` server and authenticates: the browser opens the sign-in page, they create the
+  account there, set up MFA (required for the API and OAuth connection), then authenticate again to reach consent. The
+  hub marks which route is for which persona, and `ai.md`, `ai-mcp.md`, `ai-mcp-hosted.md`, `llms-full.txt` and the
+  sandbox onboarding journey follow.
+- The `manage:sandbox` scope text (via `@motorical/scope-catalog` 0.3.1) now says plainly that allowlisting by 6-digit
+  code is dashboard-only and not available over OAuth, and points at `manage:recipients`.
+- Dependency security fixes from `npm audit fix` (semver-compatible, `package.json` ranges unchanged apart from the
+  catalogue pin): `proxy-addr`, `@modelcontextprotocol/sdk`, `fast-uri`, `hono`, `ip-address`, `qs` and friends.
+  `npm audit --audit-level=high` reports 0.
+
+### Added
+
+- The hosted (native) path now advertises `resources` on every server and serves the public docs resources
+  (`motorical://docs/llms.txt`, `llms-full.txt`, `openapi.json`, `agents-hub`, `agents-playbook`) on every server,
+  matching the legacy path and the hub pointer every server's instructions carry. The account-state resources and
+  templates stay analytics-only. `llms-full.txt` is new as a resource on both paths.
+- Insufficient-scope step-up: a `tools/call` refused only because the token lacks the tool's scope now answers HTTP 403
+  with `WWW-Authenticate: Bearer error="insufficient_scope", scope="...", resource_metadata="..."`, so a client can
+  request the missing scope instead of reusing a grant that predates it. The JSON-RPC body keeps the explanation.
+- `motorical_get_onboarding_state` for an account whose only domain is a Motorical-owned sandbox domain: stage
+  `sandbox` (ready to send per account capacity), no false domain blocker, and an additive `later_steps` list (add a
+  domain, subscribe) for converting later.
+
+### Fixed
+
+- A sandbox-domain-only account no longer reads `domain_pending_verification` with a blocker to add a domain.
+- The `signup` server was routed to by the hub for chat agents that cannot supply its OAuth client values.
+- `resources/read` of `motorical://docs/agents-hub` (told to every agent by the server instructions) failed with
+  -32602 on every hosted server except analytics.
+
 ## [1.11.2] — 2026-10-13
 
 ### Changed

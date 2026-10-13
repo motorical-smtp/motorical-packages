@@ -26,6 +26,63 @@ export const RESOURCES = [
   },
 ];
 
+// Static, PUBLIC documentation resources (docs.motorical.com, no credentials
+// involved). Unlike RESOURCES / RESOURCE_TEMPLATES below -- account data,
+// analytics-server-only -- these are served on EVERY server on both the legacy
+// and the native path, because instructions.js tells agents on every server to
+// read motorical://docs/agents-hub. `docsPath` is the docs-site path fetched
+// live through client.fetchDocs.
+function docsResource({ uri, name, description, mimeType, docsPath }) {
+  return {
+    uri, name, description, mimeType, docsPath,
+    handler: (client) => async () => ({
+      contents: [{ uri, mimeType, text: await client.fetchDocs(docsPath) }],
+    }),
+  };
+}
+
+export const DOC_RESOURCES = [
+  docsResource({
+    uri: 'motorical://docs/llms.txt',
+    name: 'Motorical llms.txt',
+    description: 'Motorical llms.txt — transactional email API discovery index for agents',
+    mimeType: 'text/plain',
+    docsPath: '/llms.txt',
+  }),
+  docsResource({
+    uri: 'motorical://docs/llms-full.txt',
+    name: 'Motorical llms-full.txt',
+    description: 'Motorical llms-full.txt — the full documentation text for agents',
+    mimeType: 'text/plain',
+    docsPath: '/llms-full.txt',
+  }),
+  docsResource({
+    uri: 'motorical://docs/openapi.json',
+    name: 'Motorical OpenAPI',
+    description: 'Motorical OpenAPI snapshot from docs.motorical.com',
+    mimeType: 'application/json',
+    docsPath: '/openapi.json',
+  }),
+  docsResource({
+    uri: 'motorical://docs/agents-hub',
+    name: 'Motorical Agent Hub',
+    description: 'Motorical Agent Hub — route chooser, rulebook, and journeys, from docs.motorical.com/agents',
+    mimeType: 'text/markdown',
+    docsPath: '/agents.md',
+  }),
+  docsResource({
+    uri: 'motorical://docs/agents-playbook',
+    name: 'Motorical Agent Playbook',
+    description: 'Machine-readable twin of the Agent Hub: journeys, scopes, human-required flags, stop conditions',
+    mimeType: 'application/json',
+    docsPath: '/agents.json',
+  }),
+];
+
+export function docResourceByUri(uri) {
+  return DOC_RESOURCES.find((r) => r.uri === uri) || null;
+}
+
 export const RESOURCE_TEMPLATES = [
   {
     uriTemplate: 'motorical://domain/{domain}',

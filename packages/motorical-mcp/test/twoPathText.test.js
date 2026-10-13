@@ -86,3 +86,12 @@ test('free_recipient_add qualifies where an unconfirmed recipient is refused', (
   assert.match(d, /sandbox allowlist/);
   assert.match(d, /Free account/);
 });
+
+test('signup server instructions and tool description route chat agents to the main server', () => {
+  for (const text of [instructionsFor('signup'), desc('motorical_signup_handoff')]) {
+    assert.match(text, /IMPLEMENT an OAuth client|IMPLEMENT AN OAUTH CLIENT/);
+    assert.match(text, /Claude Code, Claude Desktop/);
+    assert.match(text, /connect the main motorical server/);
+    assert.match(text, /MFA/);
+  }
+});

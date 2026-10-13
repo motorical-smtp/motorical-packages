@@ -150,11 +150,9 @@ describe('advertised capabilities match what the native dispatcher answers', () 
   });
 });
 
-test('analytics server advertises resources; a server this resource is not scoped to does not', () => {
-  const analyticsResult = buildDiscoverResult({ server: analytics, version: '1.5.0' });
-  assert.ok(analyticsResult.capabilities.resources, 'analytics must advertise resources');
-
-  const domains = SERVERS.find((s) => s.key === 'domains');
-  const domainsResult = buildDiscoverResult({ server: domains, version: '1.5.0' });
-  assert.equal(domainsResult.capabilities.resources, undefined);
+test('every server advertises resources, because docs resources are served on all of them', () => {
+  for (const server of SERVERS) {
+    const r = buildDiscoverResult({ server, version: '1.5.0' });
+    assert.ok(r.capabilities.resources, `${server.key} must advertise resources`);
+  }
 });
