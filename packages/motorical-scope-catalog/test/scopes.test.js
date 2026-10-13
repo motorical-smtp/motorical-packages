@@ -3,9 +3,9 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { SCOPES, listGrantableScopes } = require('../src/scopes');
 
-test('there are exactly the eight scopes the product currently grants', () => {
+test('there are exactly the nine scopes the product currently grants', () => {
   assert.deepEqual(Object.keys(SCOPES).sort(), [
-    'manage:domains', 'manage:motor-blocks', 'manage:sandbox', 'manage:webhooks',
+    'manage:domains', 'manage:motor-blocks', 'manage:recipients', 'manage:sandbox', 'manage:webhooks',
     'read:analytics', 'read:domains', 'read:webhooks', 'send:transactional',
   ]);
 });
