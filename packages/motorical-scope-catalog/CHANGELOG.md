@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — 2026-10-13
+
+Add the `manage:recipients` scope (public scope `recipients.manage`) and map the
+three free-recipient tools (`motorical_free_recipient_add`, `_list`, `_remove`)
+in `TOOL_SCOPES`. Consumers must require `^0.3.0`: with 0.2.0 the backend drops
+the scope from grants and `@motorical/mcp` fails to load.
+
 ## 0.2.0 — 2026-09-24
 
 Add the `manage:motor-blocks` scope, the dedicated

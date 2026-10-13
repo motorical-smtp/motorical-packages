@@ -54,6 +54,9 @@ const SANDBOX_TOOLS = [
   'motorical_sandbox_convert',
   'motorical_sandbox_allowlist_request',
   'motorical_sandbox_allowlist_confirm',
+  'motorical_free_recipient_add',
+  'motorical_free_recipient_list',
+  'motorical_free_recipient_remove',
 ];
 
 const WEBHOOK_TOOLS = [
@@ -133,6 +136,9 @@ const TOOL_SCOPES = {
   motorical_sandbox_convert: ['manage:sandbox'],
   motorical_sandbox_allowlist_request: ['manage:sandbox'],
   motorical_sandbox_allowlist_confirm: ['manage:sandbox'],
+  motorical_free_recipient_add: ['manage:recipients'],
+  motorical_free_recipient_list: ['manage:recipients'],
+  motorical_free_recipient_remove: ['manage:recipients'],
   motorical_webhook_list: ['read:webhooks'],
   motorical_webhook_create: ['manage:webhooks'],
   motorical_webhook_update: ['manage:webhooks'],

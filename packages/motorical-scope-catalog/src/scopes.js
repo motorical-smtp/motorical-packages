@@ -50,8 +50,15 @@ const SCOPES = {
     resource: 'sandbox',
     level: 'manage',
     publicScopes: ['sandbox.manage'],
-    agentDescription: 'Check, provision, and convert the developer sandbox. Sandbox allowlist requests/confirmations additionally require a dashboard session — this scope alone does not make them callable over OAuth.',
+    agentDescription: 'Check, provision, and convert the developer sandbox. Allowlisting by 6-digit code additionally requires a dashboard session, so this scope alone does not make that callable over OAuth; recipients confirm by emailed link under manage:recipients instead.',
     customerAction: 'Manage your developer sandbox',
+  },
+  'manage:recipients': {
+    resource: 'recipients',
+    level: 'manage',
+    publicScopes: ['recipients.manage'],
+    agentDescription: 'Request permission to send test email to an address you name, and see which addresses have confirmed or stopped. The recipient confirms by clicking an emailed link; an agent can never confirm on their behalf.',
+    customerAction: 'Ask recipients to allow your test emails, and see who has confirmed',
   },
   'manage:webhooks': {
     resource: 'webhooks',
