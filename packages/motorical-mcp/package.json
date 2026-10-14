@@ -50,11 +50,11 @@
   },
   "homepage": "https://docs.motorical.com/ai-mcp",
   "bugs": {
-    "url": "https://github.com/motorical-smtp/motorical-backend/issues"
+    "url": "https://github.com/motorical-smtp/motorical-packages/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/motorical-smtp/motorical-backend.git",
+    "url": "git+https://github.com/motorical-smtp/motorical-packages.git",
     "directory": "packages/motorical-mcp"
   },
   "devDependencies": {
