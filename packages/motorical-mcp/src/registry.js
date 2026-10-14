@@ -13,7 +13,8 @@
 import { z } from 'zod';
 import * as taskStore from './native/taskStore.js';
 import { resolveTask } from './native/taskResolver.js';
-import { TOOL_SCOPES, SCOPES } from '@motorical/scope-catalog';
+import { TOOL_SCOPES, SCOPES, expandMcpImplied } from '@motorical/scope-catalog';
+import { SERVERS, MAIN_INITIAL_SCOPES } from './servers.js';
 
 const blockSelector = z.string().uuid().optional()
   .describe('Required when the authorization covers more than one Motor Block');
@@ -304,7 +305,7 @@ export const TOOLS = [
       'A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and ' +
       'nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. ' +
       'A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). ' +
-      'from must be an address at the domain your Motor Block is assigned to, which must be a verified, send-ready domain you own (see motorical_get_onboarding_state sendFrom); any local part works.',
+      'from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain that motorical_sandbox_provision created (see motorical_get_onboarding_state sendFrom); any local part works.',
     inputSchema: {
       from: z.string().email().optional().describe('Defaults to MOTORICAL_DEFAULT_FROM'),
       fromName: z
@@ -1139,6 +1140,17 @@ for (const tool of TOOLS) {
   let suffix = ` Requires OAuth scope: ${scopeText}.`;
   if (AUTH_METHOD_LIMITED.has(tool.name)) {
     suffix += ' Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.';
+  }
+  // Not every client can step up. Codex/ChatGPT surface a 403 insufficient_scope as an opaque
+  // "Insufficient scope" transport error and never ask for the missing permission, so the model has
+  // no way to learn what to do. The tool list is the one thing it does read, so say it there.
+  const firstSignIn = expandMcpImplied(MAIN_INITIAL_SCOPES);
+  const outsideFirstSignIn = scopes.some((s) => !firstSignIn.includes(s));
+  const dedicatedServer = outsideFirstSignIn
+    && SERVERS.filter((x) => x.key !== 'main' && x.tools.includes(tool.name)).sort((a, b) => a.scopes.length - b.scopes.length)[0];
+  if (outsideFirstSignIn) {
+    suffix += ' This permission is not part of the first sign-in. If the call fails with "Insufficient scope", do not retry:'
+      + (dedicatedServer ? ` tell the person to also connect the dedicated server ${dedicatedServer.canonicalUri} (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.` : ' tell the person to reconnect this connector and approve the extra permission.');
   }
   tool.description += suffix;
 }

@@ -8,7 +8,7 @@ Agents can **execute** Motorical APIs (not only read docs): dry-run / send email
 
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
-## Tools (v1.11.6)
+## Tools (v1.11.7)
 
 | Tool | Auth | Purpose |
 |------|------|---------|

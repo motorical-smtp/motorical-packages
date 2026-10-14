@@ -112,3 +112,18 @@ test('every server tells the agent to present links as short markdown links', ()
 test('sandbox_status says outboundLocked is null when no sandbox exists', () => {
   assert.match(desc('motorical_sandbox_status'), /outboundLocked is null when no sandbox exists/);
 });
+
+test('tools outside the first sign-in tell the model what to do on "Insufficient scope", naming the dedicated server', () => {
+  const w = desc('motorical_webhook_list');
+  assert.match(w, /Insufficient scope.*do not retry/);
+  assert.match(w, /motorical_webhooks\/mcp/);
+  assert.match(desc('motorical_motor_block_create'), /motorical_motor_blocks\/mcp/);
+  // inside the first sign-in (including read implied by manage): no note
+  for (const n of ['motorical_send_email', 'motorical_domain_list', 'motorical_sandbox_status', 'motorical_free_recipient_add']) {
+    assert.doesNotMatch(desc(n), /Insufficient scope/);
+  }
+});
+
+test('send description allows the sandbox sender domain', () => {
+  assert.match(desc('motorical_send_email'), /Motorical-owned sandbox domain/);
+});

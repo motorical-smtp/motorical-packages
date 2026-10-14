@@ -415,7 +415,7 @@
   },
   {
     "name": "motorical_motor_block_assign_domain",
-    "description": "Assign a different verified production domain to a Motor Block. The block is reactivated on the new domain; verify sendReady before sending. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Assign a different verified production domain to a Motor Block. The block is reactivated on the new domain; verify sendReady before sending. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "confirm",
       "domainId",
@@ -431,7 +431,7 @@
   },
   {
     "name": "motorical_motor_block_change_type",
-    "description": "Change a production Motor Block between transactional and general_purpose. This changes the intended traffic classification, not credentials. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Change a production Motor Block between transactional and general_purpose. This changes the intended traffic classification, not credentials. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "confirm",
       "motorBlockId",
@@ -447,7 +447,7 @@
   },
   {
     "name": "motorical_motor_block_create",
-    "description": "Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. A UUID-v4 idempotencyKey makes retries return the original result. The domainId must be a verified, non-sandbox domain the account owns; this server cannot list or add domains, so get it from motorical_domain_list on the Domains server (add and verify one first with motorical_domain_add / motorical_domain_verify if the account has none). Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. A UUID-v4 idempotencyKey makes retries return the original result. The domainId must be a verified, non-sandbox domain the account owns; this server cannot list or add domains, so get it from motorical_domain_list on the Domains server (add and verify one first with motorical_domain_add / motorical_domain_verify if the account has none). Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "description",
       "domainId",
@@ -465,7 +465,7 @@
   },
   {
     "name": "motorical_motor_block_deactivate",
-    "description": "Deactivate (pause) a production Motor Block. This is reversible and does not delete history or credentials; sending stops until reactivated. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Deactivate (pause) a production Motor Block. This is reversible and does not delete history or credentials; sending stops until reactivated. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "confirm",
       "motorBlockId"
@@ -480,7 +480,7 @@
   },
   {
     "name": "motorical_motor_block_delete",
-    "description": "Permanently delete an inactive Motor Block asynchronously. This is irrecoverable. Set deleteHistory explicitly; then poll the returned job with motorical_motor_block_delete_status. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Permanently delete an inactive Motor Block asynchronously. This is irrecoverable. Set deleteHistory explicitly; then poll the returned job with motorical_motor_block_delete_status. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "confirm",
       "deleteHistory",
@@ -496,7 +496,7 @@
   },
   {
     "name": "motorical_motor_block_delete_status",
-    "description": "Read the current state and final report for an asynchronous permanent Motor Block deletion job. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Read the current state and final report for an asynchronous permanent Motor Block deletion job. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "jobId"
     ],
@@ -510,7 +510,7 @@
   },
   {
     "name": "motorical_motor_block_list",
-    "description": "List ordinary production Motor Blocks (isolated sending streams) this account can manage. Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "List ordinary production Motor Blocks (isolated sending streams) this account can manage. Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [],
     "annotations": {
       "title": "List production Motor Blocks",
@@ -522,7 +522,7 @@
   },
   {
     "name": "motorical_motor_block_reactivate",
-    "description": "Reactivate a previously deactivated production Motor Block. A verified production domain is required. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Reactivate a previously deactivated production Motor Block. A verified production domain is required. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -536,7 +536,7 @@
   },
   {
     "name": "motorical_motor_block_rename",
-    "description": "Rename a production Motor Block for display and organization. This never changes its SMTP username, password, API keys, or auth method. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.).",
+    "description": "Rename a production Motor Block for display and organization. This never changes its SMTP username, password, API keys, or auth method. Requires OAuth scope: manage:motor-blocks (List and manage the ordinary lifecycle of production Motor Blocks: create, rename, change type, assign domain, deactivate, reactivate, and delete. Includes no credential values and cannot change the active auth method.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_motor_blocks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "motorBlockId",
       "name"
@@ -624,7 +624,7 @@
   },
   {
     "name": "motorical_send_email",
-    "description": "Transactional email: send or validate via POST /v1/send. Over the hosted OAuth server your grant authorizes the send, so no key is needed and you never see one; the local stdio server instead needs MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); it is never redirected, so add the recipient to the allowlist first. Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). from must be an address at the domain your Motor Block is assigned to, which must be a verified, send-ready domain you own (see motorical_get_onboarding_state sendFrom); any local part works. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
+    "description": "Transactional email: send or validate via POST /v1/send. Over the hosted OAuth server your grant authorizes the send, so no key is needed and you never see one; the local stdio server instead needs MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); it is never redirected, so add the recipient to the allowlist first. Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain that motorical_sandbox_provision created (see motorical_get_onboarding_state sendFrom); any local part works. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
     "inputKeys": [
       "confirmRealSend",
       "dryRun",
@@ -676,7 +676,7 @@
   },
   {
     "name": "motorical_webhook_create",
-    "description": "Register a new webhook endpoint on one Motor Block (POST /api/public/v1/motor-blocks/{id}/webhooks). The response includes the full signing secret exactly once — store it immediately, it is only masked on every later read. Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "description": "Register a new webhook endpoint on one Motor Block (POST /api/public/v1/motor-blocks/{id}/webhooks). The response includes the full signing secret exactly once — store it immediately, it is only masked on every later read. Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_webhooks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "events",
       "idempotencyKey",
@@ -693,7 +693,7 @@
   },
   {
     "name": "motorical_webhook_delete",
-    "description": "Delete a webhook endpoint (DELETE /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "description": "Delete a webhook endpoint (DELETE /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_webhooks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "confirm",
       "motorBlockId",
@@ -709,7 +709,7 @@
   },
   {
     "name": "motorical_webhook_get_deliveries",
-    "description": "Recent delivery attempts for one webhook endpoint (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/deliveries). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.).",
+    "description": "Recent delivery attempts for one webhook endpoint (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/deliveries). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_webhooks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "limit",
       "motorBlockId",
@@ -725,7 +725,7 @@
   },
   {
     "name": "motorical_webhook_get_stats",
-    "description": "Delivery success/failure counts and average latency for one webhook endpoint over a time window (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/stats). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.).",
+    "description": "Delivery success/failure counts and average latency for one webhook endpoint over a time window (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/stats). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_webhooks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "hours",
       "motorBlockId",
@@ -741,7 +741,7 @@
   },
   {
     "name": "motorical_webhook_list",
-    "description": "List webhook endpoints registered on one Motor Block (GET /api/public/v1/motor-blocks/{id}/webhooks). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.).",
+    "description": "List webhook endpoints registered on one Motor Block (GET /api/public/v1/motor-blocks/{id}/webhooks). Requires OAuth scope: read:webhooks (List webhook endpoints and read their delivery history and stats, without creating, updating, deleting, or testing any.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_webhooks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -755,7 +755,7 @@
   },
   {
     "name": "motorical_webhook_test",
-    "description": "Send a synthetic test delivery to a webhook endpoint (POST /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/test). Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "description": "Send a synthetic test delivery to a webhook endpoint (POST /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/test). Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_webhooks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "motorBlockId",
       "webhookId"
@@ -770,7 +770,7 @@
   },
   {
     "name": "motorical_webhook_update",
-    "description": "Update a webhook endpoint's url, events, or enabled state (PUT /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Only the fields you pass are changed. Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.).",
+    "description": "Update a webhook endpoint's url, events, or enabled state (PUT /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Only the fields you pass are changed. Requires OAuth scope: manage:webhooks (Create, update, delete, and test webhook endpoints on the caller's Motor Block(s). Includes everything read:webhooks grants.). This permission is not part of the first sign-in. If the call fails with \"Insufficient scope\", do not retry: tell the person to also connect the dedicated server https://mcp.motorical.com/v1/motorical_webhooks/mcp (its consent asks for only this permission), or to reconnect this connector and approve the extra permission.",
     "inputKeys": [
       "enabled",
       "events",
