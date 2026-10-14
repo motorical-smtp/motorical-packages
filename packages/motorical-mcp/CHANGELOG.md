@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.7] — 2026-10-14
+
+### Changed
+
+- Honest recovery for clients that cannot step up. A live ChatGPT/Codex run showed its client turns the 403 `insufficient_scope` into an
+  opaque "Insufficient scope" transport error and never asks for the missing permission, so the 1.11.5 promise ("ask for their own scope the
+  first time they are used") was false for it. Every tool outside the first sign-in (webhooks, Motor Block management) now says in its
+  description, which every client shows the model: do not retry; tell the person to also connect the dedicated server (named, with its URL)
+  or to reconnect and approve the extra permission. The main server's instructions and the hosted docs say the same.
+- `motorical_send_email`: the sender description now names the Motorical-owned sandbox domain as allowed (it said only "a domain you own").
+- `motorical_get_onboarding_state`: the `no_domain` blocker's `detail` points at `choose`/`options` and says the sandbox is the right start
+  for someone with no domain who is only trying things (`next_action` itself is unchanged).
+
 ## [1.11.6] — 2026-10-14
 
 ### Changed
