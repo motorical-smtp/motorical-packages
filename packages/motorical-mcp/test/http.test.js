@@ -257,15 +257,46 @@ test('the analytics server does not advertise a tool it cannot call', async () =
   }
 });
 
-test('the main (unscoped) server still advertises the full catalogue', async () => {
+test('the main server advertises exactly what the grant can call (legacy transport)', async () => {
   const s = await listen(app());
   try {
+    // the stub's 'good' token holds send, read:analytics, manage:domains and manage:sandbox only
     const { names } = await toolsList(s.base, '/v1/motorical/mcp', 'good');
     assert.ok(names.includes('motorical_send_email'));
-    assert.ok(names.includes('motorical_domain_list'));
+    assert.ok(names.includes('motorical_domain_list'), 'read:domains is implied by manage:domains');
+    assert.ok(names.includes('motorical_sandbox_status'));
+    for (const hidden of ['motorical_webhook_list', 'motorical_webhook_create', 'motorical_motor_block_create', 'motorical_free_recipient_add']) {
+      assert.ok(!names.includes(hidden), `${hidden} must not be listed for a grant without its scope`);
+    }
   } finally {
     s.close();
   }
+});
+
+test('a grant that includes the scopes sees the tools (nothing is hidden from a full grant)', async () => {
+  const full = createHttpApp({
+    verifier: { verify: async () => ({ userId: 'u1', grantId: 'g1', clientId: 'c', motorBlockIds: [],
+      scopes: ['send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients', 'manage:webhooks', 'read:webhooks', 'manage:motor-blocks'] }) },
+    signer: { key: 'unused-in-this-test', kid: 'k1' },
+    clientFactory: () => ({}),
+  });
+  const s = await listen(full);
+  try {
+    const { names } = await toolsList(s.base, '/v1/motorical/mcp', 'any');
+    for (const shown of ['motorical_webhook_list', 'motorical_motor_block_create', 'motorical_free_recipient_add']) {
+      assert.ok(names.includes(shown), `${shown} should be listed`);
+    }
+  } finally {
+    s.close();
+  }
+});
+
+test('the native transport filters the same way and marks the list private', async () => {
+  const res = await postMcp('/v1/motorical/mcp', { jsonrpc: '2.0', id: 11, method: 'tools/list', params: { _meta: { 'io.modelcontextprotocol/clientCapabilities': {} } } });
+  const names = (res.body?.result?.tools || []).map((t) => t.name);
+  assert.ok(names.includes('motorical_send_email'));
+  assert.ok(!names.includes('motorical_webhook_list'));
+  assert.equal(res.body?.result?.cacheScope, 'private');
 });
 
 // Found live 2026-09-02: motorical_send_email's inputSchema never declared
@@ -566,4 +597,58 @@ test('main passes its short trial scope set to the verifier; narrow servers pass
     assert.deepEqual(prm.scopes_supported, main.initialScopes, 'the advertised list is the short trial set');
     assert.ok(!prm.scopes_supported.includes('manage:motor-blocks') && !prm.scopes_supported.includes('manage:webhooks'));
   } finally { s.close(); }
+});
+
+// A person adds a permission in the dashboard after the agent's token was minted. The token still lacks it, so
+// the tool call fails the scope check; the server asks the backend for the grant's CURRENT scopes and, when they
+// now cover the tool, answers 401 invalid_token so every client refreshes (the refresh reads the grant row)
+// instead of failing like Codex/ChatGPT do on a 403.
+describe('permissions added after the token was minted', () => {
+  const CALL = { jsonrpc: '2.0', id: 21, method: 'tools/call', params: { name: 'motorical_free_recipient_list', arguments: {} } };
+  const LACKING = ['send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox'];
+
+  function appWith(grantScopesLookup) {
+    return createHttpApp({
+      verifier: { verify: async () => ({ userId: 'u1', grantId: 'g1', clientId: 'c', motorBlockIds: [], scopes: LACKING }) },
+      signer: { key: 'unused-in-this-test', kid: 'k1' },
+      clientFactory: () => ({}),
+      grantScopesLookup,
+    });
+  }
+  async function call(lookup) {
+    const s = await listen(appWith(lookup));
+    try {
+      const res = await fetch(`${s.base}/v1/motorical/mcp`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer any', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+        body: JSON.stringify(CALL),
+      });
+      return { status: res.status, challenge: res.headers.get('www-authenticate') || '' };
+    } finally { s.close(); }
+  }
+
+  test('the grant now holds the scope: 401 invalid_token, so the client refreshes', async () => {
+    const seen = [];
+    const { status, challenge } = await call(async (args) => { seen.push(args); return [...LACKING, 'manage:recipients']; });
+    assert.equal(status, 401);
+    assert.match(challenge, /error="invalid_token"/);
+    assert.match(challenge, /permissions changed/);
+    assert.equal(seen[0].claims.grantId, 'g1');
+    assert.equal(seen[0].server.key, 'main');
+  });
+
+  test('the grant still lacks it: the 403 insufficient_scope challenge is unchanged', async () => {
+    const { status, challenge } = await call(async () => LACKING);
+    assert.equal(status, 403);
+    assert.match(challenge, /error="insufficient_scope"/);
+    assert.match(challenge, /scope="manage:recipients"/);
+  });
+
+  test('the lookup failing or returning nothing never changes the 403', async () => {
+    for (const lookup of [async () => { throw new Error('backend down'); }, async () => null, undefined]) {
+      const { status, challenge } = await call(lookup);
+      assert.equal(status, 403);
+      assert.match(challenge, /error="insufficient_scope"/);
+    }
+  });
 });

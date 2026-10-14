@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.0] — 2026-10-14
+
+### Changed
+
+- The tool list now shows only what the connection can use. `tools/list` is filtered by the access token's granted scopes (implied scopes
+  counted, so `manage:domains` still covers `read:domains`), on both transports; the native list is marked `cacheScope: private`.
+  A sandbox grant no longer sees webhook or Motor Block tools, so an agent is not offered tools it cannot call. Calling a hidden tool
+  still answers 403 `insufficient_scope`, and a full grant still sees everything. The per-tool "Insufficient scope" note added in 1.11.7
+  is gone (those tools are no longer listed to grants without the scope); the main server's instructions say so instead.
+- Silent recovery after a permission is added in the dashboard. When a call fails for a scope the token lacks, the server asks the
+  backend for the grant's current scopes (`GET /api/public/v1/account/grant`); if the grant now covers the tool it answers 401
+  `invalid_token` instead of 403, which every client handles by refreshing its token (the refresh reads the grant row). A failed or
+  negative lookup never changes the 403.
+- `motorical_get_onboarding_state` (backend): while in the sandbox it returns `next_level` (plan, domain, convert with `who` and `done`,
+  plus where to connect the dedicated servers) and `sandboxMotorBlockId`.
+
 ## [1.11.7] — 2026-10-14
 
 ### Changed

@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import { createHttpApp } from './http.js';
 import { createVerifier } from './resourceAuth.js';
 import { createDelegatedClient, createUnauthenticatedClient } from './delegatedClient.js';
+import { mintDelegation } from './delegation.js';
 
 const DEFAULT_PORT = 3012;
 const HOST = '127.0.0.1';
@@ -51,9 +52,26 @@ export function buildServer(env = process.env, overrides = {}) {
     jwksUrl: defaultJwksUrl(env),
   });
 
+  // Reads the grant's current scopes from the backend (see createHttpApp's grantScopesLookup). Short timeout:
+  // it runs only on the failure path and must never make a refusal slow.
+  async function grantScopesLookup({ claims, server }) {
+    const assertion = mintDelegation({
+      grantId: claims.grantId, userId: claims.userId, motorBlockId: undefined,
+      scopes: claims.scopes, canonicalUri: server.canonicalUri,
+    }, signer);
+    const res = await fetch(`${apiBaseUrl}/api/public/v1/account/grant`, {
+      headers: { Authorization: `Delegation ${assertion}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body && body.data ? body.data.scopes : null;
+  }
+
   const app = createHttpApp({
     verifier,
     signer,
+    grantScopesLookup,
     // The public `signup` server never verified a bearer (authenticateMcp's
     // own `srv.public` branch), so `claims` is null here -- routing it into
     // createDelegatedClient would crash on `claims.motorBlockIds`. Branch on

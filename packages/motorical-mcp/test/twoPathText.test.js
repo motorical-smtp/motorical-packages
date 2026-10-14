@@ -113,15 +113,11 @@ test('sandbox_status says outboundLocked is null when no sandbox exists', () => 
   assert.match(desc('motorical_sandbox_status'), /outboundLocked is null when no sandbox exists/);
 });
 
-test('tools outside the first sign-in tell the model what to do on "Insufficient scope", naming the dedicated server', () => {
-  const w = desc('motorical_webhook_list');
-  assert.match(w, /Insufficient scope.*do not retry/);
-  assert.match(w, /motorical_webhooks\/mcp/);
-  assert.match(desc('motorical_motor_block_create'), /motorical_motor_blocks\/mcp/);
-  // inside the first sign-in (including read implied by manage): no note
-  for (const n of ['motorical_send_email', 'motorical_domain_list', 'motorical_sandbox_status', 'motorical_free_recipient_add']) {
+test('no tool description carries a step-up note: tools the grant cannot use are not listed at all', () => {
+  for (const n of ['motorical_webhook_list', 'motorical_motor_block_create', 'motorical_send_email']) {
     assert.doesNotMatch(desc(n), /Insufficient scope/);
   }
+  assert.match(instructionsFor('main'), /tool list shows only what this connection may use/);
 });
 
 test('send description allows the sandbox sender domain', () => {
