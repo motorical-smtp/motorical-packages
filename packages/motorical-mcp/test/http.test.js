@@ -651,4 +651,38 @@ describe('permissions added after the token was minted', () => {
       assert.match(challenge, /error="insufficient_scope"/);
     }
   });
+
+  describe('listing tools with a token narrower than the grant', () => {
+    const LIST = { jsonrpc: '2.0', id: 31, method: 'tools/list', params: {} };
+    async function list(lookup) {
+      const s = await listen(appWith(lookup));
+      try {
+        const res = await fetch(`${s.base}/v1/motorical/mcp`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer any', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+          body: JSON.stringify(LIST),
+        });
+        return { status: res.status, challenge: res.headers.get('www-authenticate') || '' };
+      } finally { s.close(); }
+    }
+
+    test('the grant holds more than the token: 401 invalid_token, so the client refreshes and re-lists', async () => {
+      const { status, challenge } = await list(async () => [...LACKING, 'manage:motor-blocks']);
+      assert.equal(status, 401);
+      assert.match(challenge, /error="invalid_token"/);
+      assert.match(challenge, /permissions changed/);
+    });
+
+    test('the grant matches the token: the list is served normally', async () => {
+      const { status } = await list(async () => LACKING);
+      assert.equal(status, 200);
+    });
+
+    test('a grant holding less, a failed lookup or no lookup never blocks the list', async () => {
+      for (const lookup of [async () => ['send:transactional'], async () => { throw new Error('backend down'); }, async () => null, undefined]) {
+        const { status } = await list(lookup);
+        assert.equal(status, 200);
+      }
+    });
+  });
 });

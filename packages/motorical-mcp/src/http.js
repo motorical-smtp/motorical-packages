@@ -33,6 +33,32 @@ async function grantNowCovers({ claims, srv, toolName, grantScopesLookup }) {
   }
 }
 
+/**
+ * True when the grant row holds scopes the access token does not: the person widened the connection after the
+ * token was minted. A token minted before that keeps the old, narrower tool list until it expires (up to an hour)
+ * even in a new session, because clients reuse an unexpired token. Answering the tools/list with 401 forces the
+ * refresh (which reads the grant row) so the new tools appear at the next listing. Never throws.
+ */
+async function grantHasMoreThanToken({ claims, srv, grantScopesLookup }) {
+  if (typeof grantScopesLookup !== 'function' || !claims || !claims.grantId) return false;
+  try {
+    const fresh = await grantScopesLookup({ claims, server: srv });
+    if (!Array.isArray(fresh)) return false;
+    const inToken = expandMcpImplied(claims.scopes || []);
+    return expandMcpImplied(fresh).some((s) => !inToken.includes(s));
+  } catch (_) {
+    return false;
+  }
+}
+
+function permissionsChangedResponse(res, srv, id) {
+  res.set('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl(srv.canonicalUri)}", error="invalid_token", error_description="permissions changed; refresh the access token"`);
+  return res.status(401).json({
+    jsonrpc: '2.0', id: id ?? null,
+    error: { code: -32001, message: 'Permissions on this connection changed; refresh the access token and retry.' },
+  });
+}
+
 export function createHttpApp({ verifier, signer, clientFactory, grantScopesLookup }) {
   const app = express();
 
@@ -220,6 +246,11 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
       // methods and batches fall through unchanged, and the 401 path above is
       // not touched.
       const body = req.body;
+      // Listing tools with a token that is narrower than the grant: refresh first (see grantHasMoreThanToken).
+      if (claims && body && typeof body === 'object' && !Array.isArray(body) && body.method === 'tools/list'
+          && await grantHasMoreThanToken({ claims, srv, grantScopesLookup })) {
+        return permissionsChangedResponse(res, srv, body.id);
+      }
       if (claims && body && typeof body === 'object' && !Array.isArray(body)
           && body.method === 'tools/call' && typeof body.params?.name === 'string'
           && srv.tools.includes(body.params.name)) {
@@ -233,11 +264,7 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
             // no reconnect even when its client cannot step up. The lookup is best effort and never changes
             // the 403 outcome when it fails or says no.
             if (await grantNowCovers({ claims, srv, toolName: body.params.name, grantScopesLookup })) {
-              res.set('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl(srv.canonicalUri)}", error="invalid_token", error_description="permissions changed; refresh the access token"`);
-              return res.status(401).json({
-                jsonrpc: '2.0', id: body.id ?? null,
-                error: { code: -32001, message: 'Permissions on this connection changed; refresh the access token and retry.' },
-              });
+              return permissionsChangedResponse(res, srv, body.id);
             }
             if (err.challenge) res.set('WWW-Authenticate', err.challenge);
             const payload = { error: err.message, status: err.status, details: null };

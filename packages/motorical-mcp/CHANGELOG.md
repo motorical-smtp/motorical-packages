@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.2] — 2026-10-14
+
+### Fixed
+
+- Permissions added in the dashboard now reach the agent at its next tool listing, not an hour later. A live ChatGPT run showed the gap:
+  after the person pressed Allow, the client reused its unexpired access token (and its cached list), so no new tools appeared even in a new
+  chat. `tools/list` now also compares the token with the grant row; when the grant holds more, it answers 401 `invalid_token`, the client
+  refreshes (the refresh reads the grant row) and the new list includes the new tools. A failed or equal comparison never blocks the list.
+- The onboarding hints, instructions and docs say the tools appear the next time the list is loaded (new chat or refresh the connector).
+
 ## [1.12.1] — 2026-10-14
 
 ### Changed
