@@ -8,7 +8,7 @@ Agents can **execute** Motorical APIs (not only read docs): dry-run / send email
 
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
-## Tools (v1.11.5)
+## Tools (v1.11.6)
 
 | Tool | Auth | Purpose |
 |------|------|---------|
@@ -40,9 +40,9 @@ The dedicated least-privilege hosted server is `https://mcp.motorical.com/v1/mot
 
 ## Hosted or local?
 
-This package is the **local** stdio server. If you only want to give Claude Code, Claude Desktop or Claude.ai access to your Motorical account, you do not need it: use the hosted server instead, with nothing to install.
+This package is the **local** stdio server. Which one do I use? Three routes exist (hosted MCP, agent-led onboarding over the HTTP API, and this package); the comparison is at https://docs.motorical.com/ai-mcp#which-route. If you only want to give Claude Code, Claude Desktop or Claude.ai access to your Motorical account, you do not need it: use the hosted server instead, with nothing to install.
 
-**Connect (hosted, nothing to install).** In your terminal, in a normal shell and not inside a Claude session, run `claude mcp add --transport http motorical https://mcp.motorical.com/v1/motorical/mcp`. Start Claude Code, type `/mcp` in the session, pick `motorical`, and choose Authenticate. A browser opens: sign in, or create your account (two-factor authentication is required and cannot be skipped), then press Allow. Back in the session the Motorical tools are there; you do not run Authenticate a second time. In Claude Desktop or Claude.ai, add a custom connector with the same URL (`https://mcp.motorical.com/v1/motorical/mcp`). This is the hosted MCP server: no install and no key. The npm package `@motorical/mcp` is a different, local option for API-key setups, and `@motorical/cli` is retired.
+**Connect (hosted, nothing to install).** In your terminal, in a normal shell and not inside a Claude session, run `claude mcp add --transport http motorical https://mcp.motorical.com/v1/motorical/mcp`. Then start a new Claude Code session (one that was already open may not list the new server), type `/mcp`, pick `motorical`, and choose Authenticate. If you would rather have an account first, create it at https://motorical.com/register and then connect; sign-in at the consent step works the same. A browser opens: sign in, or create your account (two-factor authentication is required and cannot be skipped), then press Allow. Back in the session the Motorical tools are there; you do not run Authenticate a second time. In Claude Desktop or Claude.ai, add a custom connector with the same URL (`https://mcp.motorical.com/v1/motorical/mcp`). Other agents (ChatGPT, Codex, Cursor, VS Code, any MCP client): see https://docs.motorical.com/ai-mcp-hosted#connect. This is the hosted MCP server: no install and no key. The npm package `@motorical/mcp` is a different, local option for API-key setups, and `@motorical/cli` is retired.
 
 Use this package when you need a client that only speaks local stdio, allowlisting by 6-digit code, browser handoff, or unmasked PII.
 

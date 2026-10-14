@@ -73,7 +73,7 @@ test('every server publishes RFC 9728 metadata at the path-inserted well-known U
     const doc = await res.json();
     assert.equal(doc.resource, srv.canonicalUri);
     assert.deepEqual(doc.authorization_servers, ['https://motorical.com']);
-    assert.deepEqual(doc.scopes_supported, srv.scopes);
+    assert.deepEqual(doc.scopes_supported, srv.initialScopes || srv.scopes);
     assert.ok(!doc.scopes_supported.includes('logs.pii'));
   }
   s.close();
@@ -561,6 +561,9 @@ test('main passes its short trial scope set to the verifier; narrow servers pass
     const mb = SERVERS.find((x) => x.key === 'motorBlocks');
     assert.deepEqual(seen[main.canonicalUri], ['send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients']);
     assert.equal(seen[mb.canonicalUri], undefined);
-    assert.ok(main.scopes.includes('manage:motor-blocks') && main.scopes.includes('manage:webhooks'));
+    assert.ok(main.scopes.includes('manage:motor-blocks') && main.scopes.includes('manage:webhooks'), 'tools still need these scopes');
+    const prm = await (await fetch(`${s.base}/.well-known/oauth-protected-resource${main.path}`)).json();
+    assert.deepEqual(prm.scopes_supported, main.initialScopes, 'the advertised list is the short trial set');
+    assert.ok(!prm.scopes_supported.includes('manage:motor-blocks') && !prm.scopes_supported.includes('manage:webhooks'));
   } finally { s.close(); }
 });

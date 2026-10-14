@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.6] — 2026-10-14
+
+### Changed
+
+- The main hosted server now advertises only its five trial scopes in its protected-resource metadata (`scopes_supported`). A live
+  ChatGPT/Codex sign-in showed that client ignores the 401 challenge's `scope` and requests everything listed, so 1.11.5's narrow
+  challenge alone still produced a nine-scope consent. Webhook and Motor Block tools are unchanged and still reachable: the first call
+  answers 403 `insufficient_scope` and the client asks for just that scope. The narrow servers still list their own scopes.
+
 ## [1.11.5] — 2026-10-14
 
 ### Changed
