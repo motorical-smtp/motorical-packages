@@ -94,7 +94,11 @@ export function createHttpApp({ verifier, signer, clientFactory }) {
       res.json({
         resource: srv.canonicalUri,
         authorization_servers: [AUTHORIZATION_SERVER],
-        scopes_supported: srv.scopes,
+        // The main server advertises only its trial set. Clients such as Codex/ChatGPT ignore the
+        // 401 challenge's scope and request everything listed here, so listing all nine put webhook and
+        // Motor Block management on every first consent. The step-up (403 insufficient_scope) still asks
+        // for the rest, and the authorization server still grants any scope the resource supports.
+        scopes_supported: srv.initialScopes || srv.scopes,
         bearer_methods_supported: ['header'],
         resource_documentation: 'https://docs.motorical.com/api-reference/authentication',
       });
