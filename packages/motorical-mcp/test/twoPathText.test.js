@@ -95,3 +95,20 @@ test('signup server instructions and tool description route chat agents to the m
     assert.match(text, /MFA/);
   }
 });
+
+test('send description no longer contradicts the hosted OAuth send (no key, no "do not use OAuth")', () => {
+  const d = desc('motorical_send_email');
+  assert.match(d, /hosted OAuth server your grant authorizes the send/);
+  assert.doesNotMatch(d, /Do not use OAuth access tokens/);
+});
+
+test('every server tells the agent to present links as short markdown links', () => {
+  for (const key of ['main', 'sandbox', 'signup', 'domains', undefined]) {
+    assert.match(instructionsFor(key), /\[Create your Motorical account\]\(url\)/);
+  }
+  assert.match(desc('motorical_web_handoff'), /markdown link/);
+});
+
+test('sandbox_status says outboundLocked is null when no sandbox exists', () => {
+  assert.match(desc('motorical_sandbox_status'), /outboundLocked is null when no sandbox exists/);
+});

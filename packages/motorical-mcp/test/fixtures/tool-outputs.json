@@ -12,7 +12,7 @@
       "subject": "Test subject",
       "timestamp": "2026-09-04T12:00:00.000Z"
     },
-    "message": "✅ Email queued for delivery successfully"
+    "message": "Accepted for delivery. This is not delivery: read the outcome from the message status."
   },
 
   "motorical_wait_for_outcome": {

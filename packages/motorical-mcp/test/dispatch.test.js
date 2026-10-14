@@ -128,6 +128,9 @@ describe('dispatchNative', () => {
     assert.equal(realSend.result.structuredContent.delivered, null);
     assert.equal(realSend.result.structuredContent.nextAction.tool, 'motorical_wait_for_outcome');
     assert.ok(realSend.result.structuredContent.nextAction.args.taskId);
+    assert.equal(realSend.result.structuredContent.messageId, 'email-log-99');
+    assert.match(realSend.result.structuredContent.message, /not delivered yet/);
+    assert.doesNotMatch(realSend.result.structuredContent.message, /✅/);
 
     const dryRunSend = await dispatchNative(
       { jsonrpc: '2.0', id: 51, method: 'tools/call', params: { name: 'motorical_send_email', arguments: { to: 'a@x.com', subject: 'hi', text: 'hi' } } },

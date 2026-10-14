@@ -8,7 +8,7 @@ Agents can **execute** Motorical APIs (not only read docs): dry-run / send email
 
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
-## Tools (v1.11.3)
+## Tools (v1.11.4)
 
 | Tool | Auth | Purpose |
 |------|------|---------|
@@ -37,6 +37,14 @@ A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per
 Safety: real sends require `dryRun: false` **and** `confirmRealSend: true`. Type/domain changes, deactivation, sandbox conversion, and permanent deletion use argument-bound MRTR confirmation. Sandbox conversion changes the SMTP username but preserves the password, API keys, and auth method. Ordinary rename never changes credentials. Optional `fromName` sets the inbox display name (same as HTTP `/v1/send`); do not put `From` in custom headers.
 
 The dedicated least-privilege hosted server is `https://mcp.motorical.com/v1/motorical_motor_blocks/mcp` with OAuth scope `manage:motor-blocks`. A newly created block is appended to the live grant and can be used immediately by explicit id without refreshing the access token.
+
+## Hosted or local?
+
+This package is the **local** stdio server. If you only want to give Claude Code, Claude Desktop or Claude.ai access to your Motorical account, you do not need it: use the hosted server instead, with nothing to install.
+
+**Connect (hosted, nothing to install).** In your terminal, in a normal shell and not inside a Claude session, run `claude mcp add --transport http motorical https://mcp.motorical.com/v1/motorical/mcp`. Start Claude Code, type `/mcp` in the session, pick `motorical`, and choose Authenticate. A browser opens: sign in, or create your account (two-factor authentication is required and cannot be skipped), then press Allow. Back in the session the Motorical tools are there; you do not run Authenticate a second time. In Claude Desktop or Claude.ai, add a custom connector with the same URL (`https://mcp.motorical.com/v1/motorical/mcp`). This is the hosted MCP server: no install and no key. The npm package `@motorical/mcp` is a different, local option for API-key setups, and `@motorical/cli` is retired.
+
+Use this package when you need a client that only speaks local stdio, allowlisting by 6-digit code, browser handoff, or unmasked PII.
 
 ## Authorization (recommended)
 

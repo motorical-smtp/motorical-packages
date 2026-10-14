@@ -293,15 +293,16 @@ export const TOOLS = [
   {
     name: 'motorical_send_email',
     description:
-      'Transactional email: send or validate via POST /v1/send using MOTORICAL_MK_API_KEY (mk_live_...). ' +
+      'Transactional email: send or validate via POST /v1/send. Over the hosted OAuth server your grant authorizes the send, ' +
+      'so no key is needed and you never see one; the local stdio server instead needs MOTORICAL_MK_API_KEY (mk_live_...). ' +
       'Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. ' +
-      'Do not use OAuth access tokens or Bearer tokens here. ' +
       'For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 ' +
       'sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); ' +
       'it is never redirected, so add the recipient to the allowlist first. ' +
       'Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with ' +
       'motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). ' +
-      'To follow a real send, pass the taskId from this response\'s nextAction to motorical_wait_for_outcome; that taskId is NOT the message id. ' +
+      'A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and ' +
+      'nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. ' +
       'A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). ' +
       'from must be an address at the domain your Motor Block is assigned to, which must be a verified, send-ready domain you own (see motorical_get_onboarding_state sendFrom); any local part works.',
     inputSchema: {
@@ -338,6 +339,7 @@ export const TOOLS = [
       dryRun: z.boolean().optional(),
       idempotent: z.boolean().optional(),
       message: z.string().optional(),
+      messageId: z.string().optional().describe('Real send only: the message id for motorical_get_message / motorical_get_message_events (same value as data.id)'),
       status: z.enum(['accepted']).optional().describe('Present only on a real send — accepted for delivery, NOT delivered'),
       delivered: z.null().optional().describe('Always null on the synchronous response — a 202 is never delivery'),
       nextAction: z.object({
@@ -401,6 +403,8 @@ export const TOOLS = [
       }
       return {
         ...result,
+        message: 'Accepted for delivery, not delivered yet. Read the outcome with motorical_wait_for_outcome (nextAction.args.taskId) or motorical_get_message (messageId).',
+        messageId: result.data.id,
         status: 'accepted',
         delivered: null,
         ...(taskId ? { nextAction: { tool: 'motorical_wait_for_outcome', args: { taskId } } } : {}),
@@ -574,7 +578,8 @@ export const TOOLS = [
       'of stage — do not infer provisioning state from their presence. The allowlist is the EFFECTIVE list: ' +
       'sandbox recipients, link-confirmed recipients, the account address and the test sink, minus any address ' +
       'that clicked stop. domain.sandbox true means the Motorical-owned sandbox domain; domain.sandbox false ' +
-      'means your own domain. outboundLocked true means real sends are limited to the allowlist, not that nothing can be sent.',
+      'means your own domain. outboundLocked true means real sends are limited to the allowlist, not that nothing can be sent; ' +
+      'outboundLocked is null when no sandbox exists yet (nothing to lock).',
     inputSchema: {},
     annotations: { title: 'Get developer sandbox status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async () => client.sandboxStatus(),
@@ -786,6 +791,7 @@ export const TOOLS = [
     description:
       'Mint a one-time browser handoff URL (POST /api/auth/web-handoff). ' +
       'Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT. ' +
+      'Give the person the link as a short markdown link such as [Open your Motorical dashboard](url), never as a bare long URL. ' +
       'The link is short-lived (the response has expiresInSeconds): open it right away; if it says expired, ask for a new link or sign in with your password.',
     inputSchema: {
       path: z.string().optional().describe('Optional in-app path after handoff, e.g. /usage')

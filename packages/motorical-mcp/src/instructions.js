@@ -30,12 +30,21 @@ const ACCEPTANCE_WARNING = [
   'status before making any claim about the outcome. Use dryRun:true when composing a new send.',
 ].join(' ');
 
+// A long one-time URL pasted into chat is hard to click and easy to mangle.
+// Every surface that hands a link to a person says the same thing.
+const LINK_RULE = [
+  'When you give the person a link (sign-in, consent, dashboard, upgrade), present it as a short',
+  'markdown link with a plain label, for example [Create your Motorical account](url), say in one',
+  'sentence what they will see there, and never paste the bare URL on its own line.',
+].join(' ');
+
 const GENERIC = [
   'Motorical is a transactional email API and SMTP provider.',
   'A "Motor Block" is an isolated sending stream with its own reputation and rate limits;',
   'most operations are scoped to one Motor Block, identified by its UUID.',
   'Domains must be verified (SPF + DKIM) before mail from them will be accepted.',
   ACCEPTANCE_WARNING,
+  LINK_RULE,
 ].join(' ');
 
 // Read via the motorical://docs/agents-hub and motorical://docs/agents-playbook
