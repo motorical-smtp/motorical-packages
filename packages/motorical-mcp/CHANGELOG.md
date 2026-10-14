@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.4] — 2026-10-14
+
+### Changed
+
+- One way to connect, said the same everywhere. `ai.md`, `ai-mcp.md`, `ai-mcp-hosted.md`, `agents.md`, `llms.txt`, this README and the
+  journeys now give the same hosted-MCP steps (`claude mcp add --transport http motorical <url>` in a terminal, then `/mcp` and
+  Authenticate in the session; a custom connector in Claude Desktop or Claude.ai) and the same "pick your route" table by intent. They no
+  longer say to authenticate a second time: consent resumes by itself after sign-up and MFA (MFA is required and cannot be skipped).
+  The docs gate fails a page that omits the canonical connect command or brings back the old wording.
+- `motorical_send_email`: a real send's message no longer starts with a check mark. It says "Accepted for delivery, not delivered
+  yet", and the response carries `messageId` next to `nextAction.args.taskId`, with the description saying which tool takes which. The
+  description no longer says OAuth tokens cannot be used: over the hosted server the grant authorizes the send and no key is needed.
+- `motorical_sandbox_status` reports `outboundLocked: null` (and no `allowlistOnly`) before any sandbox exists, instead of a `true`
+  that read as "you are locked".
+- The sandbox-provision message says a real send to your own address needs no plan; subscribe only to reach other recipients.
+- Every server's instructions, and `motorical_web_handoff`, tell the agent to give the person links as short markdown links with a
+  plain label, never a bare long URL.
+
 ## [1.11.3] — 2026-10-13
 
 ### Changed

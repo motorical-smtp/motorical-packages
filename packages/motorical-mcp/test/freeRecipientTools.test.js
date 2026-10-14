@@ -63,7 +63,7 @@ test('add, list and send descriptions carry the cold-walk clarifications', () =>
   assert.match(by('motorical_free_recipient_list'), /motorical_sandbox_status/);
   assert.match(by('motorical_send_email'), /effective allowlist/);
   assert.match(by('motorical_send_email'), /motorical_free_recipient_add/);
-  assert.match(by('motorical_send_email'), /taskId.*NOT the message id/);
+  assert.match(by('motorical_send_email'), /messageId.*taskId.*ONLY with motorical_wait_for_outcome/);
   assert.match(by('motorical_sandbox_status'), /not that nothing can be sent/);
   assert.match(by('motorical_web_handoff'), /if it says expired/);
   assert.doesNotMatch(by('motorical_free_recipient_add'), /\d/);
