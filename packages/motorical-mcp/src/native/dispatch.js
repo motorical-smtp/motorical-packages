@@ -3,6 +3,7 @@
 // The 2026-07-28 dispatcher. Pure over a parsed body: no Express, no sockets,
 // so it is unit-testable without a transport. It exists because the TypeScript
 // SDK tops out at 2025-11-25 and cannot serve server/discover.
+import { toolsVisibleToGrant } from '../grantVisibility.js';
 import { toJsonSchemaCompat } from '@modelcontextprotocol/sdk/server/zod-json-schema-compat.js';
 import {
   objectFromShape,
@@ -165,8 +166,9 @@ function toolDefinition(t) {
   };
 }
 
-function visibleTools(server) {
-  return TOOLS.filter((t) => server.tools.includes(t.name));
+function visibleTools(server, grantedScopes) {
+  const names = toolsVisibleToGrant(server.tools, grantedScopes);
+  return TOOLS.filter((t) => names.includes(t.name));
 }
 
 // The legacy path's own refusal shape. server/mcp.js's CallTool handler throws
@@ -241,7 +243,7 @@ export async function dispatchNative(body, ctx) {
   return isNotification(body) ? null : response;
 }
 
-async function handleRequest(body, { server, client, version, taskStore = defaultTaskStore }) {
+async function handleRequest(body, { server, client, version, grantedScopes, taskStore = defaultTaskStore }) {
   const { id = null, method } = body || {};
 
   if (method === 'server/discover') {
@@ -251,9 +253,10 @@ async function handleRequest(body, { server, client, version, taskStore = defaul
   if (method === 'tools/list') {
     return ok(id, {
       resultType: 'complete',
-      tools: visibleTools(server).map(toolDefinition),
+      tools: visibleTools(server, grantedScopes).map(toolDefinition),
       ttlMs: TOOLS_TTL_MS,
-      cacheScope: 'public',
+      // A list narrowed to one grant must not be shared between people.
+      cacheScope: Array.isArray(grantedScopes) ? 'private' : 'public',
     });
   }
 

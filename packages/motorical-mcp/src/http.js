@@ -11,13 +11,29 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createMotoricalMcpServer, PACKAGE_VERSION } from './server.js';
 import { SERVERS, byPath, MCP_HOST } from './servers.js';
 import { resourceMetadataUrl, assertToolAllowed } from './resourceAuth.js';
+import { TOOL_SCOPES, expandMcpImplied } from '@motorical/scope-catalog';
 import { detectRevision } from './native/revision.js';
 import { dispatchNative } from './native/dispatch.js';
+import { toolsVisibleToGrant } from './grantVisibility.js';
 import { createSignupRateLimiter } from './signupRateLimit.js';
 
 const AUTHORIZATION_SERVER = 'https://motorical.com';
 
-export function createHttpApp({ verifier, signer, clientFactory }) {
+/** True when the grant row (not the token) already holds every scope the tool needs. Never throws. */
+async function grantNowCovers({ claims, srv, toolName, grantScopesLookup }) {
+  if (typeof grantScopesLookup !== 'function' || !claims || !claims.grantId) return false;
+  try {
+    const fresh = await grantScopesLookup({ claims, server: srv });
+    if (!Array.isArray(fresh)) return false;
+    const have = expandMcpImplied(fresh);
+    const required = TOOL_SCOPES[toolName] || [];
+    return required.length > 0 && required.every((s) => have.includes(s));
+  } catch (_) {
+    return false;
+  }
+}
+
+export function createHttpApp({ verifier, signer, clientFactory, grantScopesLookup }) {
   const app = express();
 
   // One counter set per app instance, scoped to the ONE public (`srv.public`)
@@ -211,6 +227,18 @@ export function createHttpApp({ verifier, signer, clientFactory }) {
           assertToolAllowed(srv, body.params.name, claims.scopes);
         } catch (err) {
           if (err.code === 'insufficient_scope') {
+            // The person may have added this permission in the dashboard since the token was minted. Ask the
+            // backend, which reads the grant row. If the grant now covers it, answer 401 invalid_token: every
+            // client refreshes its token on that (the refresh reads the same row), so the agent recovers with
+            // no reconnect even when its client cannot step up. The lookup is best effort and never changes
+            // the 403 outcome when it fails or says no.
+            if (await grantNowCovers({ claims, srv, toolName: body.params.name, grantScopesLookup })) {
+              res.set('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl(srv.canonicalUri)}", error="invalid_token", error_description="permissions changed; refresh the access token"`);
+              return res.status(401).json({
+                jsonrpc: '2.0', id: body.id ?? null,
+                error: { code: -32001, message: 'Permissions on this connection changed; refresh the access token and retry.' },
+              });
+            }
             if (err.challenge) res.set('WWW-Authenticate', err.challenge);
             const payload = { error: err.message, status: err.status, details: null };
             const result = {
@@ -237,6 +265,7 @@ export function createHttpApp({ verifier, signer, clientFactory }) {
           server: srv,
           client: nativeClient,
           version: PACKAGE_VERSION,
+          grantedScopes: claims ? claims.scopes : undefined,
         });
         // null means the request was a JSON-RPC notification: it MUST NOT be
         // answered with a body of any kind. 202 Accepted, nothing else.
@@ -252,7 +281,7 @@ export function createHttpApp({ verifier, signer, clientFactory }) {
         // client on /v1/motorical_analytics/mcp must never be offered
         // motorical_send_email just because the process also serves other
         // scoped paths.
-        allowedTools: srv.tools,
+        allowedTools: claims ? toolsVisibleToGrant(srv.tools, claims.scopes) : srv.tools,
         serverKey: srv.key,
       }));
       transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
