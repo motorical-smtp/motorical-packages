@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.1] — 2026-10-14
+
+### Changed
+
+- The main server's instructions, the onboarding state's `next_level.more_permissions` and the hosted docs now tell an agent how a person adds
+  webhooks or Motor Block management to the connection it already has: Settings, API, Connected AI Agents (live in the dashboard), or the link
+  `https://motorical.com/settings/api-access?add=webhooks` / `?add=motor-blocks`. The agent's tools appear after its access refreshes, with no
+  reconnect; the dedicated server stays the alternative.
+
 ## [1.12.0] — 2026-10-14
 
 ### Changed
