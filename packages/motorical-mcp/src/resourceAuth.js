@@ -52,10 +52,12 @@ export function createVerifier({ jwksUrl, fetchImpl = fetch }) {
     return cache;
   }
 
-  async function verify(token, canonicalUri) {
+  async function verify(token, canonicalUri, initialScopes) {
     if (!token) {
+      // The scope named here is what a client asks for on first consent; omitted
+      // (every narrow server) it falls back to scopes_supported.
       throw new McpAuthError(401, 'unauthorized', 'Authorization required',
-        bearerChallenge(canonicalUri));
+        bearerChallenge(canonicalUri, initialScopes?.length ? { scope: initialScopes.join(' ') } : {}));
     }
 
     const decoded = jwt.decode(token, { complete: true });

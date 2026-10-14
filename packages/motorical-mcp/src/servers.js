@@ -193,13 +193,29 @@ for (const t of Object.keys(TOOL_SCOPES)) {
   }
 }
 
-function server(key, slug, tools) {
+// What the FIRST consent on the main server asks for: enough to read the account,
+// run either onboarding path and send, and nothing that can delete or reconfigure
+// (no Motor Block management, no webhooks). Clients request the scope named in the
+// 401 challenge before falling back to scopes_supported, so a new person sees a
+// short list; a tool outside it answers 403 insufficient_scope and the client asks
+// for exactly the missing scope then (the step-up). Every other server already is
+// narrow, so only main carries this.
+export const MAIN_INITIAL_SCOPES = [
+  'send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients',
+];
+
+function server(key, slug, tools, initialScopes) {
   const path = `/v1/${slug}/mcp`;
-  return { key, slug, path, canonicalUri: `${MCP_HOST}${path}`, scopes: scopesForTools(tools), tools };
+  const scopes = scopesForTools(tools);
+  if (initialScopes) {
+    const stray = initialScopes.filter((s) => !scopes.includes(s));
+    if (stray.length) throw new Error(`servers.js: initial scopes not offered by ${key}: ${stray.join(' ')}`);
+  }
+  return { key, slug, path, canonicalUri: `${MCP_HOST}${path}`, scopes, tools, ...(initialScopes ? { initialScopes } : {}) };
 }
 
 export const SERVERS = [
-  server('main', 'motorical', ALL_TOOLS),
+  server('main', 'motorical', ALL_TOOLS, MAIN_INITIAL_SCOPES),
   server('transactional', 'motorical_transactional', TRANSACTIONAL_TOOLS),
   server('analytics', 'motorical_analytics', ANALYTICS_TOOLS),
   server('domains', 'motorical_domains', DOMAIN_TOOLS),

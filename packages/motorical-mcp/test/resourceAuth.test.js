@@ -137,3 +137,11 @@ test('manage:webhooks still covers a read:webhooks-only tool, sourced from the s
   // Should not throw: motorical_webhook_list needs read:webhooks, which manage:webhooks implies.
   assertToolAllowed(server, 'motorical_webhook_list', ['manage:webhooks']);
 });
+
+test('a missing token challenge names the initial scopes only when given', async () => {
+  const v = verifier();
+  const named = await v.verify(null, 'https://mcp.motorical.com/v1/motorical/mcp', ['send:transactional', 'read:analytics']).catch((e) => e);
+  assert.match(named.challenge, /scope="send:transactional read:analytics"/);
+  const plain = await v.verify(null, 'https://mcp.motorical.com/v1/motorical_analytics/mcp').catch((e) => e);
+  assert.doesNotMatch(plain.challenge, /scope=/);
+});

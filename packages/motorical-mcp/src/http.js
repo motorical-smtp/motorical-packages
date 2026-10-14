@@ -128,7 +128,7 @@ export function createHttpApp({ verifier, signer, clientFactory }) {
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
 
     try {
-      req.mcpClaims = await verifier.verify(token, srv.canonicalUri);
+      req.mcpClaims = await verifier.verify(token, srv.canonicalUri, srv.initialScopes);
       req.mcpServerDef = srv;
       return next();
     } catch (err) {

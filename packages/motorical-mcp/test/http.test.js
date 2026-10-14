@@ -545,3 +545,22 @@ describe('insufficient_scope step-up challenge', () => {
     assert.doesNotMatch(res.headers['www-authenticate'] || '', /insufficient_scope/);
   });
 });
+
+test('main passes its short trial scope set to the verifier; narrow servers pass none; step-up scope stays supported', async () => {
+  const seen = {};
+  const spy = createHttpApp({
+    verifier: { verify: async (token, uri, initial) => { seen[uri] = initial; const e = new Error('x'); e.status = 401; e.challenge = 'Bearer'; throw e; } },
+    signer: { key: 'unused-in-this-test', kid: 'k1' },
+    clientFactory: () => ({}),
+  });
+  const s = await listen(spy);
+  try {
+    await fetch(`${s.base}/v1/motorical/mcp`, { method: 'POST' });
+    await fetch(`${s.base}/v1/motorical_motor_blocks/mcp`, { method: 'POST' });
+    const main = SERVERS.find((x) => x.key === 'main');
+    const mb = SERVERS.find((x) => x.key === 'motorBlocks');
+    assert.deepEqual(seen[main.canonicalUri], ['send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients']);
+    assert.equal(seen[mb.canonicalUri], undefined);
+    assert.ok(main.scopes.includes('manage:motor-blocks') && main.scopes.includes('manage:webhooks'));
+  } finally { s.close(); }
+});

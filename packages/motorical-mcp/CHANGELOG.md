@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.5] — 2026-10-14
+
+### Changed
+
+- Shorter first consent. The main hosted server's 401 challenge now names a trial scope set (`send:transactional`, `read:analytics`,
+  `manage:domains`, `manage:sandbox`, `manage:recipients`), so a new person approves five permissions instead of nine. Webhook and
+  Motor Block tools are unchanged; the first call to one answers 403 `insufficient_scope` and the client asks for just that scope
+  (the step-up from 1.11.3). `scopes_supported` is unchanged, and the narrow servers are unaffected. Existing grants keep what they have.
+
 ## [1.11.4] — 2026-10-14
 
 ### Changed
