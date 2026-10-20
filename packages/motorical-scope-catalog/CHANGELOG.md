@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 — 2026-10-20
+
+Add the `motorical_whoami` tool to the analytics (and main) server, requiring `read:analytics`.
+No new scope and no change to any existing mapping.
+
 ## 0.3.1 — 2026-10-13
 
 Text only: rewrite the `manage:sandbox` `agentDescription`, which was confusing
