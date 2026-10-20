@@ -52,26 +52,64 @@ export function buildServer(env = process.env, overrides = {}) {
     jwksUrl: defaultJwksUrl(env),
   });
 
-  // Reads the grant's current scopes from the backend (see createHttpApp's grantScopesLookup). Short timeout:
-  // it runs only on the failure path and must never make a refusal slow.
-  async function grantScopesLookup({ claims, server }) {
+  // ONE backend call per request answers both questions a tools/list asks about the grant: its CURRENT scopes (is the
+  // token narrower than the grant?) and whether the account is past the sandbox phase (should the sandbox tools be
+  // listed?). The phase is computed by the backend only while this process has no fresh answer for the grant (it costs
+  // a few queries); a warm cache sends the plain scope lookup. Short timeout: it must never make a listing or a
+  // refusal slow, and any failure answers null so callers keep today's behaviour.
+  const PHASE_TTL_MS = Number(env.MCP_PHASE_CACHE_MS || 60000);
+  const phaseCache = new Map();
+  // A request's lookups share one in-flight fetch. Keyed by the claims object, and reused only for a moment, so a
+  // verifier that hands back the same object across requests can never serve stale scopes.
+  const grantFetches = new WeakMap();
+  const SHARE_MS = 2000;
+
+  function fetchGrantState({ claims, server }) {
+    const shared = grantFetches.get(claims);
+    if (shared && Date.now() - shared.at < SHARE_MS) return shared.promise;
+
+    const hit = phaseCache.get(claims.grantId);
+    const phaseKnown = !!(hit && hit.until > Date.now());
     const assertion = mintDelegation({
       grantId: claims.grantId, userId: claims.userId, motorBlockId: undefined,
       scopes: claims.scopes, canonicalUri: server.canonicalUri,
     }, signer);
-    const res = await fetch(`${apiBaseUrl}/api/public/v1/account/grant`, {
-      headers: { Authorization: `Delegation ${assertion}`, Accept: 'application/json' },
-      signal: AbortSignal.timeout(3000),
-    });
-    if (!res.ok) return null;
-    const body = await res.json();
-    return body && body.data ? body.data.scopes : null;
+    const promise = (async () => {
+      const res = await fetch(`${apiBaseUrl}/api/public/v1/account/grant${phaseKnown ? '' : '?include=phase'}`, {
+        headers: { Authorization: `Delegation ${assertion}`, Accept: 'application/json' },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) return null;
+      const body = await res.json();
+      const data = body && body.data;
+      if (!data) return null;
+      let over = phaseKnown ? hit.over : null;
+      if (!phaseKnown && typeof data.sandboxOver === 'boolean') {
+        over = data.sandboxOver;
+        if (phaseCache.size > 5000) phaseCache.clear();
+        phaseCache.set(claims.grantId, { over, until: Date.now() + PHASE_TTL_MS });
+      }
+      return { scopes: data.scopes, sandboxOver: over };
+    })();
+    grantFetches.set(claims, { promise, at: Date.now() });
+    return promise;
+  }
+
+  async function grantScopesLookup(args) {
+    const state = await fetchGrantState(args);
+    return state ? state.scopes : null;
+  }
+
+  async function accountPhaseLookup(args) {
+    const state = await fetchGrantState(args);
+    return state && typeof state.sandboxOver === 'boolean' ? state.sandboxOver : null;
   }
 
   const app = createHttpApp({
     verifier,
     signer,
     grantScopesLookup,
+    accountPhaseLookup,
     // The public `signup` server never verified a bearer (authenticateMcp's
     // own `srv.public` branch), so `claims` is null here -- routing it into
     // createDelegatedClient would crash on `claims.motorBlockIds`. Branch on

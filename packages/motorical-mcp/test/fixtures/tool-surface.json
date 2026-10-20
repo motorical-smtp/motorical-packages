@@ -33,8 +33,55 @@
     }
   },
   {
+    "name": "motorical_domain_dns_records",
+    "description": "The DNS records to publish for one domain, with what each is for (GET /api/public/v1/domains/{id}/dns-records). Pass lookup:true to also check what DNS currently answers (slower: live lookups). Read-only. Over hosted OAuth it needs the read:domains scope. Requires OAuth scope: read:domains (List and read sending domains, their DNS records and email-authentication health, and read a Motor Block's configuration, without adding or verifying any domain.).",
+    "inputKeys": [
+      "domainId",
+      "lookup",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get domain DNS records",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "motorical_domain_get",
+    "description": "One domain on this account by id (GET /api/public/v1/domains/{id}): verified, DNS auth flags, DKIM mode, created. Read-only; no keys or tokens. Over hosted OAuth it needs the read:domains scope. Requires OAuth scope: read:domains (List and read sending domains, their DNS records and email-authentication health, and read a Motor Block's configuration, without adding or verifying any domain.).",
+    "inputKeys": [
+      "domainId",
+      "motorBlockId"
+    ],
+    "annotations": {
+      "title": "Get one account domain",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "motorical_domain_health",
+    "description": "Email-authentication health of ONE domain by id (GET /api/public/v1/domains/{id}/health): SPF, DKIM, DMARC, status, issues, and whether the answer is cached (source). Works for a domain that has no Motor Block yet. Same shape as motorical_get_domain_health, which answers for the domain attached to one Motor Block. Pass refresh:true for a live DNS check (slower). Read-only. Over hosted OAuth it needs the read:domains scope. Requires OAuth scope: read:domains (List and read sending domains, their DNS records and email-authentication health, and read a Motor Block's configuration, without adding or verifying any domain.).",
+    "inputKeys": [
+      "domainId",
+      "motorBlockId",
+      "refresh"
+    ],
+    "annotations": {
+      "title": "Get domain health by domain",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
     "name": "motorical_domain_list",
-    "description": "List domains already on this account (GET /api/domains) — id, domain, verified, DNS auth flags. Call this before motorical_domain_add on a 409 conflict to self-diagnose whether the domain is already yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Over hosted OAuth it needs the read:domains scope; the local server uses MOTORICAL_JWT. Requires OAuth scope: read:domains (List and read sending domains, without adding or verifying any.).",
+    "description": "List domains already on this account (GET /api/domains) — id, domain, verified, DNS auth flags. Call this before motorical_domain_add on a 409 conflict to self-diagnose whether the domain is already yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Over hosted OAuth it needs the read:domains scope; the local server uses MOTORICAL_JWT. Requires OAuth scope: read:domains (List and read sending domains, their DNS records and email-authentication health, and read a Motor Block's configuration, without adding or verifying any domain.).",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -134,7 +181,7 @@
   },
   {
     "name": "motorical_get_config",
-    "description": "Configuration of one Motor Block — its sending domain, limits, delivery settings, and activeAuthMethod (\"Password\"/\"API Key\"/\"OAuth 2.0\"/\"mTLS\", read-only -- changing it is dashboard-only) (GET /api/public/v1/motor-blocks/{id}/config). Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "description": "Configuration of one Motor Block — its sending domain, limits, delivery settings, and activeAuthMethod (\"Password\"/\"API Key\"/\"OAuth 2.0\"/\"mTLS\", read-only -- changing it is dashboard-only) (GET /api/public/v1/motor-blocks/{id}/config). Requires OAuth scope: read:domains (List and read sending domains, their DNS records and email-authentication health, and read a Motor Block's configuration, without adding or verifying any domain.).",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -180,7 +227,7 @@
   },
   {
     "name": "motorical_get_domain_health",
-    "description": "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX (GET /api/public/v1/motor-blocks/{id}/domain-health). Requires OAuth scope: manage:domains (Add, verify, and read sending domains and their DNS health. Includes everything read:domains grants.).",
+    "description": "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX (GET /api/public/v1/motor-blocks/{id}/domain-health). Requires OAuth scope: read:domains (List and read sending domains, their DNS records and email-authentication health, and read a Motor Block's configuration, without adding or verifying any domain.).",
     "inputKeys": [
       "motorBlockId",
       "refresh"

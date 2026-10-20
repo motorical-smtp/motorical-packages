@@ -166,8 +166,8 @@ function toolDefinition(t) {
   };
 }
 
-function visibleTools(server, grantedScopes) {
-  const names = toolsVisibleToGrant(server.tools, grantedScopes);
+function visibleTools(server, grantedScopes, sandboxOver = null) {
+  const names = toolsVisibleToGrant(server.tools, grantedScopes, { sandboxOver });
   return TOOLS.filter((t) => names.includes(t.name));
 }
 
@@ -243,7 +243,7 @@ export async function dispatchNative(body, ctx) {
   return isNotification(body) ? null : response;
 }
 
-async function handleRequest(body, { server, client, version, grantedScopes, taskStore = defaultTaskStore }) {
+async function handleRequest(body, { server, client, version, grantedScopes, sandboxOver = null, taskStore = defaultTaskStore }) {
   const { id = null, method } = body || {};
 
   if (method === 'server/discover') {
@@ -253,7 +253,7 @@ async function handleRequest(body, { server, client, version, grantedScopes, tas
   if (method === 'tools/list') {
     return ok(id, {
       resultType: 'complete',
-      tools: visibleTools(server, grantedScopes).map(toolDefinition),
+      tools: visibleTools(server, grantedScopes, sandboxOver).map(toolDefinition),
       ttlMs: TOOLS_TTL_MS,
       // A list narrowed to one grant must not be shared between people.
       cacheScope: Array.isArray(grantedScopes) ? 'private' : 'public',

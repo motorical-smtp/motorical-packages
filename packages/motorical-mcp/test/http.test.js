@@ -686,3 +686,58 @@ describe('permissions added after the token was minted', () => {
     });
   });
 });
+
+// Option A (owner, 2026-10-20): the sandbox tools are not advertised once the account has a verified real domain
+// AND an active plan. Listing only; the lookup is asked for tools/list on servers that carry sandbox tools.
+describe('sandbox tools after onboarding', () => {
+  const GRANT = ['send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients'];
+  const SANDBOXISH = ['motorical_sandbox_status', 'motorical_sandbox_provision', 'motorical_sandbox_convert', 'motorical_free_recipient_add', 'motorical_free_recipient_list', 'motorical_free_recipient_remove'];
+
+  function appWith(accountPhaseLookup) {
+    return createHttpApp({
+      verifier: { verify: async () => ({ userId: 'u1', grantId: 'g1', clientId: 'c', motorBlockIds: [], scopes: GRANT }) },
+      signer: { key: 'unused-in-this-test', kid: 'k1' },
+      clientFactory: () => ({}),
+      accountPhaseLookup,
+    });
+  }
+  async function names(lookup, path, native) {
+    const s = await listen(appWith(lookup));
+    try {
+      const params = native ? { _meta: { 'io.modelcontextprotocol/clientCapabilities': {} } } : {};
+      const res = await fetch(`${s.base}${path}`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer any', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 41, method: 'tools/list', params }),
+      });
+      const text = await res.text();
+      const line = text.split('\n').find((l) => l.startsWith('data: '));
+      const body = line ? JSON.parse(line.slice(6)) : JSON.parse(text);
+      return (body?.result?.tools || []).map((t) => t.name);
+    } finally { s.close(); }
+  }
+
+  for (const native of [false, true]) {
+    const label = native ? 'native transport' : 'legacy transport';
+    test(`${label}: sandboxOver true hides every sandbox-server tool and keeps the rest`, async () => {
+      const list = await names(async () => true, '/v1/motorical/mcp', native);
+      for (const n of SANDBOXISH) assert.ok(!list.includes(n), `${n} should be hidden`);
+      assert.ok(list.includes('motorical_send_email'));
+      assert.ok(list.includes('motorical_whoami'));
+    });
+
+    test(`${label}: false, null, a failure or no lookup keeps the sandbox tools listed`, async () => {
+      for (const lookup of [async () => false, async () => null, async () => { throw new Error('backend down'); }, undefined]) {
+        const list = await names(lookup, '/v1/motorical/mcp', native);
+        assert.ok(list.includes('motorical_sandbox_status'));
+        assert.ok(list.includes('motorical_free_recipient_add'));
+      }
+    });
+  }
+
+  test('a server with no sandbox tools never triggers the lookup', async () => {
+    let calls = 0;
+    await names(async () => { calls += 1; return true; }, '/v1/motorical_analytics/mcp', false);
+    assert.equal(calls, 0);
+  });
+});

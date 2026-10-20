@@ -86,6 +86,9 @@ for (const t of ALL_TOOLS) {
  */
 export const ACCOUNT_SCOPED_TOOLS = new Set([
   'motorical_domain_list',
+  'motorical_domain_get',
+  'motorical_domain_dns_records',
+  'motorical_domain_health',
   'motorical_domain_add',
   'motorical_domain_verify',
   'motorical_domain_check_dns',
@@ -132,6 +135,9 @@ export const TOOL_ROUTES = {
   motorical_get_message_by_smtp_id: { method: 'GET', path: '/api/public/v1/messages' },
   motorical_list_motor_blocks: { method: 'GET', path: '/api/public/v1/motor-blocks' },
   motorical_domain_list: { method: 'GET', path: '/api/public/v1/domains' },
+  motorical_domain_get: { method: 'GET', path: '/api/public/v1/domains/{id}' },
+  motorical_domain_dns_records: { method: 'GET', path: '/api/public/v1/domains/{id}/dns-records' },
+  motorical_domain_health: { method: 'GET', path: '/api/public/v1/domains/{id}/health' },
   motorical_domain_add: { method: 'POST', path: '/api/public/v1/domains' },
   motorical_domain_verify: { method: 'POST', path: '/api/public/v1/domains/{id}/verify' },
   motorical_domain_check_dns: { method: 'POST', path: '/api/public/v1/domains/{id}/check-dns' },

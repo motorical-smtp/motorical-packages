@@ -863,3 +863,29 @@ test('getWhoami calls the account-scoped whoami route without needing a Motor Bl
   assert.equal(calls[0].method, 'GET');
   assert.equal(calls[0].path, '/api/public/v1/account/whoami');
 });
+
+test('the per-domain read tools call the account-scoped public routes with the domain id and optional flags', async () => {
+  const calls = [];
+  const client = new MotoricalClient({
+    apiBaseUrl: 'https://api.motorical.com', docsBaseUrl: 'https://docs.motorical.com',
+    mkApiKey: '', akApiKey: '', bearerToken: 'tok', motorBlockId: '', defaultFrom: ''
+  });
+  client.getBearer = async () => 'tok';
+  client.request = async (method, path) => { calls.push({ method, path }); return { success: true, data: {} }; };
+  const id = '11111111-1111-4111-8111-111111111111';
+
+  await client.domainGet({ domainId: id });
+  await client.domainDnsRecords({ domainId: id });
+  await client.domainDnsRecords({ domainId: id, lookup: true });
+  await client.domainHealthById({ domainId: id });
+  await client.domainHealthById({ domainId: id, refresh: true });
+
+  assert.deepEqual(calls.map((c) => `${c.method} ${c.path}`), [
+    `GET /api/public/v1/domains/${id}`,
+    `GET /api/public/v1/domains/${id}/dns-records`,
+    `GET /api/public/v1/domains/${id}/dns-records?lookup=true`,
+    `GET /api/public/v1/domains/${id}/health`,
+    `GET /api/public/v1/domains/${id}/health?refresh=true`,
+  ]);
+  await assert.rejects(() => client.domainGet({}), /domainId is required/);
+});

@@ -746,6 +746,53 @@ export const TOOLS = [
   },
 
   {
+    name: 'motorical_domain_get',
+    description:
+      'One domain on this account by id (GET /api/public/v1/domains/{id}): verified, DNS auth flags, DKIM mode, created. ' +
+      'Read-only; no keys or tokens. Over hosted OAuth it needs the read:domains scope.',
+    inputSchema: {
+      domainId: z.string().uuid(),
+      motorBlockId: z.string().uuid().optional()
+        .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
+    },
+    annotations: { title: 'Get one account domain', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async (args) => client.domainGet(args),
+  },
+
+  {
+    name: 'motorical_domain_dns_records',
+    description:
+      'The DNS records to publish for one domain, with what each is for (GET /api/public/v1/domains/{id}/dns-records). ' +
+      'Pass lookup:true to also check what DNS currently answers (slower: live lookups). Read-only. ' +
+      'Over hosted OAuth it needs the read:domains scope.',
+    inputSchema: {
+      domainId: z.string().uuid(),
+      lookup: z.boolean().optional().describe('Also run live DNS lookups for each record (default false)'),
+      motorBlockId: z.string().uuid().optional()
+        .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
+    },
+    annotations: { title: 'Get domain DNS records', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    handler: (client) => async (args) => client.domainDnsRecords(args),
+  },
+
+  {
+    name: 'motorical_domain_health',
+    description:
+      'Email-authentication health of ONE domain by id (GET /api/public/v1/domains/{id}/health): SPF, DKIM, DMARC, status, ' +
+      'issues, and whether the answer is cached (source). Works for a domain that has no Motor Block yet. ' +
+      'Same shape as motorical_get_domain_health, which answers for the domain attached to one Motor Block. ' +
+      'Pass refresh:true for a live DNS check (slower). Read-only. Over hosted OAuth it needs the read:domains scope.',
+    inputSchema: {
+      domainId: z.string().uuid(),
+      refresh: z.boolean().optional().describe('Run a live DNS check instead of serving the cache (default false)'),
+      motorBlockId: z.string().uuid().optional()
+        .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
+    },
+    annotations: { title: 'Get domain health by domain', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    handler: (client) => async (args) => client.domainHealthById(args),
+  },
+
+  {
     name: 'motorical_domain_verify',
     description:
       'Verify domain ownership and refresh DKIM/SPF/DMARC send-readiness flags (POST /api/domains/{id}/verify). ' +

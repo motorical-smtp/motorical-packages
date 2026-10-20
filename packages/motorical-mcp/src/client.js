@@ -796,6 +796,26 @@ export class MotoricalClient {
     return this.request('GET', this._accountPath('/api/public/v1/domains', motorBlockId), { bearer });
   }
 
+  // Read-only per-domain views. Account-scoped public routes, so they work with any credential that can mint or
+  // hold a public token; the dashboard's own differently-shaped routes are deliberately not used.
+  async domainGet({ domainId, motorBlockId } = {}) {
+    if (!domainId) throw new Error('domainId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request('GET', this._accountPath(`/api/public/v1/domains/${encodeURIComponent(domainId)}`, motorBlockId), { bearer });
+  }
+
+  async domainDnsRecords({ domainId, lookup, motorBlockId } = {}) {
+    if (!domainId) throw new Error('domainId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request('GET', this._accountPath(`/api/public/v1/domains/${encodeURIComponent(domainId)}/dns-records${this._qs({ lookup: lookup === true ? 'true' : undefined })}`, motorBlockId), { bearer });
+  }
+
+  async domainHealthById({ domainId, refresh, motorBlockId } = {}) {
+    if (!domainId) throw new Error('domainId is required');
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request('GET', this._accountPath(`/api/public/v1/domains/${encodeURIComponent(domainId)}/health${this._qs({ refresh: refresh === true ? 'true' : undefined })}`, motorBlockId), { bearer });
+  }
+
   async domainAdd({ domain, verificationMethod = 'dns', motorBlockId, idempotencyKey } = {}) {
     if (!domain) throw new Error('domain is required');
     const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined;
