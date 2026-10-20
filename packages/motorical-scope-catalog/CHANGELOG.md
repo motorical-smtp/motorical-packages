@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-10-20
+
+Domain READ operations are now available with `read:domains` alone. `motorical_get_config` and
+`motorical_get_domain_health` move from `manage:domains` to `read:domains` (the Public API routes they wrap ask for
+`config.read`, which `read:domains` already grants; the earlier mapping was a mistake). Three new read-only tools join the
+domains server: `motorical_domain_get`, `motorical_domain_dns_records` and `motorical_domain_health` (health by domain id).
+No new scope. Domain removal is intentionally not offered.
+
 ## 0.4.0 — 2026-10-20
 
 Add the `motorical_whoami` tool to the analytics (and main) server, requiring `read:analytics`.

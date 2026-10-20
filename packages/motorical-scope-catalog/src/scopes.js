@@ -78,8 +78,8 @@ const SCOPES = {
     resource: 'domains',
     level: 'read',
     publicScopes: ['config.read'],
-    agentDescription: 'List and read sending domains, without adding or verifying any.',
-    customerAction: 'View your sending domains',
+    agentDescription: 'List and read sending domains, their DNS records and email-authentication health, and read a Motor Block\'s configuration, without adding or verifying any domain.',
+    customerAction: 'View your sending domains and Motor Block configuration',
   },
 };
 
