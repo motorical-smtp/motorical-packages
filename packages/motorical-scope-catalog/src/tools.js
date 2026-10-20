@@ -35,6 +35,7 @@ const ANALYTICS_TOOLS = [
   'motorical_get_rate_limits',
   'motorical_get_account_rate_limits',
   'motorical_get_onboarding_state',
+  'motorical_whoami',
   'motorical_get_logs',
   'motorical_get_message_by_smtp_id',
 ];
@@ -123,6 +124,7 @@ const TOOL_SCOPES = {
   motorical_get_rate_limits: ['read:analytics'],
   motorical_get_account_rate_limits: ['read:analytics'],
   motorical_get_onboarding_state: ['read:analytics'],
+  motorical_whoami: ['read:analytics'],
   motorical_get_logs: ['read:analytics'],
   motorical_get_message_by_smtp_id: ['read:analytics'],
   motorical_get_config: ['manage:domains'],
