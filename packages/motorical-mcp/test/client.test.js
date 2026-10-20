@@ -839,3 +839,27 @@ test('getMessageRecipients appends includePII=true only when asked', async () =>
   await client.getMessageRecipients('msg-123', { motorBlockId: 'mb-1', includePII: true });
   assert.match(calls[0].path, /includePII=true/);
 });
+
+test('getWhoami calls the account-scoped whoami route without needing a Motor Block', async () => {
+  const calls = [];
+  const client = new MotoricalClient({
+    apiBaseUrl: 'https://api.motorical.com',
+    docsBaseUrl: 'https://docs.motorical.com',
+    mkApiKey: '',
+    akApiKey: '',
+    bearerToken: 'tok',
+    motorBlockId: '',
+    defaultFrom: ''
+  });
+  client.getBearer = async () => 'tok';
+  client.request = async (method, path, opts) => {
+    calls.push({ method, path, opts });
+    return { success: true, data: {} };
+  };
+
+  await client.getWhoami({});
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, 'GET');
+  assert.equal(calls[0].path, '/api/public/v1/account/whoami');
+});

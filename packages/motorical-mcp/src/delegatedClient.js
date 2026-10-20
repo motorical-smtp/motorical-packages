@@ -37,6 +37,7 @@ export const TOOL_FOR_METHOD = {
   getRateLimits: 'motorical_get_rate_limits',
   getAccountRateLimits: 'motorical_get_account_rate_limits',
   getAccountState: 'motorical_get_onboarding_state',
+  getWhoami: 'motorical_whoami',
   getLogs: 'motorical_get_logs',
   getMessageBySmtpId: 'motorical_get_message_by_smtp_id',
   getConfig: 'motorical_get_config',

@@ -90,6 +90,7 @@ test('the account-scoped set is exactly the account-wide operations', () => {
     'motorical_sandbox_convert',
     'motorical_sandbox_provision',
     'motorical_sandbox_status',
+    'motorical_whoami',
   ]);
 });
 
