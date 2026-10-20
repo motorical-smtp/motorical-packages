@@ -16,7 +16,7 @@ test('groupForConsent groups by resource and uses the widest level granted for t
 test('a read-only grant for a resource that also has a manage level uses the read label', () => {
   const groups = groupForConsent(['read:domains']);
   assert.equal(groups.length, 1);
-  assert.equal(groups[0].label, 'View your sending domains');
+  assert.equal(groups[0].label, 'View your sending domains and Motor Block configuration');
 });
 
 test('groupForConsent never drops the raw scope list, even after grouping', () => {
