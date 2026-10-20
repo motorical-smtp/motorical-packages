@@ -171,8 +171,8 @@ export const TOOLS = [
       'Create a production Motor Block on a verified customer domain. Use transactional for triggered, user-specific mail; ' +
       'use general_purpose for mixed operational sending. Hosted OAuth never returns passwords or API-key secrets. ' +
       'A UUID-v4 idempotencyKey makes retries return the original result. ' +
-      'The domainId must be a verified, non-sandbox domain the account owns; this server cannot list or add domains, ' +
-      'so get it from motorical_domain_list on the Domains server (add and verify one first with motorical_domain_add / motorical_domain_verify if the account has none).',
+      'The domainId must be a verified, non-sandbox domain the account owns; a narrow Motor Blocks server cannot list or add domains, ' +
+      'so get it from motorical_domain_list (on the main server, or the Domains server); add and verify one first with motorical_domain_add / motorical_domain_verify if the account has none.',
     inputSchema: {
       name: z.string().min(3).max(50),
       domainId: z.string().uuid().describe('Id of a verified, non-sandbox domain from motorical_domain_list (Domains server).'),
@@ -713,7 +713,7 @@ export const TOOLS = [
       'For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). ' +
       'On 409 (domain already registered), call motorical_domain_list first to check whether it is already on ' +
       'this account before asking the user to resolve the conflict. A Free account may have one domain; adding ' +
-      'another returns free_domain_limit with a nextAction. Requires MOTORICAL_JWT.',
+      'another returns free_domain_limit with a nextAction. Over hosted OAuth it needs the manage:domains scope; the local server uses MOTORICAL_JWT.',
     inputSchema: {
       domain: z.string().min(3),
       verificationMethod: z.enum(['dns', 'email']).optional(),
@@ -733,7 +733,7 @@ export const TOOLS = [
     description:
       'List domains already on this account (GET /api/domains) — id, domain, verified, DNS auth flags. ' +
       'Call this before motorical_domain_add on a 409 conflict to self-diagnose whether the domain is already ' +
-      'yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Requires MOTORICAL_JWT.',
+      'yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Over hosted OAuth it needs the read:domains scope; the local server uses MOTORICAL_JWT.',
     inputSchema: {
       motorBlockId: z
         .string()
@@ -749,7 +749,7 @@ export const TOOLS = [
     name: 'motorical_domain_verify',
     description:
       'Verify domain ownership and refresh DKIM/SPF/DMARC send-readiness flags (POST /api/domains/{id}/verify). ' +
-      'Requires confirm:true — this call is destructive/consequential. Returns sendReady. Requires MOTORICAL_JWT.',
+      'Requires confirm:true — this call is destructive/consequential. Returns sendReady. Over hosted OAuth it needs the manage:domains scope; the local server uses MOTORICAL_JWT.',
     inputSchema: {
       domainId: z.string().uuid(),
       method: z.enum(['dns', 'email']).optional(),
@@ -772,7 +772,7 @@ export const TOOLS = [
     name: 'motorical_domain_check_dns',
     description:
       'Live-check DKIM/SPF/DMARC and persist dkim_configured/spf_configured (POST /api/domains/{id}/check-dns). ' +
-      'Required before /v1/send when ownership is verified but send returns DOMAIN_DNS_INCOMPLETE. Requires MOTORICAL_JWT.',
+      'Required before /v1/send when ownership is verified but send returns DOMAIN_DNS_INCOMPLETE. Over hosted OAuth it needs the manage:domains scope; the local server uses MOTORICAL_JWT.',
     inputSchema: {
       domainId: z.string().uuid(),
       recordType: z.enum(['dkim', 'spf', 'dmarc', 'mx']).optional(),
@@ -977,6 +977,23 @@ export const TOOLS = [
   },
 
   {
+    name: 'motorical_whoami',
+    description:
+      'Who this connection is acting for (GET /api/public/v1/account/whoami): the account (id, owner email, name), '
+      + 'its plan (name, status, hasSubscription) and, for an OAuth connection, the grant: the client, the scopes it '
+      + 'holds, the Motor Blocks it covers, when it was granted, and canAdd (permissions it could still be given, '
+      + 'with available:false where the plan does not allow it) plus addInDashboard, the page where the person adds them. '
+      + 'Account-scoped: no Motor Block needed. grant is null when the call is not made over an OAuth grant. '
+      + 'Use it instead of inferring scopes from the tool list.',
+    inputSchema: {
+      motorBlockId: z.string().uuid().optional()
+        .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
+    },
+    annotations: { title: 'Who am I (account, plan, grant)', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async (args) => client.getWhoami(args),
+  },
+
+  {
     name: 'motorical_get_logs',
     description:
       'Search send logs for one Motor Block (GET /api/public/v1/motor-blocks/{id}/logs). '
@@ -987,7 +1004,7 @@ export const TOOLS = [
       from: isoDate('inclusive'),
       to: isoDate('inclusive'),
       currentOutcome: z.string().optional().describe('Filter to one delivery outcome, e.g. delivered, bounced, deferred'),
-      query: z.string().optional().describe('Free-text match against recipient, subject or message id'),
+      query: z.string().optional().describe('Space-separated key:value terms, all of which must match: code:<exact SMTP code, e.g. 5.7.1 or 550>, id:<message uuid>. Text without a key: prefix is ignored; there is no subject search.'),
       limit: z.number().int().positive().optional().describe('Page size'),
       cursor: z.string().optional().describe('Opaque cursor from a previous page'),
       includePII: z.boolean().optional().describe('Unmask recipient addresses. Requires the logs.pii scope, which is never granted to OAuth tokens — the API returns 403.')

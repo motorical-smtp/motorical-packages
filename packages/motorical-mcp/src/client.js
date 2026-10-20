@@ -374,6 +374,16 @@ export class MotoricalClient {
     );
   }
 
+  // Account-wide: same pattern as getAccountState.
+  async getWhoami({ motorBlockId } = {}) {
+    const bearer = await this.getBearer({ motorBlockId });
+    return this.request(
+      'GET',
+      this._accountPath('/api/public/v1/account/whoami', motorBlockId),
+      { bearer }
+    );
+  }
+
   async getLogs({
     motorBlockId, from, to, currentOutcome, query, limit, cursor, includePII,
   } = {}) {

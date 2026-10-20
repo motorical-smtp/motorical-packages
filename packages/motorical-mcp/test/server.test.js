@@ -87,7 +87,8 @@ test('MCP server lists tools and resources', async () => {
     'motorical_webhook_get_stats',
     'motorical_webhook_list',
     'motorical_webhook_test',
-    'motorical_webhook_update'
+    'motorical_webhook_update',
+    'motorical_whoami'
   ]);
 
   const status = await client.callTool({ name: 'motorical_get_send_status', arguments: {} });

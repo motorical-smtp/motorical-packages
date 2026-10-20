@@ -92,6 +92,7 @@ export const ACCOUNT_SCOPED_TOOLS = new Set([
   'motorical_list_motor_blocks',
   'motorical_get_account_rate_limits',
   'motorical_get_onboarding_state',
+  'motorical_whoami',
   'motorical_sandbox_status',
   'motorical_sandbox_provision',
   'motorical_sandbox_convert',
@@ -147,6 +148,7 @@ export const TOOL_ROUTES = {
   motorical_get_rate_limits: { method: 'GET', path: '/api/public/v1/motor-blocks/{id}/rate-limits' },
   motorical_get_account_rate_limits: { method: 'GET', path: '/api/public/v1/account/rate-limits' },
   motorical_get_onboarding_state: { method: 'GET', path: '/api/public/v1/account/state' },
+  motorical_whoami: { method: 'GET', path: '/api/public/v1/account/whoami' },
   motorical_get_logs: { method: 'GET', path: '/api/public/v1/motor-blocks/{id}/logs' },
 
   // Dashboard-session-only (MOTORICAL_JWT); refused over an OAuth grant.
