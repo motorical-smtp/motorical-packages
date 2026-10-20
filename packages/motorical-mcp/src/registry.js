@@ -304,6 +304,9 @@ export const TOOLS = [
       'A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and ' +
       'nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. ' +
       'A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). ' +
+      'Optional cc, bcc and replyTo: cc recipients are named in the Cc header, bcc recipients receive the message but are named in no header, replyTo sets Reply-To. ' +
+      'to, cc and bcc together take at most 50 recipients and every one is checked like a to recipient (sandbox allowlist, Free-account rules, suppression; a suppressed cc/bcc is skipped and listed in data.skipped). ' +
+      'These fields are rolling out per Motor Block: a block that does not have them yet answers 422 feature_not_enabled and sends nothing, so retry without them or tell the person. ' +
       'from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain that motorical_sandbox_provision created (see motorical_get_onboarding_state sendFrom); any local part works.',
     inputSchema: {
       from: z.string().email().optional().describe('Defaults to MOTORICAL_DEFAULT_FROM'),
@@ -313,6 +316,9 @@ export const TOOLS = [
         .optional()
         .describe('Optional From display name (do not put From in headers — use this field)'),
       to: z.union([z.string().email(), z.array(z.string().email())]),
+      cc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Copy recipients (Cc header). Rolling out per Motor Block: 422 feature_not_enabled where not available'),
+      bcc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Blind-copy recipients: delivered, named in no header. Rolling out per Motor Block'),
+      replyTo: z.string().email().optional().describe('Reply-To address. Do not also set a Reply-To header. Rolling out per Motor Block'),
       subject: z.string().min(1),
       text: z.string().optional(),
       html: z.string().optional(),
@@ -353,6 +359,11 @@ export const TOOLS = [
         from: z.string().optional(),
         fromName: z.string().nullable().optional(),
         to: z.array(z.string()).optional(),
+        cc: z.array(z.string()).optional(),
+        bcc: z.array(z.string()).optional(),
+        replyTo: z.string().optional(),
+        skipped: z.array(z.object({ address: z.string(), role: z.string(), reason: z.string() })).optional()
+          .describe('Recipients that were not sent to (today: suppressed)'),
         subject: z.string().optional(),
         domain: z.string().optional(),
         motorBlockId: z.string().optional(),

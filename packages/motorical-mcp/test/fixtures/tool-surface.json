@@ -671,8 +671,10 @@
   },
   {
     "name": "motorical_send_email",
-    "description": "Transactional email: send or validate via POST /v1/send. Over the hosted OAuth server your grant authorizes the send, so no key is needed and you never see one; the local stdio server instead needs MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); it is never redirected, so add the recipient to the allowlist first. Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain that motorical_sandbox_provision created (see motorical_get_onboarding_state sendFrom); any local part works. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
+    "description": "Transactional email: send or validate via POST /v1/send. Over the hosted OAuth server your grant authorizes the send, so no key is needed and you never see one; the local stdio server instead needs MOTORICAL_MK_API_KEY (mk_live_...). Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); it is never redirected, so add the recipient to the allowlist first. Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). Optional cc, bcc and replyTo: cc recipients are named in the Cc header, bcc recipients receive the message but are named in no header, replyTo sets Reply-To. to, cc and bcc together take at most 50 recipients and every one is checked like a to recipient (sandbox allowlist, Free-account rules, suppression; a suppressed cc/bcc is skipped and listed in data.skipped). These fields are rolling out per Motor Block: a block that does not have them yet answers 422 feature_not_enabled and sends nothing, so retry without them or tell the person. from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain that motorical_sandbox_provision created (see motorical_get_onboarding_state sendFrom); any local part works. Requires OAuth scope: send:transactional (Send transactional email through the caller's Motor Block(s).).",
     "inputKeys": [
+      "bcc",
+      "cc",
       "confirmRealSend",
       "dryRun",
       "from",
@@ -680,6 +682,7 @@
       "html",
       "idempotencyKey",
       "motorBlockId",
+      "replyTo",
       "subject",
       "text",
       "to"
