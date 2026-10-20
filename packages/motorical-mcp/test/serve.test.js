@@ -173,3 +173,78 @@ test('buildServer() real wiring still routes a non-public server to createDelega
     upstream.close();
   }
 });
+
+test('a tools/list costs ONE /account/grant call, and asks for the phase only while its cache is cold', async () => {
+  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const signer = { key: privateKey.export({ type: 'pkcs8', format: 'pem' }), kid: 'k1' };
+
+  const grantCalls = [];
+  const upstreamApp = express();
+  upstreamApp.get('/api/public/v1/account/grant', (req, res) => {
+    grantCalls.push(req.url);
+    const scopes = ['send:transactional', 'read:analytics', 'manage:sandbox', 'manage:recipients'];
+    res.json({ success: true, data: req.query.include === 'phase' ? { grantId: 'g1', scopes, sandboxOver: true } : { grantId: 'g1', scopes } });
+  });
+  const upstream = upstreamApp.listen(0, '127.0.0.1');
+  await new Promise((resolve) => upstream.once('listening', resolve));
+  const upstreamBase = `http://127.0.0.1:${upstream.address().port}`;
+
+  const claims = {
+    userId: 'u1', grantId: 'g1', clientId: 'c',
+    scopes: ['send:transactional', 'read:analytics', 'manage:sandbox', 'manage:recipients'], motorBlockIds: [],
+  };
+  const { app } = buildServer({ ...ENV, MOTORICAL_API_BASE_URL: upstreamBase }, { signer, verifier: { verify: async () => ({ ...claims }) } });
+
+  try {
+    const { default: request } = await import('supertest');
+    const toolNames = (res) => {
+      const line = res.text.split('\n').find((l) => l.startsWith('data: '));
+      const body = line ? JSON.parse(line.slice(6)) : JSON.parse(res.text);
+      return (body.result.tools || []).map((t) => t.name);
+    };
+    const list = () => request(app).post('/v1/motorical/mcp').set('Authorization', 'Bearer good')
+      .set('Accept', 'application/json, text/event-stream')
+      .send({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} });
+
+    const first = await list();
+    assert.equal(first.status, 200);
+    assert.equal(grantCalls.length, 1, `first listing made ${grantCalls.length} grant calls: ${grantCalls.join(' ')}`);
+    assert.match(grantCalls[0], /include=phase/, 'cold cache: the single call also asks for the phase');
+    assert.ok(!toolNames(first).includes('motorical_sandbox_status'), 'sandboxOver true hides the sandbox tools');
+    assert.ok(toolNames(first).includes('motorical_send_email'));
+
+    const second = await list();
+    assert.equal(second.status, 200);
+    assert.equal(grantCalls.length, 2, 'second listing is also one call');
+    assert.doesNotMatch(grantCalls[1], /include=phase/, 'warm cache: no phase computation on the backend');
+    assert.ok(!toolNames(second).includes('motorical_sandbox_status'), 'the cached phase still hides them');
+  } finally {
+    upstream.close();
+  }
+});
+
+test('a failing /account/grant keeps the listing working and the sandbox tools listed (fail open)', async () => {
+  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const signer = { key: privateKey.export({ type: 'pkcs8', format: 'pem' }), kid: 'k1' };
+
+  let calls = 0;
+  const upstreamApp = express();
+  upstreamApp.get('/api/public/v1/account/grant', (req, res) => { calls += 1; res.status(500).json({ success: false }); });
+  const upstream = upstreamApp.listen(0, '127.0.0.1');
+  await new Promise((resolve) => upstream.once('listening', resolve));
+
+  const claims = { userId: 'u1', grantId: 'g1', clientId: 'c', scopes: ['send:transactional', 'read:analytics', 'manage:sandbox', 'manage:recipients'], motorBlockIds: [] };
+  const { app } = buildServer({ ...ENV, MOTORICAL_API_BASE_URL: `http://127.0.0.1:${upstream.address().port}` }, { signer, verifier: { verify: async () => ({ ...claims }) } });
+  try {
+    const { default: request } = await import('supertest');
+    const res = await request(app).post('/v1/motorical/mcp').set('Authorization', 'Bearer good')
+      .set('Accept', 'application/json, text/event-stream').send({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} });
+    assert.equal(res.status, 200);
+    assert.equal(calls, 1, 'one failed call, not two');
+    const line = res.text.split('\n').find((l) => l.startsWith('data: '));
+    const names = JSON.parse(line.slice(6)).result.tools.map((t) => t.name);
+    assert.ok(names.includes('motorical_sandbox_status'));
+  } finally {
+    upstream.close();
+  }
+});

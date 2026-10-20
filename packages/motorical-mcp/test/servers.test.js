@@ -76,6 +76,9 @@ test('the account-scoped set is exactly the account-wide operations', () => {
   assert.deepEqual([...ACCOUNT_SCOPED_TOOLS].sort(), [
     'motorical_domain_add',
     'motorical_domain_check_dns',
+    'motorical_domain_dns_records',
+    'motorical_domain_get',
+    'motorical_domain_health',
     'motorical_domain_list',
     'motorical_domain_verify',
     'motorical_free_recipient_add',
@@ -94,11 +97,10 @@ test('the account-scoped set is exactly the account-wide operations', () => {
   ]);
 });
 
-// get_config and get_domain_health need config.read, and manage:domains is the
-// only MCP scope that grants it. They live on the DOMAINS server rather than
-// analytics for exactly that reason: a server advertises the union of its
-// tools' scopes, so putting them on analytics would have made connecting to an
-// analytics client request domain writes. Decided 2026-09-02.
+// get_config and get_domain_health are read-only and need only read:domains (the public routes ask for config.read,
+// which read:domains grants). They were manage:domains until 2026-10-20 on the mistaken belief that only manage:domains
+// granted config.read. They still live on the DOMAINS server rather than analytics: a server advertises the union of its
+// tools' scopes, so putting them on analytics would make an analytics client request domain access it never needed.
 test('the analytics server never requests domain-write authority', () => {
   const analytics = SERVERS.find((s) => s.key === 'analytics');
   assert.deepEqual(analytics.scopes, ['read:analytics']);

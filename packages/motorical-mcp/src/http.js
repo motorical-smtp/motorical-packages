@@ -14,7 +14,7 @@ import { resourceMetadataUrl, assertToolAllowed } from './resourceAuth.js';
 import { TOOL_SCOPES, expandMcpImplied } from '@motorical/scope-catalog';
 import { detectRevision } from './native/revision.js';
 import { dispatchNative } from './native/dispatch.js';
-import { toolsVisibleToGrant } from './grantVisibility.js';
+import { toolsVisibleToGrant, SANDBOX_TOOL_NAMES } from './grantVisibility.js';
 import { createSignupRateLimiter } from './signupRateLimit.js';
 
 const AUTHORIZATION_SERVER = 'https://motorical.com';
@@ -51,6 +51,22 @@ async function grantHasMoreThanToken({ claims, srv, grantScopesLookup }) {
   }
 }
 
+/**
+ * Whether this account has finished the sandbox phase (verified real domain and an active plan), so the sandbox tools
+ * can be left out of a tools/list. true hides; false, null (unknown) and any failure keep them listed. Asked only for
+ * a tools/list on a server that carries sandbox tools. Never throws.
+ */
+async function sandboxPhaseOver({ claims, srv, accountPhaseLookup }) {
+  if (typeof accountPhaseLookup !== 'function' || !claims || !claims.grantId) return null;
+  if (!srv.tools.some((t) => SANDBOX_TOOL_NAMES.has(t))) return null;
+  try {
+    const over = await accountPhaseLookup({ claims, server: srv });
+    return over === true ? true : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function permissionsChangedResponse(res, srv, id) {
   res.set('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl(srv.canonicalUri)}", error="invalid_token", error_description="permissions changed; refresh the access token"`);
   return res.status(401).json({
@@ -59,7 +75,7 @@ function permissionsChangedResponse(res, srv, id) {
   });
 }
 
-export function createHttpApp({ verifier, signer, clientFactory, grantScopesLookup }) {
+export function createHttpApp({ verifier, signer, clientFactory, grantScopesLookup, accountPhaseLookup }) {
   const app = express();
 
   // One counter set per app instance, scoped to the ONE public (`srv.public`)
@@ -286,6 +302,9 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
       // check runs AFTER auth/body-parsing and INSIDE this try: a throw from
       // clientFactory or dispatchNative is caught exactly like every other
       // failure below, never left to hang the client.
+      const isToolsList = !!(body && typeof body === 'object' && !Array.isArray(body) && body.method === 'tools/list');
+      const sandboxOver = isToolsList ? await sandboxPhaseOver({ claims, srv, accountPhaseLookup }) : null;
+
       if (detectRevision(req.body) === 'native') {
         const nativeClient = clientFactory({ claims, server: srv, signer });
         const response = await dispatchNative(req.body, {
@@ -293,6 +312,7 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
           client: nativeClient,
           version: PACKAGE_VERSION,
           grantedScopes: claims ? claims.scopes : undefined,
+          sandboxOver,
         });
         // null means the request was a JSON-RPC notification: it MUST NOT be
         // answered with a body of any kind. 202 Accepted, nothing else.
@@ -308,7 +328,7 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
         // client on /v1/motorical_analytics/mcp must never be offered
         // motorical_send_email just because the process also serves other
         // scoped paths.
-        allowedTools: claims ? toolsVisibleToGrant(srv.tools, claims.scopes) : srv.tools,
+        allowedTools: claims ? toolsVisibleToGrant(srv.tools, claims.scopes, { sandboxOver }) : srv.tools,
         serverKey: srv.key,
       }));
       transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
