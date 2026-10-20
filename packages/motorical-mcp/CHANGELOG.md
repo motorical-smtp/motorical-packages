@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.15.0] — 2026-10-21
+
+### Added
+
+- `motorical_send_email` accepts `cc`, `bcc` (a string or a list each) and `replyTo`, and returns them in `data` together with `data.skipped`
+  (recipients not sent to; today a suppressed address). `to`, `cc` and `bcc` together take at most 50 recipients. The backend rolls the fields
+  out per Motor Block: where they are not enabled yet it answers 422 `feature_not_enabled` and sends nothing, and the tool description says so.
+  No new tool and no new scope: the existing send permission covers them.
+
 ## [1.12.2] — 2026-10-14
 
 ### Fixed

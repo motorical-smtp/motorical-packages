@@ -889,3 +889,18 @@ test('the per-domain read tools call the account-scoped public routes with the d
   ]);
   await assert.rejects(() => client.domainGet({}), /domainId is required/);
 });
+
+test('sendEmail passes cc, bcc and replyTo through to the body untouched (the backend owns the rules)', async () => {
+  const calls = [];
+  const client = new MotoricalClient({ apiBaseUrl: 'https://api.motorical.com', docsBaseUrl: 'https://docs.motorical.com', mkApiKey: 'mk_live_test_secret', akApiKey: '', bearerToken: '', motorBlockId: '', defaultFrom: 'noreply@example.com' });
+  client.request = async (method, path, opts) => { calls.push({ method, path, opts }); return { success: true, dryRun: true }; };
+  await client.sendEmail({ to: 'a@example.com', cc: ['c@example.com'], bcc: 'b@example.com', replyTo: 'r@example.com', subject: 'hi', text: 'body' });
+  assert.deepEqual(
+    { cc: calls[0].opts.body.cc, bcc: calls[0].opts.body.bcc, replyTo: calls[0].opts.body.replyTo },
+    { cc: ['c@example.com'], bcc: 'b@example.com', replyTo: 'r@example.com' }
+  );
+  await client.sendEmail({ to: 'a@example.com', subject: 'hi', text: 'body' });
+  assert.equal('cc' in calls[1].opts.body, false);
+  assert.equal('bcc' in calls[1].opts.body, false);
+  assert.equal('replyTo' in calls[1].opts.body, false);
+});
