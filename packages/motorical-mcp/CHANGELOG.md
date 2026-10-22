@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.21.0] — 2026-10-22
+
+### Changed
+
+- `motorical_whoami` can be called by any OAuth connection, whatever scopes it holds, and every authenticated hosted server now lists it
+  (it needs no scope). Before, it was listed under `read:analytics` while the API route behind it needed `config.read`, so a
+  connection holding only `read:analytics` saw the tool and got `403 missing_scope`, and a connection with only another scope never
+  saw it. The tool stays visible after the sandbox phase ends. Over the local server with an API key the route still needs `config.read`.
+- Requires `@motorical/scope-catalog` 0.6.0.
+
 ## [1.20.0] — 2026-10-22
 
 ### Changed

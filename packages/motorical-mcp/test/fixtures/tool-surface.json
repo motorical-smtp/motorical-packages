@@ -842,7 +842,7 @@
   },
   {
     "name": "motorical_whoami",
-    "description": "Who this connection is acting for (GET /api/public/v1/account/whoami): the account (id, owner email, name), its plan (name, status, hasSubscription) and, for an OAuth connection, the grant: the client, the scopes it holds, the Motor Blocks it covers, when it was granted, and canAdd (permissions it could still be given, with available:false where the plan does not allow it) plus addInDashboard, the page where the person adds them. Account-scoped: no Motor Block needed. grant is null when the call is not made over an OAuth grant. Use it instead of inferring scopes from the tool list. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "description": "Who this connection is acting for (GET /api/public/v1/account/whoami): the account (id, owner email, name), its plan (name, status, hasSubscription) and, for an OAuth connection, the grant: the client, the scopes it holds, the Motor Blocks it covers, when it was granted, and canAdd (permissions it could still be given, with available:false where the plan does not allow it) plus addInDashboard, the page where the person adds them. Account-scoped: no Motor Block needed. grant is null when the call is not made over an OAuth grant. Over OAuth it needs no scope, so any connection can ask what it holds, and every server lists it. Use it instead of inferring scopes from the tool list.",
     "inputKeys": [
       "motorBlockId"
     ],

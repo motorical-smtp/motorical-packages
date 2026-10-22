@@ -83,6 +83,7 @@ describe('every Motor Block tool accepts its real backend response under the ADV
   }
 
   test('every Motor Block tool is covered by a body above (a new tool must add one)', () => {
-    assert.deepEqual(Object.keys(BODIES).sort(), motorBlocks.tools.slice().sort());
+    // motorical_whoami is on every server (any OAuth grant may call it) and is not a Motor Block tool.
+    assert.deepEqual(Object.keys(BODIES).sort(), motorBlocks.tools.filter((t) => t !== 'motorical_whoami').sort());
   });
 });
