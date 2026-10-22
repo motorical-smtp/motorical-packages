@@ -96,14 +96,22 @@ const ALL_TOOLS = [
   ]),
 ];
 
+/**
+ * Tools any OAuth grant may call, whatever scopes it holds (they carry an empty TOOL_SCOPES entry): a connection must be able to ask
+ * what it holds. Listed on every authenticated hosted server, appended after each server's own tools so the order of main and of
+ * the existing lists is unchanged. motorical_whoami was listed under read:analytics while the route behind it needed config.read,
+ * which read:analytics does not carry, so a read:analytics-only grant saw the tool and was refused (found 2026-10-22).
+ */
+const ANY_GRANT_TOOLS = ['motorical_whoami'];
+
 const SERVER_TOOLS = {
   main: ALL_TOOLS,
-  transactional: TRANSACTIONAL_TOOLS,
+  transactional: [...TRANSACTIONAL_TOOLS, ...ANY_GRANT_TOOLS],
   analytics: ANALYTICS_TOOLS,
-  domains: DOMAIN_TOOLS,
-  sandbox: SANDBOX_TOOLS,
-  webhooks: WEBHOOK_TOOLS,
-  motorBlocks: MOTOR_BLOCK_TOOLS,
+  domains: [...DOMAIN_TOOLS, ...ANY_GRANT_TOOLS],
+  sandbox: [...SANDBOX_TOOLS, ...ANY_GRANT_TOOLS],
+  webhooks: [...WEBHOOK_TOOLS, ...ANY_GRANT_TOOLS],
+  motorBlocks: [...MOTOR_BLOCK_TOOLS, ...ANY_GRANT_TOOLS],
   signup: ['motorical_signup_handoff'],
 };
 
@@ -127,7 +135,7 @@ const TOOL_SCOPES = {
   motorical_get_rate_limits: ['read:analytics'],
   motorical_get_account_rate_limits: ['read:analytics'],
   motorical_get_onboarding_state: ['read:analytics'],
-  motorical_whoami: ['read:analytics'],
+  motorical_whoami: [], // any OAuth grant; see ANY_GRANT_TOOLS
   motorical_get_logs: ['read:analytics'],
   motorical_get_message_by_smtp_id: ['read:analytics'],
   motorical_get_config: ['read:domains'],
@@ -189,5 +197,5 @@ const RESOURCE_SCOPES = Object.fromEntries(
 );
 
 module.exports = {
-  MCP_HOST, SERVER_TOOLS, TOOL_SCOPES, scopesForTools, RESOURCE_SCOPES,
+  MCP_HOST, SERVER_TOOLS, TOOL_SCOPES, scopesForTools, RESOURCE_SCOPES, ANY_GRANT_TOOLS,
 };

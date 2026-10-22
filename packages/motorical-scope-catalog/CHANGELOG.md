@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 — 2026-10-22
+
+`motorical_whoami` needs no scope and every authenticated hosted server lists it. It was listed under `read:analytics`, but the
+Public API route behind it needs `config.read`, which `read:analytics` does not carry, so a grant holding only `read:analytics`
+was shown the tool and refused when it called it (`403 missing_scope`), and a grant without that scope never saw it. Its
+`TOOL_SCOPES` entry is now `[]`, the `transactional`, `domains`, `sandbox`, `webhooks` and `motorBlocks` server lists add it
+after their own tools, and the new `ANY_GRANT_TOOLS` export names such tools. `main` and `analytics` are unchanged. Pair with
+backend route `GET /account/whoami` accepting any live OAuth grant.
+
 ## 0.5.0 — 2026-10-20
 
 Domain READ operations are now available with `read:domains` alone. `motorical_get_config` and
