@@ -111,3 +111,14 @@ test('a tool that needs no scope adds none to the servers that list it', () => {
 test('main still lists motorical_whoami exactly once, where analytics had it', () => {
   assert.equal(SERVER_TOOLS.main.filter((t) => t === 'motorical_whoami').length, 1);
 });
+
+// motorical_get_onboarding_state wraps GET /account/state, which needs the Public API scope config.read. read:analytics does not carry
+// it, so the tool was listed on the analytics server and refused (403 missing_scope) for a read:analytics-only grant (proved live
+// 2026-10-22). It reports domain verification, DNS readiness and Motor Block state, so it is a domains read: it needs read:domains
+// (which carries config.read) and lives on the domains server, not the analytics one.
+test('motorical_get_onboarding_state needs read:domains and is on the domains server, not analytics', () => {
+  assert.deepEqual(TOOL_SCOPES.motorical_get_onboarding_state, ['read:domains']);
+  assert.ok(SERVER_TOOLS.domains.includes('motorical_get_onboarding_state'));
+  assert.ok(!SERVER_TOOLS.analytics.includes('motorical_get_onboarding_state'));
+  assert.equal(SERVER_TOOLS.main.filter((t) => t === 'motorical_get_onboarding_state').length, 1);
+});
