@@ -44,7 +44,7 @@ test('RESOURCE_SCOPES has exactly the seven authenticated servers, keyed by cano
   ]);
 });
 
-test('the Motor Blocks server exposes exactly the nine bounded lifecycle tools', () => {
+test('the Motor Blocks server exposes exactly the nine bounded lifecycle tools (plus the any-grant motorical_whoami)', () => {
   assert.deepEqual(SERVER_TOOLS.motorBlocks, [
     'motorical_motor_block_list',
     'motorical_motor_block_create',
@@ -55,8 +55,9 @@ test('the Motor Blocks server exposes exactly the nine bounded lifecycle tools',
     'motorical_motor_block_reactivate',
     'motorical_motor_block_delete',
     'motorical_motor_block_delete_status',
+    'motorical_whoami',
   ]);
-  for (const tool of SERVER_TOOLS.motorBlocks) {
+  for (const tool of SERVER_TOOLS.motorBlocks.filter((t) => t !== 'motorical_whoami')) {
     assert.deepEqual(TOOL_SCOPES[tool], ['manage:motor-blocks']);
   }
 });
@@ -87,4 +88,26 @@ test('the newly-registered webhooks resource allows exactly manage:webhooks and 
     RESOURCE_SCOPES['https://mcp.motorical.com/v1/motorical_webhooks/mcp'].sort(),
     ['manage:webhooks', 'read:webhooks'],
   );
+});
+
+// motorical_whoami tells a connection what it holds, so ANY OAuth grant may call it (2026-10-22). It carries no scope, and every
+// hosted server except the unauthenticated signup one lists it, otherwise a grant that holds only, say, send:transactional could
+// never ask. Found when it was listed under read:analytics while the route behind it needed config.read.
+test('motorical_whoami needs no scope and is listed on every authenticated hosted server', () => {
+  assert.deepEqual(TOOL_SCOPES.motorical_whoami, []);
+  for (const [server, tools] of Object.entries(SERVER_TOOLS)) {
+    if (server === 'signup') continue;
+    assert.ok(tools.includes('motorical_whoami'), `${server} does not list motorical_whoami`);
+  }
+  assert.ok(!SERVER_TOOLS.signup.includes('motorical_whoami'));
+});
+
+test('a tool that needs no scope adds none to the servers that list it', () => {
+  assert.deepEqual(scopesForTools(['motorical_whoami']), []);
+  const withoutWhoami = SERVER_TOOLS.transactional.filter((t) => t !== 'motorical_whoami');
+  assert.deepEqual(scopesForTools(SERVER_TOOLS.transactional), scopesForTools(withoutWhoami));
+});
+
+test('main still lists motorical_whoami exactly once, where analytics had it', () => {
+  assert.equal(SERVER_TOOLS.main.filter((t) => t === 'motorical_whoami').length, 1);
 });
