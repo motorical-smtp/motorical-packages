@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.18.0] — 2026-10-22
+
+### Added
+
+- `motorical_get_logs` accepts `smtpCode`: an exact code (`550`, `5.7.1`), a class (`5xx`, `4xx`), an enhanced group (`5.7.x`) or a
+  comma-separated list of up to ten. The stored code is what the receiving server reported, in either the basic or the enhanced form,
+  so the old exact `code:` term missed most bounces (`code:550` found nothing when the bounce was stored as `5.7.1`) and an agent could
+  not ask for "all policy blocks" or "all permanent failures". The `code:` term in `query` now takes the same forms. An invalid value is
+  a 400 `invalid_smtp_code` that says what is accepted, instead of an empty result.
+- The `query` description now lists every term the search understands: `recipient:`, `domain:`, `code:`, `id:`.
+
 ## [1.17.0] — 2026-10-22
 
 ### Added

@@ -1087,13 +1087,17 @@ export const TOOLS = [
     description:
       'Search send logs for one Motor Block (GET /api/public/v1/motor-blocks/{id}/logs). '
       + 'Paginate with cursor. Recipient addresses are masked unless the token carries logs.pii, '
-      + 'which OAuth tokens never do.',
+      + 'which OAuth tokens never do. '
+      + 'To find failures by cause use smtpCode: the stored code is whatever the receiving server reported, in either form '
+      + '(basic like 550 or enhanced like 5.7.1), so a class such as 5xx (all permanent failures), 4xx (all temporary ones) '
+      + 'or a group such as 5.7.x (policy and reputation blocks) is usually what you want; an exact code matches only that exact form.',
     inputSchema: {
       motorBlockId: blockSelector,
       from: isoDate('inclusive'),
       to: isoDate('inclusive'),
       currentOutcome: z.string().optional().describe('Filter to one delivery outcome, e.g. delivered, bounced, deferred'),
-      query: z.string().optional().describe('Space-separated key:value terms, all of which must match: code:<exact SMTP code, e.g. 5.7.1 or 550>, id:<message uuid>. Text without a key: prefix is ignored; there is no subject search.'),
+      smtpCode: z.string().optional().describe('Filter by SMTP code, as the receiving server reported it (basic like 550 or enhanced like 5.7.1, both appear in the same logs). Forms: exact 550 or 5.7.1; a class 5xx or 4xx (5.x.x also works); a group 5.7.x; or a comma-separated list of up to 10, no spaces, e.g. 5.7.x,4xx. An invalid value is a 400 that says what is accepted'),
+      query: z.string().optional().describe('Space-separated key:value terms, all of which must match: recipient:<exact address>, domain:<exact domain>, code:<an SMTP code filter in the same forms as smtpCode, no spaces>, id:<message uuid>. Text without a key: prefix is ignored; there is no subject search.'),
       limit: z.number().int().positive().optional().describe('Page size'),
       cursor: z.string().optional().describe('Opaque cursor from a previous page'),
       includePII: z.boolean().optional().describe('Unmask recipient addresses. Requires the logs.pii scope, which is never granted to OAuth tokens — the API returns 403.')
