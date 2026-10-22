@@ -1014,7 +1014,12 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_error_codes',
-    description: 'SMTP error codes seen for one Motor Block, with counts and diagnostics (GET /api/public/v1/motor-blocks/{id}/error-codes).',
+    description:
+      'SMTP error codes seen for one Motor Block, with counts and a specific diagnosis for each (GET /api/public/v1/motor-blocks/{id}/error-codes). '
+      + 'Each row has the code, its count, a label and hint saying what it means and what to do, cause (the platform bounce bucket, for example recipient_invalid or policy_block_auth), '
+      + 'retryable (temporary failures are retried by the platform), suggestedAction (none, retry, remove or investigate) and lookup. '
+      + 'The stored code is basic (550), enhanced (5.7.1) or a bucket (200 delivered to a Motorical-hosted mailbox; 400 and 500 when the exact code was not recorded). '
+      + 'Counts are the same rows motorical_get_logs returns: to see the messages behind a row, call motorical_get_logs with the row lookup (smtpCode) and read smtpResponse on one message.',
     inputSchema: {
       motorBlockId: blockSelector,
       from: isoDate('inclusive'),
