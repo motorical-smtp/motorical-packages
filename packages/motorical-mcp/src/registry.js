@@ -102,6 +102,18 @@ const motorBlockOutput = z.object({
   nextAction: z.record(z.any()).optional(),
 }).passthrough();
 
+// Inline attachments on motorical_send_email: the bytes travel through the conversation, so this is for SMALL files only. Larger files go
+// over SMTP (an upload step may follow). Shape only: the plan (count, size, total, types) and the scanners decide in the gateway.
+const INLINE_ATTACHMENT_MAX_FILES = 5;
+const INLINE_ATTACHMENT_MAX_BASE64 = 700000;   // about 500 KB of file bytes in total
+const attachmentInput = z.object({
+  filename: z.string().min(1).max(255).regex(/^[^\\/\x00-\x1f\x7f]+$/, 'filename must not contain path separators or control characters'),
+  content: z.string().max(INLINE_ATTACHMENT_MAX_BASE64).describe('The file bytes, base64 (standard alphabet, no data: prefix)'),
+  contentType: z.string().max(127).regex(/^[A-Za-z0-9][\w.+-]*\/[A-Za-z0-9][\w.+-]*$/).optional().describe('MIME type; derived from the filename when omitted'),
+  contentId: z.string().min(1).max(128).regex(/^[A-Za-z0-9._~-]+$/).optional().describe('For an inline image: reference it in html as cid:<contentId>'),
+  disposition: z.enum(['attachment', 'inline']).optional().describe('inline needs a contentId'),
+}).strict().refine((a) => a.disposition !== 'inline' || Boolean(a.contentId), { message: 'an inline attachment needs a contentId' });
+
 export const TOOLS = [
   {
     name: 'motorical_get_send_status',
@@ -307,6 +319,11 @@ export const TOOLS = [
       'Optional cc, bcc and replyTo: cc recipients are named in the Cc header, bcc recipients receive the message but are named in no header, replyTo sets Reply-To. ' +
       'to, cc and bcc together take at most 50 recipients and every one is checked like a to recipient (sandbox allowlist, Free-account rules, suppression; a suppressed cc/bcc is skipped and listed in data.skipped). ' +
       'These fields are rolling out per Motor Block: a block that does not have them yet answers 422 feature_not_enabled and sends nothing, so retry without them or tell the person. ' +
+      'Optional attachments, for SMALL files only because the bytes travel through the conversation: a list of { filename, content (base64), contentType?, contentId?, disposition? }, at most 5 files and about 500 KB of files in total (700000 base64 characters). ' +
+      'For anything larger, send over SMTP instead (the attachments guide in the docs). An inline image takes a contentId and disposition inline, and html references it as cid:<contentId>. ' +
+      'Attachments roll out per Motor Block like cc and bcc: a block without them answers 422 feature_not_enabled and sends nothing. ' +
+      'The plan decides how many files, how large and which types, exactly as over SMTP, and a refusal names the plan and the limit (413 attachment_too_large or attachments_total_too_large, 422 too_many_attachments, attachment_type_not_allowed, content_policy_rejected). ' +
+      'A dryRun with attachments runs the same plan check without sending, but it does not run the virus and content scan, so a real send can still be refused for the file itself. ' +
       'from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain that motorical_sandbox_provision created (see motorical_get_onboarding_state sendFrom); any local part works.',
     inputSchema: {
       from: z.string().email().optional().describe('Defaults to MOTORICAL_DEFAULT_FROM'),
@@ -319,6 +336,10 @@ export const TOOLS = [
       cc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Copy recipients (Cc header). Rolling out per Motor Block: 422 feature_not_enabled where not available'),
       bcc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Blind-copy recipients: delivered, named in no header. Rolling out per Motor Block'),
       replyTo: z.string().email().optional().describe('Reply-To address. Do not also set a Reply-To header. Rolling out per Motor Block'),
+      attachments: z.array(attachmentInput).min(1).max(INLINE_ATTACHMENT_MAX_FILES)
+        .refine((list) => list.reduce((n, a) => n + a.content.length, 0) <= INLINE_ATTACHMENT_MAX_BASE64, { message: 'attachments are limited to about 500 KB in total over this tool; send larger files over SMTP' })
+        .optional()
+        .describe('Small files to attach (base64). Rolling out per Motor Block: 422 feature_not_enabled where not available'),
       subject: z.string().min(1),
       text: z.string().optional(),
       html: z.string().optional(),
@@ -371,6 +392,9 @@ export const TOOLS = [
         hasText: z.boolean().optional(),
         hasHtml: z.boolean().optional(),
         recipientCount: z.number().optional(),
+        attachments: z.array(z.object({ filename: z.string(), size: z.number(), contentType: z.string().optional() })).optional()
+          .describe('dryRun only: what would be attached, with decoded sizes in bytes'),
+        attachmentBytes: z.number().optional(),
         timestamp: z.string().optional(),
         sandboxRedirect: z.object({
           requestedTo: z.array(z.string()).optional(),
