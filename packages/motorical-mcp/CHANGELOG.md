@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.22.0] — 2026-10-22
+
+### Changed
+
+- `motorical_get_onboarding_state` needs the `read:domains` scope and is on the domains server (and `main`), no longer on the analytics server.
+  The route behind it needs `config.read`, which `read:analytics` does not carry, so a connection holding only `read:analytics` was shown the
+  tool and got `403 missing_scope`. The tool is for connections that can read domains; one that cannot no longer sees it.
+- Requires `@motorical/scope-catalog` 0.7.0.
+
 ## [1.21.0] — 2026-10-22
 
 ### Changed
