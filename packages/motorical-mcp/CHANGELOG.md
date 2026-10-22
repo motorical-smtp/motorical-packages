@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.19.0] — 2026-10-22
+
+### Changed
+
+- `motorical_get_error_codes` now explains each code specifically instead of "check provider rate limits": every row carries `cause` (the platform
+  bounce bucket), `retryable`, `suggestedAction` (`none`, `retry`, `remove`, `investigate`), `codeForm` (`basic`, `enhanced`, `bucket`) and `lookup`
+  (`{ smtpCode }` for `motorical_get_logs`, to list the messages behind the row). The hint names the real cause for the codes that occur: greylisting
+  for `451`/`4.7.1`, a temporary DNS failure for `4.4.3`, Microsoft throttling for `4.7.500`, an address that does not exist for `5.1.1`, the several
+  meanings of `5.7.1` and `5.4.1`, SPF/DKIM/DMARC for `5.7.23`/`5.7.26`, and so on. Enhanced codes such as `5.7.1` used to be cut to `5.7` and fell
+  through to the generic "Permanent failure".
+- The counts now come from the same rows `motorical_get_logs` searches (recipient outcomes), so a count equals the number of rows
+  `smtpCode=<code>` returns. Before, the tool counted per message in a table that only held the crude `400` and `500` buckets, so enhanced
+  codes never appeared. The old fields (`code`, `count`, `sampleStatus`, `category`, `label`, `hint`) are unchanged.
+
 ## [1.18.0] — 2026-10-22
 
 ### Added
