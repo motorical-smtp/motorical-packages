@@ -319,6 +319,8 @@ export const TOOLS = [
       'Optional cc, bcc and replyTo: cc recipients are named in the Cc header, bcc recipients receive the message but are named in no header, replyTo sets Reply-To. ' +
       'to, cc and bcc together take at most 50 recipients and every one is checked like a to recipient (sandbox allowlist, Free-account rules, suppression; a suppressed cc/bcc is skipped and listed in data.skipped). ' +
       'These fields are rolling out per Motor Block: a block that does not have them yet answers 422 feature_not_enabled and sends nothing, so retry without them or tell the person. ' +
+      'Optional headers: an object of extra email headers, for threading a reply (In-Reply-To and References, copied from the message you answer), List-Unsubscribe (with List-Unsubscribe-Post for one-click) or your own X- headers; at most 20, no line breaks in values. ' +
+      'Headers that would let a message pretend to be someone else or break the platform (From, Sender, Return-Path, To, Cc, Bcc, Subject, Date, Message-ID, MIME and Content-* headers, DKIM and authentication headers, X-Motorical-*) are refused with 400 DISALLOWED_HEADERS and nothing is sent. Set the reply address with replyTo or with a Reply-To header, not both. ' +
       'Optional attachments, for SMALL files only because the bytes travel through the conversation: a list of { filename, content (base64), contentType?, contentId?, disposition? }, at most 5 files and about 500 KB of files in total (700000 base64 characters). ' +
       'For anything larger, send over SMTP instead (the attachments guide in the docs). An inline image takes a contentId and disposition inline, and html references it as cid:<contentId>. ' +
       'Attachments roll out per Motor Block like cc and bcc: a block without them answers 422 feature_not_enabled and sends nothing. ' +
@@ -336,6 +338,11 @@ export const TOOLS = [
       cc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Copy recipients (Cc header). Rolling out per Motor Block: 422 feature_not_enabled where not available'),
       bcc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Blind-copy recipients: delivered, named in no header. Rolling out per Motor Block'),
       replyTo: z.string().email().optional().describe('Reply-To address. Do not also set a Reply-To header. Rolling out per Motor Block'),
+      headers: z.record(
+        z.string().regex(/^[A-Za-z0-9-]{1,100}$/, 'header names are letters, digits and hyphens'),
+        z.string().max(998).regex(/^[^\x00-\x1f\x7f]*$/, 'header values must not contain line breaks or control characters')
+      ).refine((h) => Object.keys(h).length <= 20, { message: 'at most 20 headers' }).optional()
+        .describe('Extra email headers, e.g. In-Reply-To / References to thread a reply, List-Unsubscribe, X-* of your own. The platform refuses From, Sender, To, Cc, Bcc, Subject, Date, Message-ID, Content-*, DKIM/authentication and X-Motorical-* (400 DISALLOWED_HEADERS)'),
       attachments: z.array(attachmentInput).min(1).max(INLINE_ATTACHMENT_MAX_FILES)
         .refine((list) => list.reduce((n, a) => n + a.content.length, 0) <= INLINE_ATTACHMENT_MAX_BASE64, { message: 'attachments are limited to about 500 KB in total over this tool; send larger files over SMTP' })
         .optional()

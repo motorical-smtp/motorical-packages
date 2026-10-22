@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.17.0] — 2026-10-22
+
+### Added
+
+- `motorical_send_email` accepts `headers`: an object of extra email headers, at most 20, names are letters, digits and hyphens, no line
+  breaks in values. Use it to thread a reply (`In-Reply-To` and `References`), to add `List-Unsubscribe` (and `List-Unsubscribe-Post`) or
+  your own `X-` headers. The API always accepted them; the tool silently dropped the field because it was not in its schema, so an agent
+  could not thread a reply. The platform keeps its deny list (From, Sender, Return-Path, To, Cc, Bcc, Subject, Date, Message-ID, Content-*,
+  the DKIM and authentication headers, X-Motorical-*): those answer 400 `DISALLOWED_HEADERS` and send nothing. No new tool, no new scope.
+
 ## [1.16.0] — 2026-10-22
 
 ### Added
