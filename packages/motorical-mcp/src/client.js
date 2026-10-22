@@ -385,12 +385,12 @@ export class MotoricalClient {
   }
 
   async getLogs({
-    motorBlockId, from, to, currentOutcome, query, limit, cursor, includePII,
+    motorBlockId, from, to, currentOutcome, query, smtpCode, limit, cursor, includePII,
   } = {}) {
     const bearer = await this.getBearer({ motorBlockId });
     const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/logs`;
     const qs = this._qs({
-      from, to, currentOutcome, query, limit, cursor,
+      from, to, currentOutcome, query, smtpCode, limit, cursor,
       includePII: includePII === true ? 'true' : undefined,
     });
     return this.request('GET', this._scoped(path + qs, motorBlockId), { bearer });

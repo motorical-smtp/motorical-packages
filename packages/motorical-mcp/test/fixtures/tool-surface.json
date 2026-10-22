@@ -259,7 +259,7 @@
   },
   {
     "name": "motorical_get_logs",
-    "description": "Search send logs for one Motor Block (GET /api/public/v1/motor-blocks/{id}/logs). Paginate with cursor. Recipient addresses are masked unless the token carries logs.pii, which OAuth tokens never do. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
+    "description": "Search send logs for one Motor Block (GET /api/public/v1/motor-blocks/{id}/logs). Paginate with cursor. Recipient addresses are masked unless the token carries logs.pii, which OAuth tokens never do. To find failures by cause use smtpCode: the stored code is whatever the receiving server reported, in either form (basic like 550 or enhanced like 5.7.1), so a class such as 5xx (all permanent failures), 4xx (all temporary ones) or a group such as 5.7.x (policy and reputation blocks) is usually what you want; an exact code matches only that exact form. Requires OAuth scope: read:analytics (Read delivery logs, analytics, and usage for the caller's Motor Block(s). Never includes unmasked recipient PII (logs.pii) regardless of what is requested.).",
     "inputKeys": [
       "currentOutcome",
       "cursor",
@@ -268,6 +268,7 @@
       "limit",
       "motorBlockId",
       "query",
+      "smtpCode",
       "to"
     ],
     "annotations": {
