@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.16.0] — 2026-10-22
+
+### Added
+
+- `motorical_send_email` accepts `attachments` for SMALL files: a list of `{ filename, content (base64), contentType?, contentId?, disposition? }`,
+  at most 5 files and about 500 KB in total, because the bytes travel through the conversation. An inline image takes a `contentId` and
+  `disposition: "inline"`. The shape is checked before any request; the plan (count, size, total, types), the malware and content scan
+  decide in the gateway exactly as over SMTP, and the refusals (`attachment_too_large`, `attachments_total_too_large`,
+  `too_many_attachments`, `attachment_type_not_allowed`, `content_policy_rejected`) name the plan and the limit. A `dryRun` returns
+  `data.attachments` (filename and decoded size) and `data.attachmentBytes`; it runs the plan check but not the scan.
+  Rolling out per Motor Block like `cc`/`bcc`: where not enabled the backend answers 422 `feature_not_enabled` and sends nothing.
+  No new tool and no new scope. Larger files still go over SMTP.
+
 ## [1.15.0] — 2026-10-21
 
 ### Added
