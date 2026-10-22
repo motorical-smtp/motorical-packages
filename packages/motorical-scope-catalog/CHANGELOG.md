@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — 2026-10-22
+
+`motorical_get_onboarding_state` now needs `read:domains` and moves from the analytics server to the domains server (`main` still lists
+it). It wraps `GET /account/state`, which needs the Public API scope `config.read`; `read:analytics` does not carry that scope, so the tool
+was listed to a `read:analytics`-only grant and refused with `403 missing_scope` (proved live 2026-10-22). It reports domain
+verification, DNS readiness and Motor Block state, so it is a domains read and is not opened to every grant. A docs check now compares
+every tool's scope with the scope its route requires.
+
 ## 0.6.0 — 2026-10-22
 
 `motorical_whoami` needs no scope and every authenticated hosted server lists it. It was listed under `read:analytics`, but the
