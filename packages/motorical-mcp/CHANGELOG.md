@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.20.0] — 2026-10-22
+
+### Changed
+
+- The tools that return a "score" now say which one it is. `motorical_get_reputation` (and the `reputation` block of `motorical_get_overview`) returns the
+  **delivery reputation score** and labels it: `kind` (`delivery_reputation_score`), `basis` (what it is computed from and over how many days),
+  `formula` and `notTheSameAs`. It is not the dashboard Health score (a different formula over the timeframe chosen in the dashboard), not the
+  internal score behind automatic throttling, and not domain health (SPF, DKIM, DMARC), so the numbers differ by design. The numeric `score`,
+  `windowDays`, `totals` and `rates` are unchanged.
+- `motorical_get_domain_health` says it is a set-up status, not a score, and is separate from the reputation score.
+
 ## [1.19.0] — 2026-10-22
 
 ### Changed

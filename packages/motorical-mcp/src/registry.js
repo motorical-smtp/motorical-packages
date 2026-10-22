@@ -936,7 +936,8 @@ export const TOOLS = [
     name: 'motorical_get_overview',
     description:
       'Sending overview for one Motor Block over a date range — volume, delivery and bounce '
-      + 'rates, and current usage against plan limits (GET /api/public/v1/motor-blocks/{id}/overview).',
+      + 'rates, and current usage against plan limits (GET /api/public/v1/motor-blocks/{id}/overview). '
+      + 'Its reputation block is the same delivery reputation score as motorical_get_reputation.',
     inputSchema: {
       motorBlockId: blockSelector,
       from: isoDate('inclusive'),
@@ -985,7 +986,11 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_reputation',
-    description: 'Current sending reputation for one Motor Block (GET /api/public/v1/motor-blocks/{id}/reputation).',
+    description:
+      'Delivery reputation score (0 to 100) for one Motor Block, computed on request from its delivery outcomes over windowDays (the token retention window): '
+      + '100 minus penalties for bounced, complained and failed recipients (GET /api/public/v1/motor-blocks/{id}/reputation). '
+      + 'The response says what it is: kind, basis, formula and notTheSameAs. It is not the dashboard Health score (different formula and timeframe), '
+      + 'not the internal score behind automatic throttling, and not domain health (SPF, DKIM, DMARC), so those numbers differ by design.',
     inputSchema: { motorBlockId: blockSelector },
     annotations: { title: 'Get sending reputation', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.getReputation(args),
@@ -1136,7 +1141,8 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_domain_health',
-    description: "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX (GET /api/public/v1/motor-blocks/{id}/domain-health).",
+    description: "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX (GET /api/public/v1/motor-blocks/{id}/domain-health). "
+      + 'This is a set-up status, not a score, and it is separate from the delivery reputation score (motorical_get_reputation), which measures delivery outcomes.',
     inputSchema: {
       motorBlockId: blockSelector,
       refresh: z.boolean().optional().describe('Re-run the live DNS checks now instead of returning the last cached result')
