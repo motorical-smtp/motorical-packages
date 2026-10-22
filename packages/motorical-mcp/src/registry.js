@@ -1083,6 +1083,7 @@ export const TOOLS = [
       + 'holds, the Motor Blocks it covers, when it was granted, and canAdd (permissions it could still be given, '
       + 'with available:false where the plan does not allow it) plus addInDashboard, the page where the person adds them. '
       + 'Account-scoped: no Motor Block needed. grant is null when the call is not made over an OAuth grant. '
+      + 'Over OAuth it needs no scope, so any connection can ask what it holds, and every server lists it. '
       + 'Use it instead of inferring scopes from the tool list.',
     inputSchema: {
       motorBlockId: z.string().uuid().optional()

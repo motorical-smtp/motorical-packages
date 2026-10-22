@@ -1,4 +1,6 @@
-import { TOOL_SCOPES, SERVER_TOOLS, expandMcpImplied } from '@motorical/scope-catalog';
+import {
+  TOOL_SCOPES, SERVER_TOOLS, ANY_GRANT_TOOLS, expandMcpImplied,
+} from '@motorical/scope-catalog';
 
 /**
  * Tools whose own descriptions say "NOT AVAILABLE over hosted OAuth (dashboard session only)". They carry a scope
@@ -16,7 +18,8 @@ const DASHBOARD_SESSION_ONLY = new Set([
  * them, so they are not advertised. A real domain alone does not qualify: a Free account on its own domain still
  * sits in a sandbox and needs the recipient tools. Listing only; calls are enforced elsewhere.
  */
-const SANDBOX_TOOLS = new Set(SERVER_TOOLS.sandbox);
+// The any-grant tools (motorical_whoami) are listed on the sandbox server too, but they are not sandbox-stage tools: they stay visible.
+const SANDBOX_TOOLS = new Set(SERVER_TOOLS.sandbox.filter((name) => !ANY_GRANT_TOOLS.includes(name)));
 export const SANDBOX_TOOL_NAMES = SANDBOX_TOOLS;
 
 /**
