@@ -136,7 +136,8 @@ test('buildServer() real wiring still routes a non-public server to createDelega
 
   const claims = {
     userId: 'u1', grantId: 'g1', clientId: 'c',
-    scopes: ['read:analytics'], motorBlockIds: [],
+    // read:domains: motorical_get_onboarding_state needs it (its route needs config.read), 2026-10-22.
+    scopes: ['read:domains'], motorBlockIds: [],
   };
   const { app } = buildServer({ ...ENV, MOTORICAL_API_BASE_URL: upstreamBase }, {
     signer,
