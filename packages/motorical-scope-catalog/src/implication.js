@@ -7,6 +7,13 @@
 const MCP_IMPLIED_READ = {
   'manage:webhooks': 'read:webhooks',
   'manage:domains': 'read:domains',
+  // Every Communications write, send and manage scope can read what it works on. Never the other way, and never sideways:
+  // writing content does not imply sending.
+  'write:comms.audience': 'read:comms',
+  'write:comms.content': 'read:comms',
+  'send:comms.campaign': 'read:comms',
+  'manage:comms.workspace': 'read:comms',
+  'manage:comms.webhooks': 'read:comms',
 };
 
 function expandMcpImplied(grantedScopes) {

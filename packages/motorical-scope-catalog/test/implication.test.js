@@ -4,10 +4,15 @@ const {
   MCP_IMPLIED_READ, expandMcpImplied, PUBLIC_IMPLIED_READ, expandPublicImplied,
 } = require('../src/implication');
 
-test('MCP vocabulary: manage implies read, for domains and webhooks only', () => {
+test('MCP vocabulary: manage implies read for domains and webhooks, and every Communications write/send/manage scope implies read:comms', () => {
   assert.deepEqual(MCP_IMPLIED_READ, {
     'manage:webhooks': 'read:webhooks',
     'manage:domains': 'read:domains',
+    'write:comms.audience': 'read:comms',
+    'write:comms.content': 'read:comms',
+    'send:comms.campaign': 'read:comms',
+    'manage:comms.workspace': 'read:comms',
+    'manage:comms.webhooks': 'read:comms',
   });
 });
 

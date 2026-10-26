@@ -32,10 +32,11 @@ test('scopesForTools unions TOOL_SCOPES over a tool list, deduplicated', () => {
   assert.deepEqual(scopesForTools(['motorical_signup_handoff']), []); // no TOOL_SCOPES entry -> []
 });
 
-test('RESOURCE_SCOPES has exactly the seven authenticated servers, keyed by canonical URI, never signup', () => {
+test('RESOURCE_SCOPES has exactly the eight authenticated servers (seven core plus communications), keyed by canonical URI, never signup', () => {
   assert.deepEqual(Object.keys(RESOURCE_SCOPES).sort(), [
     'https://mcp.motorical.com/v1/motorical/mcp',
     'https://mcp.motorical.com/v1/motorical_analytics/mcp',
+    'https://mcp.motorical.com/v1/motorical_communications/mcp',
     'https://mcp.motorical.com/v1/motorical_domains/mcp',
     'https://mcp.motorical.com/v1/motorical_motor_blocks/mcp',
     'https://mcp.motorical.com/v1/motorical_sandbox/mcp',
@@ -69,10 +70,12 @@ test('the Motor Blocks resource allows exactly manage:motor-blocks', () => {
   );
 });
 
-test('the main/all-tools resource allows every grantable scope', () => {
+test('the main/all-tools resource allows every grantable scope EXCEPT the Communications scopes, which only the communications server offers', () => {
+  // A grant for the main server must never carry a marketing scope: sending to a customer's contacts has its own server and consent.
+  const comms = new Set(require('../src/comms').COMMS_SCOPES);
   assert.deepEqual(
     RESOURCE_SCOPES['https://mcp.motorical.com/v1/motorical/mcp'].sort(),
-    listGrantableScopes().sort(),
+    listGrantableScopes().filter((s) => !comms.has(s)).sort(),
   );
 });
 

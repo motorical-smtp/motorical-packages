@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 — 2026-10-27
+
+Six Communications (marketing) scopes: `read:comms`, `write:comms.audience`, `write:comms.content`, `send:comms.campaign`, `manage:comms.workspace`,
+`manage:comms.webhooks`, each its own consent area; every write/send/manage scope implies `read:comms`, and none reaches a Public API scope or
+any destructive operation. New constants for the Communications server: `COMMS_SCOPES`, `COMMS_INITIAL_SCOPES` (read plus the two writes; sending and
+managing are a step-up), `COMMS_CANONICAL_URI`, `COMMS_DELEGATION_AUDIENCE` (`https://api.motorical.com/internal/mcp/comms`, distinct from the backend's).
+The new hosted `communications` server (slug `motorical_communications`) offers only `read:comms` for now, through two read-only tools, `comms_get_readiness` and `comms_get_map` (plus `motorical_whoami`); the other five scopes are grantable in name but offered by no server until their tools exist, because a server offers exactly the scopes its tools need. The main server does not offer any of them, and no existing grant changes. `RESOURCE_SERVER_DEFAULTS` makes the communications resource row marketing-only and disabled when first created.
+
 ## 0.7.0 — 2026-10-22
 
 `motorical_get_onboarding_state` now needs `read:domains` and moves from the analytics server to the domains server (`main` still lists
