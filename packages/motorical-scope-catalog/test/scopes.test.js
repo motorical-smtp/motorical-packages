@@ -3,10 +3,11 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { SCOPES, listGrantableScopes } = require('../src/scopes');
 
-test('there are exactly the nine scopes the product currently grants', () => {
+test('there are exactly the fifteen scopes the product currently grants (nine core, six Communications)', () => {
   assert.deepEqual(Object.keys(SCOPES).sort(), [
-    'manage:domains', 'manage:motor-blocks', 'manage:recipients', 'manage:sandbox', 'manage:webhooks',
-    'read:analytics', 'read:domains', 'read:webhooks', 'send:transactional',
+    'manage:comms.webhooks', 'manage:comms.workspace', 'manage:domains', 'manage:motor-blocks', 'manage:recipients', 'manage:sandbox', 'manage:webhooks',
+    'read:analytics', 'read:comms', 'read:domains', 'read:webhooks', 'send:comms.campaign', 'send:transactional',
+    'write:comms.audience', 'write:comms.content',
   ]);
 });
 

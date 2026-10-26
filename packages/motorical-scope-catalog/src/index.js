@@ -3,4 +3,5 @@ module.exports = {
   ...require('./implication'),
   ...require('./tools'),
   ...require('./consent'),
+  ...require('./comms'),
 };

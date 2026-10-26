@@ -86,6 +86,13 @@ const MOTOR_BLOCK_TOOLS = [
   'motorical_motor_block_delete_status',
 ];
 
+/**
+ * The hosted `communications` server (Comms MCP M2c). Two read-only proof tools that exercise the whole path (consent, delegation with
+ * the comms audience, grant resolution, scope table, workspace binding). Not in ALL_TOOLS and not on the main server: marketing has its
+ * own server and its own consent. More tools arrive in M3, each adding the scope it needs to this server's offer.
+ */
+const COMMS_TOOLS = ['comms_get_readiness', 'comms_get_map'];
+
 const ALL_TOOLS = [
   ...new Set([
     ...TRANSACTIONAL_TOOLS,
@@ -113,6 +120,7 @@ const SERVER_TOOLS = {
   sandbox: [...SANDBOX_TOOLS, ...ANY_GRANT_TOOLS],
   webhooks: [...WEBHOOK_TOOLS, ...ANY_GRANT_TOOLS],
   motorBlocks: [...MOTOR_BLOCK_TOOLS, ...ANY_GRANT_TOOLS],
+  communications: [...COMMS_TOOLS, ...ANY_GRANT_TOOLS],
   signup: ['motorical_signup_handoff'],
 };
 
@@ -172,6 +180,8 @@ const TOOL_SCOPES = {
   motorical_motor_block_reactivate: ['manage:motor-blocks'],
   motorical_motor_block_delete: ['manage:motor-blocks'],
   motorical_motor_block_delete_status: ['manage:motor-blocks'],
+  comms_get_readiness: ['read:comms'],
+  comms_get_map: ['read:comms'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */
@@ -187,6 +197,7 @@ const SERVER_SLUGS = {
   sandbox: 'motorical_sandbox',
   webhooks: 'motorical_webhooks',
   motorBlocks: 'motorical_motor_blocks',
+  communications: 'motorical_communications',
   signup: 'signup',
 };
 

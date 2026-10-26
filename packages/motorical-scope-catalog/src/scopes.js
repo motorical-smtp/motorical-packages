@@ -81,6 +81,51 @@ const SCOPES = {
     agentDescription: 'List and read sending domains, their DNS records and email-authentication health, and read a Motor Block\'s configuration, without adding or verifying any domain.',
     customerAction: 'View your sending domains and Motor Block configuration',
   },
+  // Communications (marketing). One area per scope so the consent screen shows sending on its own line. No Public API scopes:
+  // the Comms API is not a Public API route, the Communications Block checks these itself. There is deliberately no scope for
+  // permanent delete, recycle-bin cleanup or GDPR export/erase: those stay human-only.
+  'read:comms': {
+    resource: 'comms',
+    level: 'read',
+    publicScopes: [],
+    agentDescription: 'Read Communications data for the workspaces the person chose: lists and contacts, templates, campaigns, reports and events, the workspace map and readiness, and run read-only checks (template preview, lint, link check, starter render). Never changes anything.',
+    customerAction: 'View your lists, templates, campaigns and results',
+  },
+  'write:comms.audience': {
+    resource: 'comms-audience',
+    level: 'manage',
+    publicScopes: [],
+    agentDescription: 'Create and change lists and contacts, add contacts (with a dry run), derive lists from lists, import, and add or remove suppressions. Includes everything read:comms grants. Cannot delete anything permanently.',
+    customerAction: 'Add and change your lists and contacts',
+  },
+  'write:comms.content': {
+    resource: 'comms-content',
+    level: 'manage',
+    publicScopes: [],
+    agentDescription: 'Create and change templates, the brand kit and campaign drafts, duplicate and compile campaigns, and send a test email to the account owner only. Includes everything read:comms grants. Does not send to your contacts.',
+    customerAction: 'Create and edit email templates and campaign drafts, and send test emails to you',
+  },
+  'send:comms.campaign': {
+    resource: 'comms-sending',
+    level: 'manage',
+    publicScopes: [],
+    agentDescription: 'Schedule a campaign (which sends it to the audience) and cancel a scheduled or sending one. Cancelling is final. Includes everything read:comms grants.',
+    customerAction: 'Send campaigns to your contacts (this is what actually emails people)',
+  },
+  'manage:comms.workspace': {
+    resource: 'comms-workspace',
+    level: 'manage',
+    publicScopes: [],
+    agentDescription: 'Change workspace settings (consent, open tracking, unsubscribe page) and which marketing Motor Blocks a workspace uses. Includes everything read:comms grants.',
+    customerAction: 'Change workspace settings and which sending addresses a workspace uses',
+  },
+  'manage:comms.webhooks': {
+    resource: 'comms-webhooks',
+    level: 'manage',
+    publicScopes: [],
+    agentDescription: 'Create, update, delete and test campaign event webhooks of the workspaces the person chose. Includes everything read:comms grants.',
+    customerAction: 'Manage your campaign event webhooks',
+  },
 };
 
 function listGrantableScopes() {
