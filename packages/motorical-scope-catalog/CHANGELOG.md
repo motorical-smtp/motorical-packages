@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 — 2026-10-27
+
+The hosted `communications` server now lists 17 more read-only tools (Comms MCP M3-1): `comms_list_workspaces`, `comms_list_marketing_blocks`, `comms_list_lists`,
+`comms_get_list`, `comms_compare_lists`, `comms_get_list_relations`, `comms_list_templates`, `comms_get_template`, `comms_get_template_rules`, `comms_lint_template`,
+`comms_suggest_template_fixes`, `comms_check_links`, `comms_preview_template`, `comms_list_starters`, `comms_get_brand_kit`, `comms_list_campaigns` and `comms_get_campaign`.
+Every one needs `read:comms` and nothing else, so the server still offers exactly that one scope: no new consent, and no existing grant changes. None of them writes,
+sends or deletes. Pair with `@motorical/mcp` built from the same commit (the tool table lives there).
+
 ## 0.8.0 — 2026-10-27
 
 Six Communications (marketing) scopes: `read:comms`, `write:comms.audience`, `write:comms.content`, `send:comms.campaign`, `manage:comms.workspace`,

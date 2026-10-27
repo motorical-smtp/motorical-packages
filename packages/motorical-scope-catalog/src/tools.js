@@ -91,7 +91,26 @@ const MOTOR_BLOCK_TOOLS = [
  * the comms audience, grant resolution, scope table, workspace binding). Not in ALL_TOOLS and not on the main server: marketing has its
  * own server and its own consent. More tools arrive in M3, each adding the scope it needs to this server's offer.
  */
-const COMMS_TOOLS = ['comms_get_readiness', 'comms_get_map'];
+const COMMS_TOOLS = [
+  'comms_get_readiness', 'comms_get_map',
+  'comms_list_workspaces',
+  'comms_list_marketing_blocks',
+  'comms_list_lists',
+  'comms_get_list',
+  'comms_compare_lists',
+  'comms_get_list_relations',
+  'comms_list_templates',
+  'comms_get_template',
+  'comms_get_template_rules',
+  'comms_lint_template',
+  'comms_suggest_template_fixes',
+  'comms_check_links',
+  'comms_preview_template',
+  'comms_list_starters',
+  'comms_get_brand_kit',
+  'comms_list_campaigns',
+  'comms_get_campaign',
+];
 
 const ALL_TOOLS = [
   ...new Set([
@@ -182,6 +201,23 @@ const TOOL_SCOPES = {
   motorical_motor_block_delete_status: ['manage:motor-blocks'],
   comms_get_readiness: ['read:comms'],
   comms_get_map: ['read:comms'],
+  comms_list_workspaces: ['read:comms'],
+  comms_list_marketing_blocks: ['read:comms'],
+  comms_list_lists: ['read:comms'],
+  comms_get_list: ['read:comms'],
+  comms_compare_lists: ['read:comms'],
+  comms_get_list_relations: ['read:comms'],
+  comms_list_templates: ['read:comms'],
+  comms_get_template: ['read:comms'],
+  comms_get_template_rules: ['read:comms'],
+  comms_lint_template: ['read:comms'],
+  comms_suggest_template_fixes: ['read:comms'],
+  comms_check_links: ['read:comms'],
+  comms_preview_template: ['read:comms'],
+  comms_list_starters: ['read:comms'],
+  comms_get_brand_kit: ['read:comms'],
+  comms_list_campaigns: ['read:comms'],
+  comms_get_campaign: ['read:comms'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */
