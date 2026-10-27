@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0 — 2026-10-27
+
+The hosted `communications` server gains 5 reporting reads (Comms MCP M3-6), all `read:comms`: `comms_get_campaign_report`, `comms_get_campaign_links`,
+`comms_get_campaign_timeline`, `comms_list_campaign_events` and `comms_get_analytics_overview`. They never return a recipient address, an IP address or a user agent.
+No scope was added, renamed or re-described, and the first consent is unchanged; existing grants keep exactly what they had.
+
 ## 0.13.0 — 2026-10-27
 
 The hosted `communications` server gains the two tools that actually email people (Comms MCP M3-5), both `send:comms.campaign`: `comms_schedule_campaign` and `comms_cancel_campaign`.
