@@ -6,8 +6,13 @@ const {
   SERVER_TOOLS, TOOL_SCOPES, RESOURCE_SCOPES, COMMS_CANONICAL_URI, COMMS_SCOPES, RESOURCE_SERVER_DEFAULTS, listGrantableScopes,
 } = require('../src');
 
-test('the communications server has the two proof tools, and whoami like every authenticated server', () => {
-  assert.deepEqual(SERVER_TOOLS.communications, ['comms_get_readiness', 'comms_get_map', 'motorical_whoami']);
+test("the communications server has the two proof tools, the 17 read tools (M3-1), and whoami like every authenticated server", () => {
+  const t = SERVER_TOOLS.communications;
+  assert.equal(t.length, 20);
+  assert.deepEqual(t.slice(0, 2), ["comms_get_readiness", "comms_get_map"]);
+  assert.equal(t[t.length - 1], "motorical_whoami");
+  assert.equal(new Set(t).size, t.length, "no duplicates");
+  for (const n of t.filter((x) => x.startsWith("comms_"))) assert.deepEqual(TOOL_SCOPES[n], ["read:comms"], n);
 });
 
 test('both tools need read:comms and nothing else', () => {
