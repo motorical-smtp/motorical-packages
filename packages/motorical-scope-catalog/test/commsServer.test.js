@@ -12,9 +12,9 @@ const READ_CONTACTS = ['comms_list_list_contacts', 'comms_find_contact'];
 const CAMPAIGN_TOOLS = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test'];
 const SEND_TOOLS = ['comms_schedule_campaign', 'comms_cancel_campaign'];
 
-test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2), the 7 contact tools (M3-3), the 5 campaign-draft tools (M3-4), the 2 send tools (M3-5) and whoami', () => {
+test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2), the 7 contact tools (M3-3), the 5 campaign-draft tools (M3-4), the 2 send tools (M3-5), the 5 reporting reads (M3-6) and whoami', () => {
   const t = SERVER_TOOLS.communications;
-  assert.equal(t.length, 42);
+  assert.equal(t.length, 47);
   for (const n of SEND_TOOLS) assert.ok(t.includes(n), n);
   for (const n of CAMPAIGN_TOOLS) assert.ok(t.includes(n), n);
   for (const n of READ_CONTACTS) assert.ok(t.includes(n), n);

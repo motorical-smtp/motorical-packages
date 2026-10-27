@@ -136,6 +136,12 @@ const COMMS_TOOLS = [
   // M3-5: scheduling and cancelling (send:comms.campaign): the step that actually emails people. Not in the first consent.
   'comms_schedule_campaign',
   'comms_cancel_campaign',
+  // M3-6: reporting reads (read:comms): how a campaign did. Addresses, IPs and user agents are never returned.
+  'comms_get_campaign_report',
+  'comms_get_campaign_links',
+  'comms_get_campaign_timeline',
+  'comms_list_campaign_events',
+  'comms_get_analytics_overview',
 ];
 
 const ALL_TOOLS = [
@@ -266,6 +272,12 @@ const TOOL_SCOPES = {
   comms_send_test: ['write:comms.content'],
   comms_schedule_campaign: ['send:comms.campaign'],
   comms_cancel_campaign: ['send:comms.campaign'],
+  // M3-6: reporting reads.
+  comms_get_campaign_report: ['read:comms'],
+  comms_get_campaign_links: ['read:comms'],
+  comms_get_campaign_timeline: ['read:comms'],
+  comms_list_campaign_events: ['read:comms'],
+  comms_get_analytics_overview: ['read:comms'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */
