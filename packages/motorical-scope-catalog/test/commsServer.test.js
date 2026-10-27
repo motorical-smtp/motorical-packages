@@ -7,11 +7,13 @@ const {
 } = require('../src');
 
 const WRITE_CONTENT = ['comms_create_template', 'comms_create_template_from_starter', 'comms_update_template', 'comms_apply_template_fixes', 'comms_duplicate_template', 'comms_set_brand_kit'];
-const WRITE_AUDIENCE = ['comms_create_list', 'comms_update_list'];
+const WRITE_AUDIENCE = ['comms_create_list', 'comms_update_list', 'comms_import_contacts', 'comms_remove_from_list', 'comms_derive_list', 'comms_unsubscribe_contact', 'comms_add_suppression'];
+const READ_CONTACTS = ['comms_list_list_contacts', 'comms_find_contact'];
 
-test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2) and whoami', () => {
+test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2), the 7 contact tools (M3-3) and whoami', () => {
   const t = SERVER_TOOLS.communications;
-  assert.equal(t.length, 28);
+  assert.equal(t.length, 35);
+  for (const n of READ_CONTACTS) assert.ok(t.includes(n), n);
   assert.deepEqual(t.slice(0, 2), ['comms_get_readiness', 'comms_get_map']);
   assert.equal(t[t.length - 1], 'motorical_whoami');
   assert.equal(new Set(t).size, t.length, 'no duplicates');
@@ -24,12 +26,17 @@ test('content tools need write:comms.content, list-card tools need write:comms.a
   for (const n of SERVER_TOOLS.communications.filter((x) => x.startsWith('comms_') && ![...WRITE_CONTENT, ...WRITE_AUDIENCE].includes(x))) assert.deepEqual(TOOL_SCOPES[n], ['read:comms'], n);
 });
 
+test('contact reads need read:comms only', () => {
+  for (const n of READ_CONTACTS) assert.deepEqual(TOOL_SCOPES[n], ['read:comms'], n);
+});
+
 test('the server offers exactly read + audience + content: no sending, no workspace, no webhook scope', () => {
   assert.deepEqual([...scopesForTools(SERVER_TOOLS.communications)].sort(), ['read:comms', 'write:comms.audience', 'write:comms.content']);
 });
 
-test('no communications tool can delete, send, schedule, cancel, import contacts or purge', () => {
-  const bad = SERVER_TOOLS.communications.filter((n) => /(delete|remove|purge|send|schedule|cancel|import|unsubscribe)/i.test(n));
+test('no communications tool can delete, erase, export, resubscribe, send, schedule or cancel', () => {
+  // M3-3 adds import/remove/unsubscribe as GATED, dry-run-by-default contact tools; the genuinely dangerous verbs stay absent.
+  const bad = SERVER_TOOLS.communications.filter((n) => /(delete|erase|purge|export|resubscribe|send|schedule|cancel)/i.test(n));
   assert.deepEqual(bad, []);
 });
 
