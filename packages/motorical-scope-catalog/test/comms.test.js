@@ -48,12 +48,32 @@ test('the first consent is read plus the two writes; sending and managing are a 
   for (const id of ['send:comms.campaign', 'manage:comms.workspace', 'manage:comms.webhooks']) assert.ok(!COMMS_INITIAL_SCOPES.includes(id));
 });
 
-test('the consent screen shows one honest line per area', () => {
+const EDIT_LINE = 'View and edit your lists, contacts, templates and campaign drafts, and send test emails to you. This never emails your contacts.';
+
+test('the consent screen: view and edit is ONE line, sending is its own line (grants stay simple, owner principle 2026-10-27)', () => {
   const lines = groupForConsent(COMMS_SCOPES);
-  assert.equal(lines.length, 6, 'each scope is its own area, so sending is never hidden under reading');
-  assert.ok(lines.every((l) => l.label && l.scopes.length === 1));
-  const send = lines.find((l) => l.scopes[0] === 'send:comms.campaign');
-  assert.match(send.label, /send/i);
+  assert.equal(lines.length, 4, 'view+edit, send, workspace settings, webhooks');
+  const edit = lines.find((l) => l.scopes.includes('read:comms'));
+  assert.deepEqual(edit.scopes, ['read:comms', 'write:comms.audience', 'write:comms.content']);
+  assert.equal(edit.label, EDIT_LINE);
+  const send = lines.find((l) => l.scopes.includes('send:comms.campaign'));
+  assert.deepEqual(send.scopes, ['send:comms.campaign']);
+  assert.match(send.label, /send campaigns to your contacts/i);
+  assert.ok(!send.label.includes('never emails'), 'the sending line must not borrow the reassurance');
+});
+
+test('the FIRST consent shows exactly one line; the send step-up adds exactly one more', () => {
+  const first = groupForConsent(COMMS_INITIAL_SCOPES);
+  assert.equal(first.length, 1);
+  assert.equal(first[0].label, EDIT_LINE);
+  const stepUp = groupForConsent([...COMMS_INITIAL_SCOPES, 'send:comms.campaign']);
+  assert.equal(stepUp.length, 2);
+});
+
+test('a read-only grant still shows the read-only wording, and a single write scope shows the edit line', () => {
+  assert.equal(groupForConsent(['read:comms'])[0].label, 'View your lists, templates, campaigns and results');
+  assert.equal(groupForConsent(['write:comms.content'])[0].label, EDIT_LINE);
+  assert.equal(groupForConsent(['write:comms.audience'])[0].label, EDIT_LINE);
 });
 
 test('the canonical URI and the delegation audience are comms-specific and distinct from the backend audience', () => {

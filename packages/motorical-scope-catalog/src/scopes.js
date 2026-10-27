@@ -81,7 +81,9 @@ const SCOPES = {
     agentDescription: 'List and read sending domains, their DNS records and email-authentication health, and read a Motor Block\'s configuration, without adding or verifying any domain.',
     customerAction: 'View your sending domains and Motor Block configuration',
   },
-  // Communications (marketing). One area per scope so the consent screen shows sending on its own line. No Public API scopes:
+  // Communications (marketing). Reading and the two edit scopes share ONE consent line (`resource: 'comms'`, one label for both edit scopes:
+  // the account has one person, so the first consent stays short); sending, workspace settings and webhooks each keep their own line,
+  // so sending is never hidden under editing. No Public API scopes:
   // the Comms API is not a Public API route, the Communications Block checks these itself. There is deliberately no scope for
   // permanent delete, recycle-bin cleanup or GDPR export/erase: those stay human-only.
   'read:comms': {
@@ -92,18 +94,18 @@ const SCOPES = {
     customerAction: 'View your lists, templates, campaigns and results',
   },
   'write:comms.audience': {
-    resource: 'comms-audience',
+    resource: 'comms',
     level: 'manage',
     publicScopes: [],
     agentDescription: 'Create and change lists and contacts, add contacts (with a dry run), derive lists from lists, import, and add or remove suppressions. Includes everything read:comms grants. Cannot delete anything permanently.',
-    customerAction: 'Add and change your lists and contacts',
+    customerAction: 'View and edit your lists, contacts, templates and campaign drafts, and send test emails to you. This never emails your contacts.',
   },
   'write:comms.content': {
-    resource: 'comms-content',
+    resource: 'comms',
     level: 'manage',
     publicScopes: [],
     agentDescription: 'Create and change templates, the brand kit and campaign drafts, duplicate and compile campaigns, and send a test email to the account owner only. Includes everything read:comms grants. Does not send to your contacts.',
-    customerAction: 'Create and edit email templates and campaign drafts, and send test emails to you',
+    customerAction: 'View and edit your lists, contacts, templates and campaign drafts, and send test emails to you. This never emails your contacts.',
   },
   'send:comms.campaign': {
     resource: 'comms-sending',

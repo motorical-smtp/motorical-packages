@@ -1,8 +1,18 @@
 # Changelog
 
+## 0.10.0 — 2026-10-27
+
+The hosted `communications` server gains 8 write tools (Comms MCP M3-2): `comms_create_template`, `comms_create_template_from_starter`, `comms_update_template`,
+`comms_apply_template_fixes`, `comms_duplicate_template` and `comms_set_brand_kit` (all `write:comms.content`), and the list-card tools `comms_create_list` and
+`comms_update_list` (`write:comms.audience`). The server now offers exactly `read:comms`, `write:comms.audience` and `write:comms.content`; sending, workspace settings
+and webhooks are still offered by no server. None of the tools deletes, sends or touches contacts, and every write defaults to a dry run.
+The consent screen now shows reading and the two edit scopes as ONE line ("View and edit your lists, contacts, templates and campaign drafts, and send test emails to
+you. This never emails your contacts."): the `resource` of `write:comms.audience` and `write:comms.content` is now `comms`, like `read:comms`, and both edit scopes share one
+label. A read-only grant still shows the read-only line; sending keeps its own line. No scope was added, removed or renamed, and no implication changed.
+
 ## 0.9.0 — 2026-10-27
 
-The hosted `communications` server now lists 17 more read-only tools (Comms MCP M3-1): `comms_list_workspaces`, `comms_list_marketing_blocks`, `comms_list_lists`,
+The hosted `communications` server lists 17 more read-only tools (Comms MCP M3-1): `comms_list_workspaces`, `comms_list_marketing_blocks`, `comms_list_lists`,
 `comms_get_list`, `comms_compare_lists`, `comms_get_list_relations`, `comms_list_templates`, `comms_get_template`, `comms_get_template_rules`, `comms_lint_template`,
 `comms_suggest_template_fixes`, `comms_check_links`, `comms_preview_template`, `comms_list_starters`, `comms_get_brand_kit`, `comms_list_campaigns` and `comms_get_campaign`.
 Every one needs `read:comms` and nothing else, so the server still offers exactly that one scope: no new consent, and no existing grant changes. None of them writes,
