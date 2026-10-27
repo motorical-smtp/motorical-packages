@@ -142,6 +142,17 @@ const COMMS_TOOLS = [
   'comms_get_campaign_timeline',
   'comms_list_campaign_events',
   'comms_get_analytics_overview',
+  // M3-7: workspace settings and webhooks. Two reads (read:comms); the rest need a manage scope, asked as a step-up. There is NO tool to create a
+  // webhook (its signing secret is shown once, to a person), to make a workspace the default, or to replace or remove sending identities.
+  'comms_get_workspace_settings',
+  'comms_list_webhooks',
+  'comms_create_workspace',
+  'comms_update_workspace',
+  'comms_update_workspace_settings',
+  'comms_add_sending_identity',
+  'comms_update_webhook',
+  'comms_delete_webhook',
+  'comms_test_webhook',
 ];
 
 const ALL_TOOLS = [
@@ -278,6 +289,16 @@ const TOOL_SCOPES = {
   comms_get_campaign_timeline: ['read:comms'],
   comms_list_campaign_events: ['read:comms'],
   comms_get_analytics_overview: ['read:comms'],
+  // M3-7
+  comms_get_workspace_settings: ['read:comms'],
+  comms_list_webhooks: ['read:comms'],
+  comms_create_workspace: ['manage:comms.workspace'],
+  comms_update_workspace: ['manage:comms.workspace'],
+  comms_update_workspace_settings: ['manage:comms.workspace'],
+  comms_add_sending_identity: ['manage:comms.workspace'],
+  comms_update_webhook: ['manage:comms.webhooks'],
+  comms_delete_webhook: ['manage:comms.webhooks'],
+  comms_test_webhook: ['manage:comms.webhooks'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */

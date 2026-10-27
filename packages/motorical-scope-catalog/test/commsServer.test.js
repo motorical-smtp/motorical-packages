@@ -11,10 +11,12 @@ const WRITE_AUDIENCE = ['comms_create_list', 'comms_update_list', 'comms_import_
 const READ_CONTACTS = ['comms_list_list_contacts', 'comms_find_contact'];
 const CAMPAIGN_TOOLS = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test'];
 const SEND_TOOLS = ['comms_schedule_campaign', 'comms_cancel_campaign'];
+const MANAGE_WORKSPACE = ['comms_create_workspace', 'comms_update_workspace', 'comms_update_workspace_settings', 'comms_add_sending_identity'];
+const MANAGE_WEBHOOKS = ['comms_update_webhook', 'comms_delete_webhook', 'comms_test_webhook'];
 
-test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2), the 7 contact tools (M3-3), the 5 campaign-draft tools (M3-4), the 2 send tools (M3-5), the 5 reporting reads (M3-6) and whoami', () => {
+test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2), the 7 contact tools (M3-3), the 5 campaign-draft tools (M3-4), the 2 send tools (M3-5), the 5 reporting reads (M3-6), the 9 management tools (M3-7) and whoami', () => {
   const t = SERVER_TOOLS.communications;
-  assert.equal(t.length, 47);
+  assert.equal(t.length, 56);
   for (const n of SEND_TOOLS) assert.ok(t.includes(n), n);
   for (const n of CAMPAIGN_TOOLS) assert.ok(t.includes(n), n);
   for (const n of READ_CONTACTS) assert.ok(t.includes(n), n);
@@ -27,11 +29,16 @@ test('the communications server has the proof tools, the 17 read tools (M3-1), t
 test('content tools need write:comms.content, list-card tools need write:comms.audience, everything else read:comms', () => {
   for (const n of WRITE_CONTENT) assert.deepEqual(TOOL_SCOPES[n], ['write:comms.content'], n);
   for (const n of WRITE_AUDIENCE) assert.deepEqual(TOOL_SCOPES[n], ['write:comms.audience'], n);
-  for (const n of SERVER_TOOLS.communications.filter((x) => x.startsWith('comms_') && ![...WRITE_CONTENT, ...WRITE_AUDIENCE, ...CAMPAIGN_TOOLS, ...SEND_TOOLS].includes(x))) assert.deepEqual(TOOL_SCOPES[n], ['read:comms'], n);
+  for (const n of SERVER_TOOLS.communications.filter((x) => x.startsWith('comms_') && ![...WRITE_CONTENT, ...WRITE_AUDIENCE, ...CAMPAIGN_TOOLS, ...SEND_TOOLS, ...MANAGE_WORKSPACE, ...MANAGE_WEBHOOKS].includes(x))) assert.deepEqual(TOOL_SCOPES[n], ['read:comms'], n);
 });
 
 test('scheduling and cancelling need send:comms.campaign and nothing else', () => {
   for (const n of SEND_TOOLS) assert.deepEqual(TOOL_SCOPES[n], ['send:comms.campaign'], n);
+});
+
+test('workspace tools need manage:comms.workspace and webhook tools need manage:comms.webhooks, nothing else', () => {
+  for (const n of MANAGE_WORKSPACE) assert.deepEqual(TOOL_SCOPES[n], ['manage:comms.workspace'], n);
+  for (const n of MANAGE_WEBHOOKS) assert.deepEqual(TOOL_SCOPES[n], ['manage:comms.webhooks'], n);
 });
 
 test('the campaign-draft tools all need write:comms.content', () => {
@@ -42,14 +49,15 @@ test('contact reads need read:comms only', () => {
   for (const n of READ_CONTACTS) assert.deepEqual(TOOL_SCOPES[n], ['read:comms'], n);
 });
 
-test('the server offers read + audience + content + send: no workspace and no webhook scope', () => {
-  assert.deepEqual([...scopesForTools(SERVER_TOOLS.communications)].sort(), ['read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
+test('the server offers all six scopes, but only the first three are in the first consent (send and manage are step-ups)', () => {
+  assert.deepEqual([...scopesForTools(SERVER_TOOLS.communications)].sort(), ['manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
 });
 
-test('no communications tool can delete, erase, export, resubscribe, restore or pause; send, schedule and cancel exist only as the three deliberate tools', () => {
+test('no communications tool can delete (except one webhook, confirm-gated), erase, export, resubscribe, restore or pause; send, schedule and cancel exist only as the three deliberate tools', () => {
   const t = SERVER_TOOLS.communications;
-  assert.deepEqual(t.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)), []);
-  assert.deepEqual(t.filter((n) => /(send|schedule|cancel)/i.test(n)).sort(), ['comms_cancel_campaign', 'comms_schedule_campaign', 'comms_send_test']);
+  assert.deepEqual(t.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)), ['comms_delete_webhook']);
+  assert.ok(!t.includes('comms_create_webhook'), 'a webhook secret is shown once, to a person');
+  assert.deepEqual(t.filter((n) => /(send|schedule|cancel)/i.test(n)).sort(), ['comms_add_sending_identity', 'comms_cancel_campaign', 'comms_schedule_campaign', 'comms_send_test']);
 });
 
 
@@ -59,7 +67,7 @@ test('both tools need read:comms and nothing else', () => {
 });
 
 test('its canonical URI is the one the delegation and the grants use, and it offers only what its tools need', () => {
-  assert.deepEqual([...RESOURCE_SCOPES[COMMS_CANONICAL_URI]].sort(), ['read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
+  assert.deepEqual([...RESOURCE_SCOPES[COMMS_CANONICAL_URI]].sort(), ['manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
   assert.equal(COMMS_CANONICAL_URI, 'https://mcp.motorical.com/v1/motorical_communications/mcp');
 });
 
@@ -74,10 +82,12 @@ test('the main server and every other server carry no Communications tool or sco
   }
 });
 
-test('workspace and webhook scopes stay grantable in name but are offered by no server yet', () => {
+test('workspace and webhook scopes are grantable and offered by the communications server (through their tools), but are not in the first consent', () => {
+  const { COMMS_INITIAL_SCOPES } = require('../src');
   for (const s of COMMS_SCOPES.slice(4)) {
     assert.ok(listGrantableScopes().includes(s));
-    assert.ok(!RESOURCE_SCOPES[COMMS_CANONICAL_URI].includes(s));
+    assert.ok(RESOURCE_SCOPES[COMMS_CANONICAL_URI].includes(s));
+    assert.ok(!COMMS_INITIAL_SCOPES.includes(s));
   }
 });
 

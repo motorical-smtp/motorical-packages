@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.0 — 2026-10-27
+
+The hosted `communications` server gains 9 workspace and webhook tools (Comms MCP M3-7): two reads under `read:comms` (`comms_get_workspace_settings`, `comms_list_webhooks`), four under
+`manage:comms.workspace` (`comms_create_workspace`, `comms_update_workspace`, `comms_update_workspace_settings`, `comms_add_sending_identity`) and three under `manage:comms.webhooks`
+(`comms_update_webhook`, `comms_delete_webhook`, `comms_test_webhook`). The server now offers all six scopes; **the first consent is unchanged**: the two manage scopes are a step-up asked once,
+when a tool needing them is first used, each with its existing consent line. No scope was added, renamed or re-described. There is deliberately no tool to create a webhook.
+
 ## 0.14.0 — 2026-10-27
 
 The hosted `communications` server gains 5 reporting reads (Comms MCP M3-6), all `read:comms`: `comms_get_campaign_report`, `comms_get_campaign_links`,
