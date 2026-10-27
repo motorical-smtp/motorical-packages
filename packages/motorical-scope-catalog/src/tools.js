@@ -110,6 +110,15 @@ const COMMS_TOOLS = [
   'comms_get_brand_kit',
   'comms_list_campaigns',
   'comms_get_campaign',
+  // M3-2: content writes (write:comms.content) and the list card (write:comms.audience). Nothing here deletes, sends or touches contacts.
+  'comms_create_template',
+  'comms_create_template_from_starter',
+  'comms_update_template',
+  'comms_apply_template_fixes',
+  'comms_duplicate_template',
+  'comms_set_brand_kit',
+  'comms_create_list',
+  'comms_update_list',
 ];
 
 const ALL_TOOLS = [
@@ -218,6 +227,14 @@ const TOOL_SCOPES = {
   comms_get_brand_kit: ['read:comms'],
   comms_list_campaigns: ['read:comms'],
   comms_get_campaign: ['read:comms'],
+  comms_create_template: ['write:comms.content'],
+  comms_create_template_from_starter: ['write:comms.content'],
+  comms_update_template: ['write:comms.content'],
+  comms_apply_template_fixes: ['write:comms.content'],
+  comms_duplicate_template: ['write:comms.content'],
+  comms_set_brand_kit: ['write:comms.content'],
+  comms_create_list: ['write:comms.audience'],
+  comms_update_list: ['write:comms.audience'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */
