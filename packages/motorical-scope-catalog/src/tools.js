@@ -127,6 +127,12 @@ const COMMS_TOOLS = [
   'comms_derive_list',
   'comms_unsubscribe_contact',
   'comms_add_suppression',
+  // M3-4: campaign DRAFTS (write:comms.content). Nothing schedules, cancels or deletes; the test send goes to the account owner only.
+  'comms_create_campaign',
+  'comms_update_campaign',
+  'comms_duplicate_campaign',
+  'comms_preflight_campaign',
+  'comms_send_test',
 ];
 
 const ALL_TOOLS = [
@@ -250,6 +256,11 @@ const TOOL_SCOPES = {
   comms_derive_list: ['write:comms.audience'],
   comms_unsubscribe_contact: ['write:comms.audience'],
   comms_add_suppression: ['write:comms.audience'],
+  comms_create_campaign: ['write:comms.content'],
+  comms_update_campaign: ['write:comms.content'],
+  comms_duplicate_campaign: ['write:comms.content'],
+  comms_preflight_campaign: ['write:comms.content'],
+  comms_send_test: ['write:comms.content'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */

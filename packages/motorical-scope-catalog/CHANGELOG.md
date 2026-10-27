@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.0 — 2026-10-27
+
+The hosted `communications` server gains 5 campaign-draft tools (Comms MCP M3-4), all `write:comms.content`: `comms_create_campaign`, `comms_update_campaign`, `comms_duplicate_campaign`,
+`comms_preflight_campaign` and `comms_send_test` (to the account owner only, no recipient input). No scope was added or changed, so there is no new consent: the server still offers exactly
+`read:comms`, `write:comms.audience` and `write:comms.content`, and the consent line already says "campaign drafts, and send test emails to you". Nothing here schedules, cancels, deletes or sets a
+time, a timezone or pacing; those belong to a later, separately consented step.
+
 ## 0.11.0 — 2026-10-27
 
 The hosted `communications` server gains 7 contact tools (Comms MCP M3-3): the reads `comms_list_list_contacts` and `comms_find_contact` (`read:comms`, addresses masked) and the writes
