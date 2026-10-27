@@ -133,6 +133,9 @@ const COMMS_TOOLS = [
   'comms_duplicate_campaign',
   'comms_preflight_campaign',
   'comms_send_test',
+  // M3-5: scheduling and cancelling (send:comms.campaign): the step that actually emails people. Not in the first consent.
+  'comms_schedule_campaign',
+  'comms_cancel_campaign',
 ];
 
 const ALL_TOOLS = [
@@ -261,6 +264,8 @@ const TOOL_SCOPES = {
   comms_duplicate_campaign: ['write:comms.content'],
   comms_preflight_campaign: ['write:comms.content'],
   comms_send_test: ['write:comms.content'],
+  comms_schedule_campaign: ['send:comms.campaign'],
+  comms_cancel_campaign: ['send:comms.campaign'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */

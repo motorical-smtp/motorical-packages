@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.0 — 2026-10-27
+
+The hosted `communications` server gains the two tools that actually email people (Comms MCP M3-5), both `send:comms.campaign`: `comms_schedule_campaign` and `comms_cancel_campaign`.
+The server now offers four scopes: `read:comms`, `write:comms.audience`, `write:comms.content` and `send:comms.campaign`. **The first consent is unchanged** (`COMMS_INITIAL_SCOPES` is still read plus
+the two edit scopes); sending is a step-up asked once, when a send tool is first used, and it keeps its own consent line ("Send campaigns to your contacts (this is what actually emails people)").
+No scope was added, renamed or re-described, and existing grants keep exactly what they had.
+
 ## 0.12.0 — 2026-10-27
 
 The hosted `communications` server gains 5 campaign-draft tools (Comms MCP M3-4), all `write:comms.content`: `comms_create_campaign`, `comms_update_campaign`, `comms_duplicate_campaign`,
