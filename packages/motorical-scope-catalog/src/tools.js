@@ -119,6 +119,14 @@ const COMMS_TOOLS = [
   'comms_set_brand_kit',
   'comms_create_list',
   'comms_update_list',
+  // M3-3: contacts. Reads are masked (read:comms); writes are dry-run-by-default (write:comms.audience). Nothing deletes, exports, resubscribes or sends.
+  'comms_list_list_contacts',
+  'comms_find_contact',
+  'comms_import_contacts',
+  'comms_remove_from_list',
+  'comms_derive_list',
+  'comms_unsubscribe_contact',
+  'comms_add_suppression',
 ];
 
 const ALL_TOOLS = [
@@ -235,6 +243,13 @@ const TOOL_SCOPES = {
   comms_set_brand_kit: ['write:comms.content'],
   comms_create_list: ['write:comms.audience'],
   comms_update_list: ['write:comms.audience'],
+  comms_list_list_contacts: ['read:comms'],
+  comms_find_contact: ['read:comms'],
+  comms_import_contacts: ['write:comms.audience'],
+  comms_remove_from_list: ['write:comms.audience'],
+  comms_derive_list: ['write:comms.audience'],
+  comms_unsubscribe_contact: ['write:comms.audience'],
+  comms_add_suppression: ['write:comms.audience'],
 };
 
 /** `|| []`: a tool with no entry (signup's own tool) contributes no scopes rather than throwing. */

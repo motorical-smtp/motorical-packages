@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0 — 2026-10-27
+
+The hosted `communications` server gains 7 contact tools (Comms MCP M3-3): the reads `comms_list_list_contacts` and `comms_find_contact` (`read:comms`, addresses masked) and the writes
+`comms_import_contacts`, `comms_remove_from_list`, `comms_derive_list`, `comms_unsubscribe_contact` and `comms_add_suppression` (`write:comms.audience`, dry run by default).
+No scope was added or changed, so there is no new consent: the server still offers exactly `read:comms`, `write:comms.audience` and `write:comms.content`, and the consent line is
+unchanged. Nothing here deletes or erases a contact, exports data, resubscribes anyone, or sends.
+
 ## 0.10.0 — 2026-10-27
 
 The hosted `communications` server gains 8 write tools (Comms MCP M3-2): `comms_create_template`, `comms_create_template_from_starter`, `comms_update_template`,
