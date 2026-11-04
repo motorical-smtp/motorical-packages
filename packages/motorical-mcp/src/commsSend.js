@@ -34,7 +34,7 @@ export function attachCommsSend(client, { claims, server, call, resolveWorkspace
     if (real && !(typeof a.confirmToken === 'string' && a.confirmToken.length > 0)) {
       need('CONFIRM_TOKEN_REQUIRED', 'Pass the confirmToken from the dry run of exactly this schedule. Call without dryRun:false to get one.');
     }
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const iso = time.utc.toISOString();
     const apiBody = { scheduled_at: iso, timezone: time.timezone, expected_preflight_version: pv };
 
@@ -82,7 +82,7 @@ export function attachCommsSend(client, { claims, server, call, resolveWorkspace
     if (a.confirm !== true) {
       need('CONFIRMATION_REQUIRED', 'Cancelling is final: the campaign can never be restarted, and mail already sent cannot be recalled. If the person has said to cancel it, call again with confirm:true.');
     }
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const before = ((await call(`/campaigns/${a.id}`, ws)).data) || {};
     const out = await call(`/campaigns/${a.id}/cancel`, ws, { method: 'POST' });
     const sending = before.status === 'sending';

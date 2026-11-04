@@ -183,7 +183,7 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
   // ---- comms_undo_import -----------------------------------------------------
   client.commsUndoImport = guarded('comms_undo_import', async (a) => {
     checkId(a.listId, 'listId'); checkId(a.batchId, 'batchId');
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const list = { id: a.listId, name: (await listCard(ws, a.listId)).name ?? null };
     const out = await call(`/lists/${a.listId}/imports/${a.batchId}/undo`, ws, { method: 'POST', body: isDry(a) ? { dry_run: true } : {} });
     return { success: true, dryRun: isDry(a), applied: !isDry(a), list, result: out.data, note: 'People who unsubscribed, bounced or are suppressed since are kept. An import can be undone once.' };
@@ -219,7 +219,7 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
   client.commsDeleteList = guarded('comms_delete_list', async (a) => {
     checkId(a.listId, 'listId');
     if (a.contacts !== undefined && !CONTACT_MODES.includes(a.contacts)) need('INVALID_CONTACTS_MODE', `contacts must be one of: ${CONTACT_MODES.join(', ')}.`);
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const card = await listCard(ws, a.listId);
     const list = { id: a.listId, name: card.name ?? null, members: card.member_count ?? null };
     if (isDry(a)) {
@@ -239,7 +239,7 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
 
   // ---- comms_cleanup_orphan_contacts -----------------------------------------
   client.commsCleanupOrphans = guarded('comms_cleanup_orphan_contacts', async (a) => {
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const out = await call('/contacts/cleanup-orphans', ws, { method: 'POST', body: isDry(a) ? { dry_run: true } : {} });
     return { success: true, dryRun: isDry(a), applied: !isDry(a), result: out.data, note: 'People who unsubscribed, bounced or are suppressed are never erased. Erasing cannot be undone.' };
   });
@@ -247,7 +247,7 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
   // ---- comms_delete_contact --------------------------------------------------
   client.commsDeleteContact = guarded('comms_delete_contact', async (a) => {
     const address = normalizeEmail(a.email);
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const { exact } = await lookup(ws, address);
     if (!exact) need('CONTACT_NOT_FOUND', `Nobody in this workspace has the address ${maskEmail(address)}. Check the spelling with the person.`, 404);
     const contact = contactView(exact);
@@ -259,7 +259,7 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
   // ---- comms_resubscribe_contact ---------------------------------------------
   client.commsResubscribeContact = guarded('comms_resubscribe_contact', async (a) => {
     const address = normalizeEmail(a.email);
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const { exact } = await lookup(ws, address);
     if (!exact) need('CONTACT_NOT_FOUND', `Nobody in this workspace has the address ${maskEmail(address)}. Check the spelling with the person.`, 404);
     const contact = contactView(exact);

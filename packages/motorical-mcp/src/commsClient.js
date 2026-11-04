@@ -73,8 +73,12 @@ export function attachCommsMethods(client, { claims, server, signer, commsBaseUr
     if (ctx) ctx.workingIn = `Working in: ${name ? `${name} (${id})` : id} (${why})`;
   }
 
-  /** The workspace to act on: the one named, else the only one this authorization covers. Never a guess. */
-  async function resolveWorkspace(workspaceId) {
+  /**
+   * The workspace to act on: the one named, else the only one this authorization covers, else the default the person picked for this connection
+   * on the consent screen. Never a guess. A call that cannot be taken back (`explicit`: deleting, undoing, sending, cancelling) ignores the saved
+   * default when there are several workspaces and asks for the workspace by name.
+   */
+  async function resolveWorkspace(workspaceId, { explicit = false } = {}) {
     if (workspaceId !== undefined && workspaceId !== null) {
       if (!UUID.test(String(workspaceId))) throw fail('workspaceId must be a valid workspace id.', 400, { code: 'INVALID_ID' });
       noteWorkspace(String(workspaceId), null, 'named in the call');
@@ -82,7 +86,7 @@ export function attachCommsMethods(client, { claims, server, signer, commsBaseUr
     }
     const listed = await call('/workspaces', null);
     const active = (Array.isArray(listed.data) ? listed.data : []).filter((w) => w && w.status === 'active')
-      .map((w) => ({ id: String(w.id), name: String(w.name || ''), isDefault: w.isDefault === true }))
+      .map((w) => ({ id: String(w.id), name: String(w.name || ''), isDefault: w.isDefault === true, ...(w.grantDefault === true ? { grantDefault: true } : {}) }))
       // The account's default workspace first: it is where a customer who never asked for separation belongs.
       .sort((x, y) => Number(y.isDefault) - Number(x.isDefault));
     if (active.length === 1) {
@@ -90,10 +94,17 @@ export function attachCommsMethods(client, { claims, server, signer, commsBaseUr
       return active[0].id;
     }
     if (active.length === 0) throw fail('This authorization covers no workspace. Reconnect it and choose at least one workspace.', 409, { code: 'NO_WORKSPACE' });
-    const suggested = active.find((w) => w.isDefault) || null;
-    const label = (w) => `${w.name}${w.isDefault ? ' (default)' : ''} (${w.id})`;
+    const saved = active.find((w) => w.grantDefault) || null;
+    if (saved && !explicit) {
+      noteWorkspace(saved.id, saved.name, 'the default chosen for this connection');
+      return saved.id;
+    }
+    const suggested = saved || active.find((w) => w.isDefault) || null;
+    const label = (w) => `${w.name}${w.grantDefault ? ' (this connection\'s default)' : w.isDefault ? ' (default)' : ''} (${w.id})`;
     throw fail(
-      `This authorization covers several workspaces; pass workspaceId. Ask the person which to use${suggested ? `, offering the default first` : ''}. Choose one of: ${active.map(label).join(', ')}.`,
+      explicit && saved
+        ? `This action cannot be undone or reaches people, so name the workspace: pass workspaceId. Confirm with the person which one${suggested ? `, offering ${suggested.name} first` : ''}. Choose one of: ${active.map(label).join(', ')}.`
+        : `This authorization covers several workspaces; pass workspaceId. Ask the person which to use${suggested ? `, offering the default first` : ''}. Choose one of: ${active.map(label).join(', ')}.`,
       400,
       { code: 'WORKSPACE_REQUIRED', workspaces: active, suggestedWorkspaceId: suggested ? suggested.id : null },
     );
