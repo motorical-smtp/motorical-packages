@@ -5,7 +5,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createMotoricalMcpServer } from '../src/server.js';
 import { MotoricalClient } from '../src/client.js';
 import {
-  ACCOUNT_SCOPED_TOOLS, TOOL_SCOPES, LOCAL_ONLY_TOOLS, PROMPT_TOOLS, LOCAL_SERVER_TOOL_COUNT, SERVERS,
+  ACCOUNT_SCOPED_TOOLS, TOOL_SCOPES, LOCAL_ONLY_TOOLS, PROMPT_TOOLS, HOSTED_ONLY_TOOLS, LOCAL_SERVER_TOOL_COUNT, SERVERS,
 } from '../src/servers.js';
 
 test('MCP server lists tools and resources', async () => {
@@ -317,7 +317,8 @@ test('legacy path does not list or serve the account-state resource for a non-an
 test('the declared local-server tool count matches what the server registers', async () => {
   const tools = await registeredTools();
   const registered = tools.map((t) => t.name).sort();
-  const catalogue = Object.keys(TOOL_SCOPES).sort();
+  // Hosted-only tools (the Communications server's own tools) are in the catalogue but never registered by the local server.
+  const catalogue = Object.keys(TOOL_SCOPES).filter((t) => !HOSTED_ONLY_TOOLS.includes(t)).sort();
 
   assert.equal(registered.length, LOCAL_SERVER_TOOL_COUNT,
     `LOCAL_SERVER_TOOL_COUNT says ${LOCAL_SERVER_TOOL_COUNT} but the server registers ${registered.length}`);

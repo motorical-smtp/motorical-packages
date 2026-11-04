@@ -74,7 +74,7 @@ test('sandbox_convert surfaces subscription_required with err.data intact throug
     text: async () => JSON.stringify(upstreamBody),
   });
 
-  const args = { domainId: '11111111-1111-1111-1111-111111111111' };
+  const args = { domainId: '11111111-1111-4111-8111-111111111111' };
   const response = await dispatchNative({
     jsonrpc: '2.0',
     id: 42,

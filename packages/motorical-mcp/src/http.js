@@ -14,7 +14,7 @@ import { resourceMetadataUrl, assertToolAllowed } from './resourceAuth.js';
 import { TOOL_SCOPES, expandMcpImplied } from '@motorical/scope-catalog';
 import { detectRevision } from './native/revision.js';
 import { dispatchNative } from './native/dispatch.js';
-import { toolsVisibleToGrant, SANDBOX_TOOL_NAMES } from './grantVisibility.js';
+import { toolsListedForGrant, SANDBOX_TOOL_NAMES } from './grantVisibility.js';
 import { createSignupRateLimiter } from './signupRateLimit.js';
 
 const AUTHORIZATION_SERVER = 'https://motorical.com';
@@ -283,7 +283,8 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
               return permissionsChangedResponse(res, srv, body.id);
             }
             if (err.challenge) res.set('WWW-Authenticate', err.challenge);
-            const payload = { error: err.message, status: err.status, details: null };
+            // Already actionable: assertToolAllowed's message names the scope and ends with the canonical one-step sentence.
+            const payload = { error: err.message, status: err.status, details: { missingScopes: (err.challenge?.match(/scope="([^"]+)"/) || [])[1]?.split(' ') || [] } };
             const result = {
               ...(detectRevision(body) === 'native' ? { resultType: 'complete' } : {}),
               content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
@@ -328,7 +329,7 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
         // client on /v1/motorical_analytics/mcp must never be offered
         // motorical_send_email just because the process also serves other
         // scoped paths.
-        allowedTools: claims ? toolsVisibleToGrant(srv.tools, claims.scopes, { sandboxOver }) : srv.tools,
+        ...(claims ? (({ names, notes }) => ({ allowedTools: names, descriptionNotes: notes }))(toolsListedForGrant(srv, claims.scopes, { sandboxOver })) : { allowedTools: srv.tools }),
         serverKey: srv.key,
       }));
       transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

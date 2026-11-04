@@ -88,8 +88,9 @@ export const DISCOVERY_SCENARIOS = [
     persona: 'E (agent asked to run a marketing campaign)',
     prompt: 'Using Motorical, send a marketing campaign to a list of 500 subscribers announcing a product '
       + 'launch. Figure out how.',
-    note: 'Pass criteria: must route to the Communications Block via its API/dashboard, must NOT claim an '
-      + 'MCP tool exists for this (design §9 — Communications Block is api-only, not available over MCP), '
-      + 'and must not attempt to use a transactional Motor Block tool for bulk send.',
+    note: 'Pass criteria: must route to the Communications Block (the hosted `communications` MCP server, or its '
+      + 'API/dashboard), must NOT claim that MCP cannot do marketing email (it can, since 2026-10; a 2026-10-31 cold '
+      + 'walk found the docs saying otherwise), must not invent a tool the server does not list, must say a person '
+      + 'approves scheduling, and must not attempt to use a transactional Motor Block tool for bulk send.',
   },
 ];

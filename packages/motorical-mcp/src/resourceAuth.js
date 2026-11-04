@@ -10,6 +10,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { TOOL_SCOPES } from './servers.js';
+import { PERMISSION_NEEDED_SENTENCE } from './permissionNeeded.js';
 import { expandMcpImplied } from '@motorical/scope-catalog';
 
 const ISSUER = 'https://motorical.com';
@@ -134,7 +135,7 @@ export function assertToolAllowed(server, toolName, grantedScopes) {
     // One challenge carrying every missing scope — the client must not have to
     // discover them one failed call at a time.
     throw new McpAuthError(403, 'insufficient_scope',
-      `Missing scope: ${missing.join(' ')}`,
+      `Missing scope: ${missing.join(' ')}. ${PERMISSION_NEEDED_SENTENCE}`,
       bearerChallenge(server.canonicalUri, {
         error: 'insufficient_scope',
         scope: missing.join(' '),

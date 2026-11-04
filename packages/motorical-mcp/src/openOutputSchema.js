@@ -16,26 +16,26 @@
 // are newly allowed.
 import { z } from 'zod';
 
-const T = z.ZodFirstPartyTypeKind;
+// zod 4 keeps a schema's description in a registry keyed by instance, so a rebuilt schema must carry it over.
+const withMeta = (rebuilt, original) => (original.description ? rebuilt.describe(original.description) : rebuilt);
 
 function open(schema) {
-  const def = schema?._def;
-  switch (def?.typeName) {
-    case T.ZodObject: {
-      const shape = Object.fromEntries(Object.entries(schema.shape).map(([k, v]) => [k, open(v)]));
-      return new z.ZodObject({ ...def, shape: () => shape, unknownKeys: 'passthrough' });
+  const def = schema?._zod?.def;
+  switch (def?.type) {
+    case 'object': {
+      const shape = Object.fromEntries(Object.entries(def.shape).map(([k, v]) => [k, open(v)]));
+      return withMeta(z.looseObject(shape), schema);
     }
-    case T.ZodArray:
-      return new z.ZodArray({ ...def, type: open(def.type) });
-    case T.ZodOptional:
-    case T.ZodNullable:
-    case T.ZodDefault:
-      return new schema.constructor({ ...def, innerType: open(def.innerType) });
-    case T.ZodUnion:
-    case T.ZodDiscriminatedUnion:
-      return new schema.constructor({ ...def, options: def.options.map(open) });
-    case T.ZodRecord:
-      return new z.ZodRecord({ ...def, valueType: open(def.valueType) });
+    case 'array':
+      return withMeta(z.array(open(def.element)), schema);
+    case 'optional':
+    case 'nullable':
+    case 'default':
+      return withMeta(schema.clone({ ...def, innerType: open(def.innerType) }), schema);
+    case 'union':
+      return withMeta(schema.clone({ ...def, options: def.options.map(open) }), schema);
+    case 'record':
+      return withMeta(schema.clone({ ...def, valueType: open(def.valueType) }), schema);
     default:
       return schema;
   }

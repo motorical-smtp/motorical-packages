@@ -4,10 +4,18 @@
  * not expose before any network call happens.
  */
 
+import { COMMS_READ_TOOLS } from './commsReadTools.js';
+import { COMMS_WRITE_TOOLS } from './commsWriteTools.js';
+import { COMMS_CONTACT_TOOLS } from './commsContactTools.js';
+import { COMMS_CAMPAIGN_TOOLS } from './commsCampaignTools.js';
+import { COMMS_SEND_TOOLS } from './commsSendTools.js';
+import { COMMS_REPORT_TOOLS } from './commsReportTools.js';
+import { COMMS_MANAGE_TOOLS } from './commsManageTools.js';
 import { MotoricalClient } from './client.js';
 import { mintDelegation } from './delegation.js';
 import { assertToolAllowed } from './resourceAuth.js';
 import { ACCOUNT_SCOPED_TOOLS } from './servers.js';
+import { attachCommsMethods } from './commsClient.js';
 
 export const TOOL_FOR_METHOD = {
   sendEmail: 'motorical_send_email',
@@ -70,6 +78,22 @@ export const TOOL_FOR_METHOD = {
 };
 
 /**
+ * The Communications tools: their methods live on the Comms client (commsClient.js, attached only on the `communications` server)
+ * and call the Comms Block, not the Public API, so they are not in TOOL_FOR_METHOD.
+ */
+export const COMMS_CLIENT_TOOLS = {
+  commsGetReadiness: 'comms_get_readiness',
+  commsGetMap: 'comms_get_map',
+  ...Object.fromEntries(COMMS_READ_TOOLS.map((r) => [r.method, r.tool])),
+  ...Object.fromEntries(COMMS_WRITE_TOOLS.map((r) => [r.method, r.tool])),
+  ...Object.fromEntries(COMMS_CONTACT_TOOLS.map((r) => [r.method, r.tool])),
+  ...Object.fromEntries(COMMS_CAMPAIGN_TOOLS.map((r) => [r.method, r.tool])),
+  ...Object.fromEntries(COMMS_SEND_TOOLS.map((r) => [r.method, r.tool])),
+  ...Object.fromEntries(COMMS_REPORT_TOOLS.map((r) => [r.method, r.tool])),
+  ...Object.fromEntries(COMMS_MANAGE_TOOLS.map((r) => [r.method, r.tool])),
+};
+
+/**
  * server.js registers these tools too (sandbox allowlisting is a dashboard-
  * session-only flow with no Public API equivalent; mint_public_token/
  * web_handoff need env-provided credentials), but none of them has a sane
@@ -119,7 +143,7 @@ export function createUnauthenticatedClient({ apiBaseUrl }) {
   });
 }
 
-export function createDelegatedClient({ claims, server, signer, apiBaseUrl }) {
+export function createDelegatedClient({ claims, server, signer, apiBaseUrl, commsBaseUrl, fetchImpl }) {
   const blocks = claims.motorBlockIds || [];
 
   const client = new MotoricalClient({
@@ -264,6 +288,10 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl }) {
       throw new Error(`${tool} is not available over an OAuth authorization`);
     };
   }
+
+  // Only the Communications server speaks to the Comms Block; no other server's client has these methods.
+  // The front door (`main`) carries the same tools; each is still routed per tool (backend vs Comms Block delegation) and re-checked by the callee.
+  if (server.key === 'communications' || server.key === 'main') attachCommsMethods(client, { claims, server, signer, commsBaseUrl, fetchImpl });
 
   return client;
 }

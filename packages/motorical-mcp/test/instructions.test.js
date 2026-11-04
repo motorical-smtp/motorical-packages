@@ -60,8 +60,10 @@ describe('instructions', () => {
     // added: any motorical_* identifier an instructions string names must be
     // one THAT SERVER actually registers, or an agent hunts a tool it can't
     // find in tools/list -- the exact failure this test exists to prevent.
+    // A server's own slug (e.g. in the address of the domains server) is not a tool name.
+    const slugs = new Set(SERVERS.map((x) => x.slug));
     for (const s of SERVERS) {
-      const named = instructionsFor(s.key).match(/\bmotorical_[a-zA-Z0-9_]+\b/g) || [];
+      const named = (instructionsFor(s.key).match(/\bmotorical_[a-zA-Z0-9_]+\b/g) || []).filter((n) => !slugs.has(n));
       for (const tool of new Set(named)) {
         assert.ok(
           s.tools.includes(tool),

@@ -3,7 +3,7 @@
 // The 2026-07-28 dispatcher. Pure over a parsed body: no Express, no sockets,
 // so it is unit-testable without a transport. It exists because the TypeScript
 // SDK tops out at 2025-11-25 and cannot serve server/discover.
-import { toolsVisibleToGrant } from '../grantVisibility.js';
+import { toolsListedForGrant, describeWithNote } from '../grantVisibility.js';
 import { toJsonSchemaCompat } from '@modelcontextprotocol/sdk/server/zod-json-schema-compat.js';
 import {
   objectFromShape,
@@ -17,6 +17,8 @@ import { buildDiscoverResult } from './discover.js';
 import { resolveTask } from './taskResolver.js';
 import * as defaultTaskStore from './taskStore.js';
 import { RESOURCES, RESOURCE_TEMPLATES, DOC_RESOURCES, docResourceByUri, resourceByUri, matchResourceTemplate } from '../resources.js';
+import { COMMS_RESOURCES, commsResourceByUri } from '../commsResources.js';
+import { COMMS_PROMPTS, promptListing, getPrompt } from '../commsPrompts.js';
 import { signRequestState, verifyRequestState } from './requestState.js';
 
 const TOOLS_TTL_MS = 3600000;
@@ -144,10 +146,10 @@ function jsonSchemaFromShape(shape, pipeStrategy) {
   return toJsonSchemaCompat(objectFromShape(shape ?? {}), { strictUnions: true, pipeStrategy });
 }
 
-function toolDefinition(t) {
+function toolDefinition(t, note) {
   return {
     name: t.name,
-    description: t.description,
+    description: describeWithNote(t.description, note),
     inputSchema: jsonSchemaFromShape(t.inputSchema, 'input'),
     annotations: t.annotations,
     // Mirrors the SDK: outputSchema is emitted only when the tool declared
@@ -167,8 +169,8 @@ function toolDefinition(t) {
 }
 
 function visibleTools(server, grantedScopes, sandboxOver = null) {
-  const names = toolsVisibleToGrant(server.tools, grantedScopes, { sandboxOver });
-  return TOOLS.filter((t) => names.includes(t.name));
+  const { names, notes } = toolsListedForGrant(server, grantedScopes, { sandboxOver });
+  return TOOLS.filter((t) => names.includes(t.name)).map((t) => ({ tool: t, note: notes.get(t.name) }));
 }
 
 // The legacy path's own refusal shape. server/mcp.js's CallTool handler throws
@@ -253,7 +255,7 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
   if (method === 'tools/list') {
     return ok(id, {
       resultType: 'complete',
-      tools: visibleTools(server, grantedScopes, sandboxOver).map(toolDefinition),
+      tools: visibleTools(server, grantedScopes, sandboxOver).map(({ tool, note }) => toolDefinition(tool, note)),
       ttlMs: TOOLS_TTL_MS,
       // A list narrowed to one grant must not be shared between people.
       cacheScope: Array.isArray(grantedScopes) ? 'private' : 'public',
@@ -431,7 +433,8 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
   // for a genuinely unrecognized method.
   if (method === 'resources/list') {
     // Public docs resources on every server; account-state ones on analytics only.
-    const visible = server.key === 'analytics' ? [...DOC_RESOURCES, ...RESOURCES] : DOC_RESOURCES;
+    const visible = server.key === 'analytics' ? [...DOC_RESOURCES, ...RESOURCES]
+      : server.key === 'communications' ? [...DOC_RESOURCES, ...COMMS_RESOURCES] : DOC_RESOURCES;
     const resources = visible.map(({ handler, docsPath, ...meta }) => meta);
     return ok(id, { resultType: 'complete', resources, ttlMs: RESOURCES_TTL_MS, cacheScope: 'private' });
   }
@@ -455,6 +458,17 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
       try {
         const result = await docResource.handler(client)();
         return ok(id, { resultType: 'complete', ...result, ttlMs: RESOURCES_TTL_MS, cacheScope: 'public' });
+      } catch (err) {
+        return fail(id, -32603, err.message);
+      }
+    }
+
+    // The communications reference pages: that server only, and private because they follow the connection (the rulebook is read with its grant).
+    const commsResource = server.key === 'communications' ? commsResourceByUri(uri) : null;
+    if (commsResource) {
+      try {
+        const result = await commsResource.handler(client)();
+        return ok(id, { resultType: 'complete', ...result, ttlMs: RESOURCES_TTL_MS, cacheScope: 'private' });
       } catch (err) {
         return fail(id, -32603, err.message);
       }
@@ -502,6 +516,17 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
       if (staticResource) return fail(id, -32603, err.message);
       return fail(id, -32602, err.message);
     }
+  }
+
+  // Prompts: the communications server only (its six playbooks). Every other server keeps answering -32601, which is what it advertises.
+  if (server.key === 'communications' && method === 'prompts/list') {
+    return ok(id, { resultType: 'complete', prompts: COMMS_PROMPTS.map(promptListing), ttlMs: RESOURCES_TTL_MS, cacheScope: 'public' });
+  }
+
+  if (server.key === 'communications' && method === 'prompts/get') {
+    const got = getPrompt(body.params?.name, body.params?.arguments);
+    if (got.error) return fail(id, -32602, got.error);
+    return ok(id, { resultType: 'complete', ...got });
   }
 
   return fail(id, -32601, `Method not found: ${method}`);

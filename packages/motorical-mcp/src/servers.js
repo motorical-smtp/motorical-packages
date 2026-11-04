@@ -11,8 +11,16 @@
  */
 
 import {
-  MCP_HOST, SERVER_TOOLS, TOOL_SCOPES, scopesForTools,
+  MCP_HOST, SERVER_TOOLS, TOOL_SCOPES, scopesForTools, ANY_GRANT_TOOLS, COMMS_INITIAL_SCOPES, MAIN_BASE_TOOLS,
 } from '@motorical/scope-catalog';
+
+import { COMMS_READ_TOOLS } from './commsReadTools.js';
+import { COMMS_WRITE_TOOLS } from './commsWriteTools.js';
+import { COMMS_CONTACT_TOOLS } from './commsContactTools.js';
+import { COMMS_CAMPAIGN_TOOLS } from './commsCampaignTools.js';
+import { COMMS_SEND_TOOLS } from './commsSendTools.js';
+import { COMMS_REPORT_TOOLS } from './commsReportTools.js';
+import { COMMS_MANAGE_TOOLS } from './commsManageTools.js';
 
 export { MCP_HOST, TOOL_SCOPES };
 
@@ -23,7 +31,9 @@ const SANDBOX_TOOLS = SERVER_TOOLS.sandbox;
 const WEBHOOK_TOOLS = SERVER_TOOLS.webhooks;
 const MOTOR_BLOCK_TOOLS = SERVER_TOOLS.motorBlocks;
 
-export const ALL_TOOLS = SERVER_TOOLS.main;
+// The main server's OWN tools (the local npm server's universe). The hosted front door adds the Communications tools on top (FRONT_DOOR_TOOLS).
+export const ALL_TOOLS = MAIN_BASE_TOOLS;
+export const FRONT_DOOR_TOOLS = SERVER_TOOLS.main;
 
 /**
  * server.js registers these, but they are NOT in the published catalogue:
@@ -33,6 +43,9 @@ export const ALL_TOOLS = SERVER_TOOLS.main;
 export const LOCAL_ONLY_TOOLS = ['motorical_mint_public_token', 'motorical_web_handoff'];
 
 const SIGNUP_TOOLS = ['motorical_signup_handoff'];
+const COMMS_TOOLS = SERVER_TOOLS.communications;
+// The Communications-only tools: hosted-only like signup. (The server also lists motorical_whoami, which every authenticated server shares and the local server keeps.)
+const COMMS_ONLY_TOOLS = COMMS_TOOLS.filter((t) => !ANY_GRANT_TOOLS.includes(t));
 
 /**
  * The mirror image of LOCAL_ONLY_TOOLS: this tool exists ONLY on the hosted
@@ -44,7 +57,7 @@ const SIGNUP_TOOLS = ['motorical_signup_handoff'];
  * LOCAL_ONLY_TOOLS is: it needs no TOOL_SCOPES/TOOL_ROUTES entry, and the
  * guards below only walk ALL_TOOLS / Object.keys(TOOL_SCOPES).
  */
-export const HOSTED_ONLY_TOOLS = SIGNUP_TOOLS;
+export const HOSTED_ONLY_TOOLS = [...SIGNUP_TOOLS, ...COMMS_ONLY_TOOLS];
 
 /**
  * In the catalogue, but registered as an MCP *prompt* rather than a tool — so
@@ -192,6 +205,17 @@ export const TOOL_ROUTES = {
 
   // A prompt, not a tool — returns instructional text, calls nothing.
   motorical_integrate_send: null,
+
+  // Communications (marketing) tools: they call the Comms Block (COMM base URL), not the Public API, with a delegation for the comms audience.
+  comms_get_readiness: { method: 'GET', path: '/comm-api/api/readiness' },
+  comms_get_map: { method: 'GET', path: '/comm-api/api/map' },
+  ...Object.fromEntries(COMMS_READ_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
+  ...Object.fromEntries(COMMS_WRITE_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
+  ...Object.fromEntries(COMMS_CONTACT_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
+  ...Object.fromEntries(COMMS_CAMPAIGN_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
+  ...Object.fromEntries(COMMS_SEND_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
+  ...Object.fromEntries(COMMS_REPORT_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
+  ...Object.fromEntries(COMMS_MANAGE_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
 };
 
 /** A tool with no TOOL_ROUTES entry cannot be validated against the docs. */
@@ -208,28 +232,33 @@ for (const t of Object.keys(TOOL_SCOPES)) {
 // short list; a tool outside it answers 403 insufficient_scope and the client asks
 // for exactly the missing scope then (the step-up). Every other server already is
 // narrow, so only main carries this.
+// 'read:comms' is the only marketing scope here (front door, 2026-11-04): reading lists and results needs no more, and editing or sending
+// stay a later, explicit step-up (Settings -> Connections).
 export const MAIN_INITIAL_SCOPES = [
-  'send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients',
+  'send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients', 'read:comms',
 ];
 
-function server(key, slug, tools, initialScopes) {
+function server(key, slug, tools, initialScopes, extra = {}) {
   const path = `/v1/${slug}/mcp`;
   const scopes = scopesForTools(tools);
   if (initialScopes) {
     const stray = initialScopes.filter((s) => !scopes.includes(s));
     if (stray.length) throw new Error(`servers.js: initial scopes not offered by ${key}: ${stray.join(' ')}`);
   }
-  return { key, slug, path, canonicalUri: `${MCP_HOST}${path}`, scopes, tools, ...(initialScopes ? { initialScopes } : {}) };
+  return { key, slug, path, canonicalUri: `${MCP_HOST}${path}`, scopes, tools, ...(initialScopes ? { initialScopes } : {}), ...extra };
 }
 
 export const SERVERS = [
-  server('main', 'motorical', ALL_TOOLS, MAIN_INITIAL_SCOPES),
+  // The front door. `listing: 'marked'`: tools the grant lacks stay LISTED, marked "Needs permission X" (grantVisibility.js); every
+  // narrow server keeps hiding them.
+  server('main', 'motorical', FRONT_DOOR_TOOLS, MAIN_INITIAL_SCOPES, { listing: 'marked' }),
   server('transactional', 'motorical_transactional', TRANSACTIONAL_TOOLS),
   server('analytics', 'motorical_analytics', ANALYTICS_TOOLS),
   server('domains', 'motorical_domains', DOMAIN_TOOLS),
   server('sandbox', 'motorical_sandbox', SANDBOX_TOOLS),
   server('webhooks', 'motorical_webhooks', WEBHOOK_TOOLS),
   server('motorBlocks', 'motorical_motor_blocks', MOTOR_BLOCK_TOOLS),
+  server('communications', 'motorical_communications', COMMS_TOOLS, COMMS_INITIAL_SCOPES),
   // The one deliberate exception: `public: true` is read by authenticateMcp
   // (http.js) and clientFactory (serve.js) to skip bearer verification
   // entirely for this ONE server -- a caller with no Motorical account yet

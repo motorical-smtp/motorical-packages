@@ -257,16 +257,20 @@ test('the analytics server does not advertise a tool it cannot call', async () =
   }
 });
 
-test('the main server advertises exactly what the grant can call (legacy transport)', async () => {
+test('the main server lists every tool but marks the ones the grant cannot call (legacy transport)', async () => {
   const s = await listen(app());
   try {
     // the stub's 'good' token holds send, read:analytics, manage:domains and manage:sandbox only
-    const { names } = await toolsList(s.base, '/v1/motorical/mcp', 'good');
-    assert.ok(names.includes('motorical_send_email'));
-    assert.ok(names.includes('motorical_domain_list'), 'read:domains is implied by manage:domains');
-    assert.ok(names.includes('motorical_sandbox_status'));
-    for (const hidden of ['motorical_webhook_list', 'motorical_webhook_create', 'motorical_motor_block_create', 'motorical_free_recipient_add']) {
-      assert.ok(!names.includes(hidden), `${hidden} must not be listed for a grant without its scope`);
+    const res = await fetch(`${s.base}/v1/motorical/mcp`, { method: 'POST', headers: { Authorization: 'Bearer good', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }) });
+    const line = (await res.text()).split('\n').find((l) => l.startsWith('data: '));
+    const tools = JSON.parse(line.slice(6)).result.tools;
+    const by = Object.fromEntries(tools.map((t) => [t.name, t]));
+    assert.ok(by.motorical_send_email && !/Needs permission/.test(by.motorical_send_email.description));
+    assert.ok(by.motorical_domain_list && !/Needs permission/.test(by.motorical_domain_list.description), 'read:domains is implied by manage:domains');
+    assert.ok(by.motorical_sandbox_status);
+    for (const lacking of ['motorical_webhook_list', 'motorical_webhook_create', 'motorical_motor_block_create', 'motorical_free_recipient_add']) {
+      assert.ok(by[lacking], `${lacking} stays listed on the front door`);
+      assert.match(by[lacking].description, /Needs permission/);
     }
   } finally {
     s.close();
@@ -295,7 +299,8 @@ test('the native transport filters the same way and marks the list private', asy
   const res = await postMcp('/v1/motorical/mcp', { jsonrpc: '2.0', id: 11, method: 'tools/list', params: { _meta: { 'io.modelcontextprotocol/clientCapabilities': {} } } });
   const names = (res.body?.result?.tools || []).map((t) => t.name);
   assert.ok(names.includes('motorical_send_email'));
-  assert.ok(!names.includes('motorical_webhook_list'));
+  const marked = res.body.result.tools.find((t) => t.name === 'motorical_webhook_list');
+  assert.match(marked.description, /Needs permission: read:webhooks/, 'listed on the front door, marked');
   assert.equal(res.body?.result?.cacheScope, 'private');
 });
 
@@ -331,7 +336,7 @@ test('motorical_send_email accepts an explicit motorBlockId for a multi-block gr
     verify: async () => ({
       userId: 'u1', grantId: 'g1', clientId: 'c',
       scopes: ['send:transactional', 'read:analytics'],
-      motorBlockIds: ['11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'],
+      motorBlockIds: ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'],
     }),
   };
 
@@ -356,7 +361,7 @@ test('motorical_send_email accepts an explicit motorBlockId for a multi-block gr
           name: 'motorical_send_email',
           arguments: {
             from: 'a@b.com', to: 'c@d.com', subject: 's', text: 't', dryRun: true,
-            motorBlockId: '22222222-2222-2222-2222-222222222222',
+            motorBlockId: '22222222-2222-4222-8222-222222222222',
           },
         },
       }),
@@ -370,7 +375,7 @@ test('motorical_send_email accepts an explicit motorBlockId for a multi-block gr
     const decoded = jwt.verify(upstreamAuth.slice('Delegation '.length), publicKey, {
       algorithms: ['RS256'], audience: 'https://api.motorical.com/internal/mcp',
     });
-    assert.equal(decoded.motorBlockId, '22222222-2222-2222-2222-222222222222');
+    assert.equal(decoded.motorBlockId, '22222222-2222-4222-8222-222222222222');
   } finally {
     s.close();
     upstream.close();
@@ -590,7 +595,7 @@ test('main passes its short trial scope set to the verifier; narrow servers pass
     await fetch(`${s.base}/v1/motorical_motor_blocks/mcp`, { method: 'POST' });
     const main = SERVERS.find((x) => x.key === 'main');
     const mb = SERVERS.find((x) => x.key === 'motorBlocks');
-    assert.deepEqual(seen[main.canonicalUri], ['send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients']);
+    assert.deepEqual(seen[main.canonicalUri], ['send:transactional', 'read:analytics', 'manage:domains', 'manage:sandbox', 'manage:recipients', 'read:comms']);
     assert.equal(seen[mb.canonicalUri], undefined);
     assert.ok(main.scopes.includes('manage:motor-blocks') && main.scopes.includes('manage:webhooks'), 'tools still need these scopes');
     const prm = await (await fetch(`${s.base}/.well-known/oauth-protected-resource${main.path}`)).json();

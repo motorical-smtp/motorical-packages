@@ -24,10 +24,10 @@ describe('resources registry', () => {
   });
 
   test('matchResourceTemplate extracts the motor-block id variable', () => {
-    const match = matchResourceTemplate('motorical://motor-block/11111111-1111-1111-1111-111111111111');
+    const match = matchResourceTemplate('motorical://motor-block/11111111-1111-4111-8111-111111111111');
     assert.ok(match);
     assert.equal(match.template.uriTemplate, 'motorical://motor-block/{id}');
-    assert.deepEqual(match.variables, { id: '11111111-1111-1111-1111-111111111111' });
+    assert.deepEqual(match.variables, { id: '11111111-1111-4111-8111-111111111111' });
   });
 
   test('matchResourceTemplate returns null for a URI matching neither template', () => {

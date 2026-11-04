@@ -113,11 +113,11 @@ test('sandbox_status says outboundLocked is null when no sandbox exists', () => 
   assert.match(desc('motorical_sandbox_status'), /outboundLocked is null when no sandbox exists/);
 });
 
-test('no tool description carries a step-up note: tools the grant cannot use are not listed at all', () => {
+test('no registry description carries a step-up note: the marker is added at listing time, from TOOL_SCOPES', () => {
   for (const n of ['motorical_webhook_list', 'motorical_motor_block_create', 'motorical_send_email']) {
     assert.doesNotMatch(desc(n), /Insufficient scope/);
   }
-  assert.match(instructionsFor('main'), /tool list shows only what this connection may use/);
+  assert.match(instructionsFor('main'), /marked "Needs permission"/);
 });
 
 test('send description allows the sandbox sender domain', () => {

@@ -48,6 +48,8 @@ export function buildServer(env = process.env, overrides = {}) {
   }
 
   const apiBaseUrl = env.MOTORICAL_API_BASE_URL || 'http://127.0.0.1:3001';
+  // The Communications Block API (loopback, same host). Only the `communications` server uses it.
+  const commsBaseUrl = env.MCP_COMMS_BASE_URL || 'http://127.0.0.1:3011/api';
   const verifier = overrides.verifier || createVerifier({
     jwksUrl: defaultJwksUrl(env),
   });
@@ -119,7 +121,7 @@ export function buildServer(env = process.env, overrides = {}) {
     clientFactory: ({ claims, server }) => (
       server.public
         ? createUnauthenticatedClient({ apiBaseUrl })
-        : createDelegatedClient({ claims, server, signer, apiBaseUrl })
+        : createDelegatedClient({ claims, server, signer, apiBaseUrl, commsBaseUrl })
     ),
   });
 
