@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.25.0] — 2026-11-05
+
+### Added
+
+- A default workspace for the connection. When the person has several workspaces, the approval screen asks which one is the default; the Communications tools then use it when no workspace is named (and say "Working in"). Actions that cannot be undone or that reach people (delete a list or contact, clean up, undo an import, opt someone back in, schedule, cancel, delete a webhook) still need the workspace named: with several workspaces they ask instead of using the saved default. With one workspace nothing changes and nothing is asked.
+
 ## [1.24.0] — 2026-11-04
 
 ### Added

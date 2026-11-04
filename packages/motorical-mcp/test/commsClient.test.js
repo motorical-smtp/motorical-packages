@@ -79,6 +79,31 @@ describe('a call to the Comms Block', () => {
     await assert.rejects(() => client.commsGetReadiness({}), (e) => e.data.code === 'WORKSPACE_REQUIRED' && e.data.suggestedWorkspaceId === null);
   });
 
+  test('a default picked for this connection is used without asking, and the answer says so', async () => {
+    const { client, calls } = make((url) => (url.endsWith('/workspaces')
+      ? workspacesReply([{ id: W1, name: 'Shop', status: 'active', isDefault: true }, { id: W2, name: 'Blog', status: 'active', isDefault: false, grantDefault: true }])
+      : json(200, { success: true, data: {} })));
+    await client.commsGetMap({});
+    assert.equal(calls[1].init.headers['X-Tenant-Id'], W2, 'the connection default beats the account default');
+  });
+
+  test('a call that cannot be undone ignores the saved default and asks for the workspace by name', async () => {
+    const LIST = '55555555-5555-4555-8555-555555555555';
+    const { client, calls } = make(() => workspacesReply([{ id: W1, name: 'Shop', status: 'active', isDefault: true }, { id: W2, name: 'Blog', status: 'active', grantDefault: true }]),
+      ['read:comms', 'manage:comms.audience']);
+    await assert.rejects(() => client.commsDeleteList({ listId: LIST }), (e) => e.data.code === 'WORKSPACE_REQUIRED' && e.data.suggestedWorkspaceId === W2 && /name the workspace/.test(e.message));
+    assert.equal(calls.length, 1, 'only the workspace list was read; nothing was touched');
+  });
+
+  test('with one workspace even an irreversible call needs no name (there is nothing to choose)', async () => {
+    const LIST = '55555555-5555-4555-8555-555555555555';
+    const { client, calls } = make((url) => (url.endsWith('/workspaces') ? workspacesReply([{ id: W1, name: 'Shop', status: 'active' }])
+      : json(200, { success: true, data: { id: LIST, name: 'L', member_count: 1 } })), ['read:comms', 'manage:comms.audience']);
+    const out = await client.commsDeleteList({ listId: LIST });
+    assert.equal(out.applied, false);
+    assert.equal(calls[1].init.headers['X-Tenant-Id'], W1);
+  });
+
   test('with no workspace covered it says so', async () => {
     const { client } = make(() => workspacesReply([]));
     await assert.rejects(() => client.commsGetReadiness({}), (e) => e.data.code === 'NO_WORKSPACE');

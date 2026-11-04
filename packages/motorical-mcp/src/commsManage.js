@@ -214,7 +214,7 @@ export function attachCommsManage(client, { claims, server, call, resolveWorkspa
     checkId(a.webhookId, 'webhookId');
     const real = !isDry(a);
     if (real && a.confirm !== true) need('CONFIRMATION_REQUIRED', 'Deleting a webhook is final and its signing secret cannot be recovered. If the person has said to delete it, call again with dryRun:false and confirm:true. To only stop events, pause it with comms_update_webhook.');
-    const ws = await resolveWorkspace(a.workspaceId);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
     const current = await findWebhook(ws, a.webhookId);
     if (!real) {
       return {
