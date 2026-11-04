@@ -94,7 +94,7 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
       last_activity: r.last_activity ?? null, created_at: r.created_at, suppression_reason: r.suppression_reason ?? null,
       list_count: Number(r.list_count ?? 0), lists: (r.lists || []).map((l) => ({ id: l.id, name: l.name })),
     }));
-    return { success: true, data: { total: d.total ?? rows.length, rows }, filter: d.filter ?? filter, page: { limit: d.limit, offset: d.offset, returned: rows.length, truncated: Boolean(d.has_more) } };
+    return { success: true, data: { total: d.total ?? rows.length, rows }, as_of: d.as_of ?? null, interpreted: d.interpreted ?? [], filter: d.filter ?? filter, page: { limit: d.limit, offset: d.offset, returned: rows.length, truncated: Boolean(d.has_more) } };
   });
   client.commsAudienceSummary = guarded('comms_audience_summary', async (a) => {
     const filter = checkFilter(a.filter);
