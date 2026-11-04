@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.24.0] — 2026-11-04
+
+### Added
+
+- Full list manipulation in the hosted `communications` server: archive and restore a list, list and undo imports (imports now report a `batchId`), add up to 200 suppressions at once, delete a list
+  (a dry run shows both answers to "also delete the people on no other list?"; the real call needs the person's answer), clean up people on no list, delete a contact, opt a contact back in,
+  and `comms_get_dashboard_link` for what stays in the dashboard (large files, export). Deleting needs the new `manage:comms.audience` permission, is dry-run by default, and never erases people
+  who unsubscribed, bounced or are suppressed. `comms_list_lists` gains `archived`. Needs `@motorical/scope-catalog` 0.17.0.
+
 ## [1.23.1] — 2026-11-04
 
 ### Changed

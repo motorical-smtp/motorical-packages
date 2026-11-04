@@ -66,7 +66,7 @@ describe('registration', () => {
   });
   test('all need write:comms.content; the server offers those three scopes plus send (M3-5)', () => {
     for (const n of NAMES) assert.deepEqual(TOOL_SCOPES[n], ['write:comms.content'], n);
-    assert.deepEqual([...server.scopes].sort(), ['manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
+    assert.deepEqual([...server.scopes].sort(), ['manage:comms.audience', 'manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
   });
   test('non-destructive writes; every tool except preflight says dry run and takes dryRun', () => {
     for (const n of NAMES) {

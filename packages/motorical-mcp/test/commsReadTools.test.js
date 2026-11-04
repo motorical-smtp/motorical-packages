@@ -39,7 +39,7 @@ describe('the read family is registered everywhere', () => {
     assert.deepEqual(COMMS_READ_TOOLS.map((t) => t.tool).sort(), [...EXPECTED].sort());
     for (const n of EXPECTED) assert.ok(SERVER_TOOLS.communications.includes(n), `${n} in the catalogue server list`);
     const WRITES = ['comms_create_template', 'comms_create_template_from_starter', 'comms_update_template', 'comms_apply_template_fixes', 'comms_duplicate_template', 'comms_set_brand_kit', 'comms_create_list', 'comms_update_list'];
-    const CONTACTS = ['comms_list_list_contacts', 'comms_find_contact', 'comms_import_contacts', 'comms_remove_from_list', 'comms_derive_list', 'comms_unsubscribe_contact', 'comms_add_suppression'];
+    const CONTACTS = ['comms_list_list_contacts', 'comms_find_contact', 'comms_import_contacts', 'comms_remove_from_list', 'comms_derive_list', 'comms_unsubscribe_contact', 'comms_add_suppression', 'comms_list_imports', 'comms_get_dashboard_link', 'comms_undo_import', 'comms_set_list_archived', 'comms_add_suppressions', 'comms_delete_list', 'comms_delete_contact', 'comms_cleanup_orphan_contacts', 'comms_resubscribe_contact'];
     const CAMPAIGNS = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test', 'comms_schedule_campaign', 'comms_cancel_campaign'];
     const MANAGE = ['comms_get_workspace_settings', 'comms_list_webhooks', 'comms_create_workspace', 'comms_update_workspace', 'comms_update_workspace_settings', 'comms_add_sending_identity', 'comms_update_webhook', 'comms_delete_webhook', 'comms_test_webhook'];
     const REPORTS = ['comms_get_campaign_report', 'comms_get_campaign_links', 'comms_get_campaign_timeline', 'comms_list_campaign_events', 'comms_get_analytics_overview'];

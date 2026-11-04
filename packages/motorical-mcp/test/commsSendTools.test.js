@@ -62,7 +62,7 @@ describe('registration', () => {
     for (const n of ['comms_schedule_campaign', 'comms_cancel_campaign']) { assert.ok(SERVER_TOOLS.communications.includes(n), n); assert.ok(byName(n), n); assert.ok(HOSTED_ONLY_TOOLS.includes(n), n); assert.deepEqual(TOOL_SCOPES[n], ['send:comms.campaign'], n); }
   });
   test('the server now offers four scopes, but the FIRST consent is still the three (sending is a step-up)', () => {
-    assert.deepEqual([...server.scopes].sort(), ['manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
+    assert.deepEqual([...server.scopes].sort(), ['manage:comms.audience', 'manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
     assert.deepEqual([...server.initialScopes].sort(), ['read:comms', 'write:comms.audience', 'write:comms.content']);
   });
   test('both are marked as consequential (destructive, open-world) so a client can warn', () => {

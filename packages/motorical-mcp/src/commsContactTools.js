@@ -6,7 +6,8 @@
  * - every write defaults to a DRY RUN; a real write needs dryRun:false;
  * - a real import needs the person's consent answer (true OR false), never defaulted;
  * - addresses are ALWAYS masked (commsMask.js); there is no way to ask for a real one;
- * - nothing deletes or erases a contact, resubscribes anyone, exports data, or sends.
+ * - nothing sends. Deleting a list or a contact, cleaning up contacts on no list and opting someone back in need manage:comms.audience, a grant of
+ *   its own that the first consent never includes (owner decision 2026-11-04, plan 2026-11-04-comms-list-manipulation-complete).
  */
 
 import { z } from 'zod';
@@ -16,6 +17,9 @@ export const SUPPRESSION_REASONS = ['manual', 'complaint', 'unsubscribe'];
 export const DERIVE_OPERATIONS = ['union', 'intersection', 'difference'];
 export const MAX_IMPORT_ROWS = 1001;
 export const MAX_REMOVE_IDS = 100;
+export const MAX_SUPPRESS_EMAILS = 200;
+export const CONTACT_MODES = ['keep', 'delete_orphans'];
+export const DASHBOARD_PURPOSES = ['import_csv', 'export_list', 'bulk_suppressions'];
 
 const uuid = (what) => z.string().uuid().describe(what);
 const email = z.string().min(3).max(320).describe('The address the person typed. It is never echoed back: results show it masked.');
@@ -58,6 +62,7 @@ export const COMMS_CONTACT_TOOLS = [
       onExisting: z.enum(['keep', 'update']).optional().describe('keep (default): an existing contact\'s own values win; update: what you send wins.'),
       sourceLabel: z.string().min(1).max(200).describe('Where these contacts came from, in a few words. Required.'),
       consentConfirmed: z.boolean().optional().describe('The person\'s answer to the consent question. Required for a real import.'),
+      batchId: z.string().uuid().optional().describe('The batchId an earlier call returned. Pass it to add this call to the SAME import, so one comms_undo_import takes back all of it (a big file sent in several calls).'),
     },
   },
   {
@@ -98,6 +103,72 @@ export const COMMS_CONTACT_TOOLS = [
       + 'from here; only the account owner can, in the dashboard.',
     input: { email, reason: z.enum(SUPPRESSION_REASONS) },
   },
+  {
+    tool: 'comms_add_suppressions', method: 'commsAddSuppressions', http: 'POST', route: '/comm-api/api/suppressions/bulk',
+    title: 'Suppress many addresses', annotations: WRITE({ idempotentHint: true }),
+    description: 'Stop all marketing email to up to ' + MAX_SUPPRESS_EMAILS + ' addresses at once (POST /comm-api/api/suppressions/bulk), for example the people who opted out in the person\'s PREVIOUS tool: do this BEFORE importing their list. '
+      + 'ACCOUNT-WIDE, like comms_add_suppression, and it cannot be removed from here. DRY RUN by default: counts the addresses and shows a masked sample, writes nothing. '
+      + 'More than ' + MAX_SUPPRESS_EMAILS + ': call again with the next ' + MAX_SUPPRESS_EMAILS + '. Get the person\'s clear yes in chat BEFORE dryRun:false. Addresses are never echoed back.',
+    input: { emails: z.array(z.string().min(3).max(320)).min(1).max(MAX_SUPPRESS_EMAILS), reason: z.enum(SUPPRESSION_REASONS) },
+  },
+  {
+    tool: 'comms_list_imports', method: 'commsListImports', http: 'GET', route: '/comm-api/api/lists/{id}/imports', read: true,
+    title: 'Imports into a list', annotations: READ,
+    description: 'The recent imports into one list (GET /comm-api/api/lists/{id}/imports): batchId, source, when, how many contacts it created, how many existing contacts it only added, and whether it was undone. '
+      + 'Use the batchId with comms_undo_import. Only imports made with comms_import_contacts or the JSON import API have a batch; a CSV import from the dashboard does not.',
+    input: { listId: uuid('The list.') },
+  },
+  {
+    tool: 'comms_undo_import', method: 'commsUndoImport', http: 'POST', route: '/comm-api/api/lists/{id}/imports/{batchId}/undo',
+    title: 'Undo an import', annotations: WRITE({ idempotentHint: true }),
+    description: 'Take back one import (POST /comm-api/api/lists/{id}/imports/{batchId}/undo): the batch\'s people leave the list, and the contacts the import CREATED that are now on no list are erased. People who already existed are only taken off this list, not erased. '
+      + 'Anyone who has unsubscribed, bounced or is suppressed since is kept. DRY RUN by default: says how many would leave the list and how many contacts would be erased. A batch can be undone once. Show the person the numbers and get a clear yes BEFORE dryRun:false.',
+    input: { listId: uuid('The list.'), batchId: uuid('The batchId from comms_list_imports or from the import result.') },
+  },
+  {
+    tool: 'comms_set_list_archived', method: 'commsSetListArchived', http: 'POST', route: '/comm-api/api/lists/{id}/archive',
+    title: 'Archive or restore a list', annotations: WRITE({ idempotentHint: true }),
+    description: 'Put a list away without deleting it (POST /comm-api/api/lists/{id}/archive), or bring it back (archived:false, POST /comm-api/api/lists/{id}/unarchive). An archived list is hidden from comms_list_lists unless you ask for it and cannot be sent to; nothing else changes and no contact is touched. '
+      + 'A list a campaign sends to or excludes cannot be archived. DRY RUN by default. Prefer this to deleting when the person is not sure.',
+    input: { listId: uuid('The list.'), archived: z.boolean().describe('true to archive, false to restore.') },
+  },
+  {
+    tool: 'comms_delete_list', method: 'commsDeleteList', http: 'DELETE', route: '/comm-api/api/lists/{id}',
+    title: 'Delete a list', annotations: WRITE({ destructiveHint: true, idempotentHint: true }),
+    description: 'Delete one list for good (DELETE /comm-api/api/lists/{id}). Needs the manage:comms.audience permission, which the person adds in the dashboard. A list is only a set of memberships, so you must also say what happens to the people on it: '
+      + 'contacts=delete_orphans erases the contacts that are on no other list (people who unsubscribed, bounced or are suppressed are ALWAYS kept, so they cannot be mailed again by a later import); contacts=keep leaves every contact in the workspace. '
+      + 'DRY RUN by default and it reports exactly how many people each choice affects. ASK the person which they want ("also delete the people who are on no other list?"), show the numbers, and pass their answer as contacts on the real call: it is required and never defaulted. '
+      + 'A list a draft, scheduled or sending campaign sends to, or any campaign excludes, cannot be deleted. Cannot be undone.',
+    input: { listId: uuid('The list.'), contacts: z.enum(CONTACT_MODES).optional().describe('delete_orphans or keep. Required for a real delete; the person\'s answer.') },
+  },
+  {
+    tool: 'comms_cleanup_orphan_contacts', method: 'commsCleanupOrphans', http: 'POST', route: '/comm-api/api/contacts/cleanup-orphans',
+    title: 'Clean up contacts on no list', annotations: WRITE({ destructiveHint: true, idempotentHint: true }),
+    description: 'Erase the contacts that are on no list at all (POST /comm-api/api/contacts/cleanup-orphans), for example people left behind when lists were deleted earlier. Needs manage:comms.audience. People who unsubscribed, bounced or are suppressed are never erased. '
+      + 'DRY RUN by default: says how many are on no list and how many would be erased. Show the person the numbers and get a clear yes BEFORE dryRun:false. Cannot be undone.',
+    input: {},
+  },
+  {
+    tool: 'comms_delete_contact', method: 'commsDeleteContact', http: 'DELETE', route: '/comm-api/api/contacts/{id}',
+    title: 'Erase one contact', annotations: WRITE({ destructiveHint: true, idempotentHint: true }),
+    description: 'Erase ONE person from the workspace, found by the exact address they gave (DELETE /comm-api/api/contacts/{id}): the right to erasure. Needs manage:comms.audience. They leave every list; campaign statistics stay but are no longer linked to them. '
+      + 'If they unsubscribed or are suppressed, the suppression stays, so they are not mailed again. DRY RUN by default: shows the contact (masked) and how many lists they are on. Tell the person who you found and get a clear yes BEFORE dryRun:false. Cannot be undone.',
+    input: { email },
+  },
+  {
+    tool: 'comms_resubscribe_contact', method: 'commsResubscribeContact', http: 'PUT', route: '/comm-api/api/contacts/{id}/resubscribe',
+    title: 'Opt a contact back in', annotations: WRITE({ idempotentHint: true }),
+    description: 'Opt a person who unsubscribed back in (PUT /comm-api/api/contacts/{id}/resubscribe), found by the exact address. Needs manage:comms.audience. Only do this when the PERSON asked to be emailed again; the account owner\'s wish to mail them is not a reason. '
+      + 'Someone who reported your mail as spam cannot be opted back in from here. DRY RUN by default: shows the contact (masked) and its status. Get the person\'s clear yes, and ask how the contact asked to be re-subscribed, BEFORE dryRun:false.',
+    input: { email },
+  },
+  {
+    tool: 'comms_get_dashboard_link', method: 'commsGetDashboardLink', http: 'GET', route: null, read: true, noWorkspace: true,
+    title: 'Where to do it in the dashboard', annotations: READ,
+    description: 'For the few things that must stay between the person and Motorical, not pass through chat: uploading a large contact file (import_csv), exporting a list (export_list: real addresses are never given to an agent) and many opt-outs (bulk_suppressions, if more than a few hundred). '
+      + 'Returns the exact steps and the dashboard address to give the person. Calls no API and reads nothing.',
+    input: { purpose: z.enum(DASHBOARD_PURPOSES) },
+  },
 ];
 
 /** The registry entry for one table row. Reads take no dryRun; writes do; derive also takes an idempotencyKey. */
@@ -105,7 +176,7 @@ export function contactRegistryEntry(row) {
   return {
     name: row.tool,
     description: row.description,
-    inputSchema: { workspaceId, ...(row.read ? {} : { dryRun }), ...row.input, ...(row.create ? { idempotencyKey } : {}) },
+    inputSchema: { ...(row.noWorkspace ? {} : { workspaceId }), ...(row.read ? {} : { dryRun }), ...row.input, ...(row.create ? { idempotencyKey } : {}) },
     annotations: { title: row.title, ...row.annotations },
     handler: (client) => async (args) => client[row.method](args),
   };

@@ -69,7 +69,7 @@ describe('registration', () => {
     assert.equal(byName('comms_delete_webhook').annotations.destructiveHint, true);
   });
   test('the server now offers six scopes, but the FIRST consent is still the three (managing is a step-up, like sending)', () => {
-    assert.deepEqual([...server.scopes].sort(), ['manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
+    assert.deepEqual([...server.scopes].sort(), ['manage:comms.audience', 'manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
     assert.deepEqual([...server.initialScopes].sort(), ['read:comms', 'write:comms.audience', 'write:comms.content']);
   });
   test('what an assistant must never have: no create-webhook tool, no default-workspace input, no replace/remove of sending identities, no secret input', () => {

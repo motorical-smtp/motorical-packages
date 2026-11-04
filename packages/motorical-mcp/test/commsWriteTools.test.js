@@ -64,7 +64,7 @@ describe('registration', () => {
     for (const n of ['comms_create_list', 'comms_update_list']) assert.deepEqual(TOOL_SCOPES[n], ['write:comms.audience'], n);
   });
   test('the server offers those three scopes plus send (M3-5), but its FIRST consent is still read + audience + content', () => {
-    assert.deepEqual([...server.scopes].sort(), ['manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
+    assert.deepEqual([...server.scopes].sort(), ['manage:comms.audience', 'manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
     assert.deepEqual([...server.initialScopes].sort(), ['read:comms', 'write:comms.audience', 'write:comms.content']);
   });
   test('every tool is annotated as a non-destructive write, says dry run, takes dryRun and workspaceId', () => {
