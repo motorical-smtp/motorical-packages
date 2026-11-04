@@ -122,7 +122,7 @@ describe('dispatchNative', () => {
     const stubClient = { sendEmail: async () => sent };
 
     const realSend = await dispatchNative(
-      { jsonrpc: '2.0', id: 50, method: 'tools/call', params: { name: 'motorical_send_email', arguments: { to: 'a@x.com', subject: 'hi', text: 'hi', dryRun: false, confirmRealSend: true, motorBlockId: '11111111-1111-1111-1111-111111111111' } } },
+      { jsonrpc: '2.0', id: 50, method: 'tools/call', params: { name: 'motorical_send_email', arguments: { to: 'a@x.com', subject: 'hi', text: 'hi', dryRun: false, confirmRealSend: true, motorBlockId: '11111111-1111-4111-8111-111111111111' } } },
       { server: transactional, client: stubClient, version: '1.5.0' });
     assert.equal(realSend.result.structuredContent.status, 'accepted');
     assert.equal(realSend.result.structuredContent.delivered, null);
@@ -161,7 +161,7 @@ describe('dispatchNative', () => {
             name: 'motorical_send_email',
             arguments: {
               to: 'a@x.com', subject: 'hi', text: 'hi', dryRun: false, confirmRealSend: true,
-              motorBlockId: '11111111-1111-1111-1111-111111111111',
+              motorBlockId: '11111111-1111-4111-8111-111111111111',
             },
           },
         },
@@ -189,7 +189,7 @@ describe('dispatchNative', () => {
     const client = {
       sendEmail: async () => sent,
       // The shape createDelegatedClient gives a single-block authorization.
-      motorBlockIds: ['33333333-3333-3333-3333-333333333333'],
+      motorBlockIds: ['33333333-3333-4333-8333-333333333333'],
     };
 
     const res = await dispatchNative(
@@ -207,7 +207,7 @@ describe('dispatchNative', () => {
 
     const store = __testOnly_withClient(fakeRedis);
     assert.deepEqual(
-      await store.listTasksForMotorBlock('33333333-3333-3333-3333-333333333333'),
+      await store.listTasksForMotorBlock('33333333-3333-4333-8333-333333333333'),
       [taskId],
       'tasks/list must find this task under the caller\'s real block id'
     );
@@ -257,7 +257,7 @@ describe('dispatchNative', () => {
           arguments: {
             to: ['alice@x.com', 'andrew@x.com'], subject: 'hi', text: 'hi',
             dryRun: false, confirmRealSend: true,
-            motorBlockId: '44444444-4444-4444-4444-444444444444',
+            motorBlockId: '44444444-4444-4444-8444-444444444444',
           },
         },
       },
@@ -304,7 +304,7 @@ describe('dispatchNative', () => {
           name: 'motorical_send_email',
           arguments: {
             from: 'sender@example.com', to: 'a@x.com', subject: 'hi', text: 'hi', dryRun: false, confirmRealSend: true,
-            motorBlockId: '55555555-5555-5555-5555-555555555555',
+            motorBlockId: '55555555-5555-4555-8555-555555555555',
           },
         },
       },
@@ -476,7 +476,7 @@ describe('native tools/call validates arguments exactly as the legacy path does'
   test('unknown keys are stripped on both paths, so nothing smuggles through to the API call', async () => {
     // client.sendEmail spreads ...rest into the POST body, so a forwarded
     // unknown key is not inert.
-    const args = { motorBlockId: '11111111-1111-1111-1111-111111111111', limit: 5, EXTRA_SMUGGLED: 'x' };
+    const args = { motorBlockId: '11111111-1111-4111-8111-111111111111', limit: 5, EXTRA_SMUGGLED: 'x' };
     const native = await nativeCall(analytics, 'motorical_get_logs', args);
     const legacy = await legacyCall(analytics, 'motorical_get_logs', args);
 
@@ -503,7 +503,7 @@ describe('native tools/call validates arguments exactly as the legacy path does'
     // motorical_get_message lives on the transactional server, and its
     // inputSchema requires a real UUID -- so these arguments clear input
     // validation and it is genuinely the OUTPUT check that fires.
-    const args = { messageId: '33333333-3333-3333-3333-333333333333' };
+    const args = { messageId: '33333333-3333-4333-8333-333333333333' };
     const nativeRes = await dispatchNative(
       { jsonrpc: '2.0', id: 97, method: 'tools/call', params: { name: 'motorical_get_message', arguments: args } },
       { server: transactional, client: junk, version: '1.5.0' }

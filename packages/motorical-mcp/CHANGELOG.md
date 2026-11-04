@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.23.0] — 2026-11-04
+
+### Added
+
+- **The front door.** `main` (`https://mcp.motorical.com/v1/motorical/mcp`, unchanged URL and audience) also serves the Communications tools. Per-tool routing is as before: backend tools mint a
+  backend delegation, `comms_*` tools a Comms Block delegation with its own audience; the inbound token is never forwarded. Its first consent adds only `read:comms`.
+- `main` lists every tool. A tool the connection lacks permission for stays listed, marked `[Needs permission: <scope>. ...]` (generated from `TOOL_SCOPES`), and calling it answers 403 naming the
+  scope, where to add it and what to do afterwards. The narrow servers keep hiding such tools.
+- Communications results name the workspace they used (`workingIn`: "Working in: ...").
+- Tests that fail on any tool without a title and a read-only or destructive hint.
+
+### Changed
+
+- Requires `@motorical/scope-catalog` 0.16.0.
+- Upgraded `zod` to 4 (clears the high-severity memory-exhaustion advisory GHSA-mrhx-c7xc-m3w5). `openOutputSchema` was ported to the zod 4 API; the advertised tool surface is unchanged. Stricter than before: `uuid` inputs must be RFC 4122 UUIDs (the platform only issues v4).
+- `motorical_whoami` describes the new `account.billing` block (price, renewal, cancellation, usage against the plan cap, payment status; never invoices or card details).
+
 ## [1.22.0] — 2026-10-22
 
 ### Changed

@@ -147,3 +147,19 @@ actually produced a verdict, and is `null` when none did. Read the two
 together: a run where everything crashed has a `falseCompletionRate` of 0%,
 which reads like a perfect run, and a `falseCompletionRateGraded` of `null`,
 which correctly says nothing was observed.
+
+## Communications scenes (Comms MCP M4-3)
+
+`eval/comms/` holds 14 tier-1 scenes for the `communications` server, taken from the scenario runbook and the workspace-handling spec
+(motorical-docs `specs/2026-10-26-comms-mcp-scenario-runbook.md`, `specs/2026-10-27-comms-mcp-workspace-handling.md`). Each is data in
+`scenes.js`: what the person says (an opening plus fixed replies), the state it needs, the claims that need a real call behind them, and
+oracles from a small closed vocabulary. `graders.js` is deterministic (no model-as-judge) and runs four checks on every scene: numbers come
+from tool results, no committing write before a yes, no unmasked address/IP/secret, no claim of a done thing without a successful call.
+
+Every scene carries a `good` canned transcript that must pass and `bad` ones that must fail a named check, so the grading is proven with no
+network and no cost: `node --test test/evalCommsScenes.test.js test/evalCommsGraders.test.js test/evalCommsRunner.test.js` (part of `npm test`).
+
+`runScene.js` is the multi-turn live driver (opening, then each reply resumed on the same `claude` session). **A live run is not started
+by tests and costs real money**: it refuses without `--go` (the owner's go-ahead), `--budget <USD>` and `--mcp-config`, and refuses as root.
+Seeding the scene fixtures (named `zz-eval-*`, recipients only the owner's address) and minting the eval account's grant are separate steps
+that are not built yet.

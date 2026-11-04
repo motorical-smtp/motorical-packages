@@ -1,6 +1,7 @@
 import {
   TOOL_SCOPES, SERVER_TOOLS, ANY_GRANT_TOOLS, expandMcpImplied,
 } from '@motorical/scope-catalog';
+import { PERMISSION_NEEDED_SENTENCE } from './permissionNeeded.js';
 
 /**
  * Tools whose own descriptions say "NOT AVAILABLE over hosted OAuth (dashboard session only)". They carry a scope
@@ -42,4 +43,32 @@ export function toolsVisibleToGrant(toolNames, grantedScopes, { sandboxOver = nu
   return toolNames.filter((name) => !DASHBOARD_SESSION_ONLY.has(name)
     && !(stageHidden && stageHidden.has(name))
     && (TOOL_SCOPES[name] || []).every((s) => have.includes(s)));
+}
+
+/**
+ * What tools/list shows for a grant on a given server.
+ *
+ * A narrow server hides what the grant cannot call (its purpose is minimal advertising). The front door (`listing: 'marked'`) keeps
+ * those tools LISTED and returns a note per tool, generated from TOOL_SCOPES, saying which permission it needs: a person who connected
+ * marketing should see that a tool exists and why it is not usable, not wonder where it went. Dashboard-session-only tools and tools
+ * past their sandbox stage stay hidden everywhere (they are not a permission question).
+ */
+export function toolsListedForGrant(server, grantedScopes, { sandboxOver = null } = {}) {
+  const callable = toolsVisibleToGrant(server.tools, grantedScopes, { sandboxOver });
+  if (server.listing !== 'marked' || !Array.isArray(grantedScopes)) return { names: callable, notes: new Map() };
+  const have = expandMcpImplied(grantedScopes);
+  const stageHidden = sandboxOver === true ? SANDBOX_TOOLS : null;
+  const notes = new Map();
+  const names = server.tools.filter((name) => {
+    if (DASHBOARD_SESSION_ONLY.has(name) || (stageHidden && stageHidden.has(name))) return false;
+    const missing = (TOOL_SCOPES[name] || []).filter((s) => !have.includes(s));
+    if (missing.length) notes.set(name, `Needs permission: ${missing.join(' ')}. ${PERMISSION_NEEDED_SENTENCE}`);
+    return true;
+  });
+  return { names, notes };
+}
+
+/** The description a client sees: the marker first, so a model reads availability before the blurb. */
+export function describeWithNote(description, note) {
+  return note ? `[${note}] ${description}` : description;
 }

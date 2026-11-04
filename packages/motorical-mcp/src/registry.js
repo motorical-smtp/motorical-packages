@@ -11,6 +11,13 @@
 // jsonResult()/errorResult() wrapping happens exactly once, at the single
 // call site in server.js's registration loop.
 import { z } from 'zod';
+import { COMMS_READ_TOOLS, registryEntry as commsReadEntry } from './commsReadTools.js';
+import { COMMS_WRITE_TOOLS, writeRegistryEntry as commsWriteEntry } from './commsWriteTools.js';
+import { COMMS_CONTACT_TOOLS, contactRegistryEntry as commsContactEntry } from './commsContactTools.js';
+import { COMMS_CAMPAIGN_TOOLS, campaignRegistryEntry as commsCampaignEntry } from './commsCampaignTools.js';
+import { COMMS_SEND_TOOLS, sendRegistryEntry as commsSendEntry } from './commsSendTools.js';
+import { COMMS_REPORT_TOOLS, reportRegistryEntry as commsReportEntry } from './commsReportTools.js';
+import { COMMS_MANAGE_TOOLS, manageRegistryEntry as commsManageEntry } from './commsManageTools.js';
 import * as taskStore from './native/taskStore.js';
 import { resolveTask } from './native/taskResolver.js';
 import { TOOL_SCOPES, SCOPES } from '@motorical/scope-catalog';
@@ -1079,7 +1086,10 @@ export const TOOLS = [
     name: 'motorical_whoami',
     description:
       'Who this connection is acting for (GET /api/public/v1/account/whoami): the account (id, owner email, name), '
-      + 'its plan (name, status, hasSubscription) and, for an OAuth connection, the grant: the client, the scopes it '
+      + 'its plan (name, status, hasSubscription), account.billing (price amount in minor units + currency + interval, trial end, '
+      + 'current period end / next renewal date, cancelAtPeriodEnd and endsAt, this month\'s sends against the plan cap, and '
+      + 'paymentMethod.status ok or failing; never invoices, receipts or card details; a field it cannot resolve is null with its '
+      + 'reason under billing.unavailable) and, for an OAuth connection, the grant: the client, the scopes it '
       + 'holds, the Motor Blocks it covers, when it was granted, and canAdd (permissions it could still be given, '
       + 'with available:false where the plan does not allow it) plus addInDashboard, the page where the person adds them. '
       + 'Account-scoped: no Motor Block needed. grant is null when the call is not made over an OAuth grant. '
@@ -1092,6 +1102,55 @@ export const TOOLS = [
     annotations: { title: 'Who am I (account, plan, grant)', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.getWhoami(args),
   },
+
+  // ---- Communications (marketing): hosted-only, on the dedicated `communications` server. They call the Comms Block, not the Public API.
+  {
+    name: 'comms_get_readiness',
+    description:
+      'What still stands between this workspace and a sent marketing campaign (GET /comm-api/api/readiness). Returns ready, next '
+      + '(the FIRST missing step with a message and a fix hint, or null) and steps in a fixed order: plan, workspace, domain, '
+      + 'marketing_block, list, template, plus the sending limits (hourly, daily) of the workspace\'s campaign Motor Blocks. '
+      + 'Read-only. Say the first missing thing, not the whole list. If the missing step is the plan, read the current plans from the '
+      + 'motorical://docs/plans resource (never quote a plan or price from memory); only the person can change plan. Pass workspaceId, or omit it when this authorization covers '
+      + 'exactly one workspace; with several, the error lists them.',
+    inputSchema: {
+      workspaceId: z.string().uuid().optional()
+        .describe('The Communications workspace. Optional when the authorization covers exactly one; otherwise required (the error lists the choices).'),
+    },
+    annotations: { title: 'Marketing readiness', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async (args) => client.commsGetReadiness(args),
+  },
+
+  {
+    name: 'comms_get_map',
+    description:
+      'The marketing workspace at a glance (GET /comm-api/api/map): its lists (short cards with kind, counts of members and eligible '
+      + 'contacts, whether the list is a one-time snapshot, whether its description is good), the 50 most recent campaigns (status, '
+      + 'list_ids, exclude_list_ids, pacing), its templates (with how many campaigns use each) and the edges between them: sends_to, '
+      + 'excludes, uses, derived_from. Use it to orient yourself in ONE call before choosing a list or template by name. '
+      + 'Read-only. Pass workspaceId, or omit it when this authorization covers exactly one workspace.',
+    inputSchema: {
+      workspaceId: z.string().uuid().optional()
+        .describe('The Communications workspace. Optional when the authorization covers exactly one; otherwise required (the error lists the choices).'),
+    },
+    annotations: { title: 'Marketing workspace map', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    handler: (client) => async (args) => client.commsGetMap(args),
+  },
+
+  // M3-1: the Communications read family, declared once in commsReadTools.js.
+  ...COMMS_READ_TOOLS.map(commsReadEntry),
+  // M3-2: the Communications write family, declared once in commsWriteTools.js.
+  ...COMMS_WRITE_TOOLS.map(commsWriteEntry),
+  // M3-3: the Communications contact family, declared once in commsContactTools.js.
+  ...COMMS_CONTACT_TOOLS.map(commsContactEntry),
+  // M3-4: the Communications campaign-draft family, declared once in commsCampaignTools.js.
+  ...COMMS_CAMPAIGN_TOOLS.map(commsCampaignEntry),
+  // M3-5: scheduling and cancelling (send:comms.campaign), declared once in commsSendTools.js.
+  ...COMMS_SEND_TOOLS.map(commsSendEntry),
+  // M3-6: reporting reads (read:comms), declared once in commsReportTools.js.
+  ...COMMS_REPORT_TOOLS.map(commsReportEntry),
+  // M3-7: workspace settings and webhooks (read:comms, manage:comms.workspace, manage:comms.webhooks), declared once in commsManageTools.js.
+  ...COMMS_MANAGE_TOOLS.map(commsManageEntry),
 
   {
     name: 'motorical_get_logs',

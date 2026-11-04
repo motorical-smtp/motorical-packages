@@ -21,7 +21,9 @@ test('the main server is a superset of every scoped server', () => {
   // unauthenticated audience is the ONLY place it exists), so it is not part
   // of ALL_TOOLS/main by design -- exactly like LOCAL_ONLY_TOOLS is never
   // part of any hosted server's tool list, just mirrored the other way.
-  for (const s of SERVERS.filter((x) => x.key !== 'main' && x.key !== 'signup')) {
+  // communications is excluded for the same reason: marketing has its own server and consent, and its tools are hosted-only, so a main
+  // grant can never carry a marketing scope.
+  for (const s of SERVERS.filter((x) => x.key !== 'main' && x.key !== 'signup' && x.key !== 'communications')) {
     for (const t of s.tools) {
       assert.ok(main.tools.includes(t), `main is missing ${t} from ${s.key}`);
     }
@@ -131,7 +133,7 @@ test('every mapped route is a plausible API path', () => {
   for (const [tool, r] of Object.entries(TOOL_ROUTES)) {
     if (r === null) continue;
     assert.match(r.method, /^(GET|POST|PUT|DELETE|PATCH)$/, `${tool} has method ${r.method}`);
-    assert.match(r.path, /^\/(api|v1)\//, `${tool} has path ${r.path}`);
+    assert.match(r.path, /^\/(api|v1|comm-api)\//, `${tool} has path ${r.path}`);
   }
 });
 

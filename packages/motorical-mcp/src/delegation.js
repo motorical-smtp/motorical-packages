@@ -13,7 +13,8 @@ import jwt from 'jsonwebtoken';
 export const DELEGATION_AUDIENCE = 'https://api.motorical.com/internal/mcp';
 const TTL_SECONDS = 60;
 
-export function mintDelegation({ grantId, userId, motorBlockId, scopes, canonicalUri }, signer) {
+/** `audience` defaults to the backend's; the Communications Block's calls pass COMMS_DELEGATION_AUDIENCE, so neither token replays at the other. */
+export function mintDelegation({ grantId, userId, motorBlockId, scopes, canonicalUri }, signer, { audience = DELEGATION_AUDIENCE } = {}) {
   return jwt.sign(
     {
       type: 'mcp_delegation',
@@ -28,7 +29,7 @@ export function mintDelegation({ grantId, userId, motorBlockId, scopes, canonica
       algorithm: 'RS256',
       keyid: signer.kid,
       issuer: 'https://mcp.motorical.com',
-      audience: DELEGATION_AUDIENCE,
+      audience,
       subject: String(userId),
       expiresIn: TTL_SECONDS,
     }

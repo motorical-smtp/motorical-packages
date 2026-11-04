@@ -48,9 +48,11 @@ export function buildDiscoverResult({ server, version }) {
     // code stays in place, correct and tested, ready for a follow-up that
     // finishes spec conformance and re-adds
     // `extensions: { 'io.modelcontextprotocol/tasks': {} }` here deliberately.
+    // `prompts` is advertised for the communications server only, the one server whose native dispatch answers prompts/list and prompts/get.
     capabilities: {
       tools: {},
       resources: {},
+      ...(server.key === 'communications' ? { prompts: {} } : {}),
     },
     _meta: {
       'io.modelcontextprotocol/serverInfo': { name: `motorical-${server.key}`, version },

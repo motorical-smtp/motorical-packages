@@ -35,3 +35,13 @@ test('it never contains the inbound client token', () => {
   assert.ok(!t.includes('SECRET-CLIENT-TOKEN'));
   assert.ok(!JSON.stringify(jwt.decode(t)).includes('SECRET-CLIENT-TOKEN'));
 });
+
+test('a delegation can be minted for another audience (the Communications Block), and by default is for the backend', () => {
+  const COMMS = 'https://api.motorical.com/internal/mcp/comms';
+  const base = { grantId: 'g1', userId: 'u1', scopes: ['read:comms'], canonicalUri: 'https://mcp.motorical.com/v1/motorical_communications/mcp' };
+  const forComms = jwt.verify(mintDelegation(base, signer, { audience: COMMS }), publicKey, { algorithms: ['RS256'], audience: COMMS });
+  assert.equal(forComms.aud, COMMS);
+  const dflt = jwt.verify(mintDelegation(base, signer), publicKey, { algorithms: ['RS256'], audience: DELEGATION_AUDIENCE });
+  assert.equal(dflt.aud, DELEGATION_AUDIENCE);
+  assert.throws(() => jwt.verify(mintDelegation(base, signer, { audience: COMMS }), publicKey, { algorithms: ['RS256'], audience: DELEGATION_AUDIENCE }));
+});

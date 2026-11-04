@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import {
-  createDelegatedClient, TOOL_FOR_METHOD, UNAVAILABLE_TOOL_FOR_METHOD, NO_CLIENT_METHOD_TOOLS,
+  createDelegatedClient, TOOL_FOR_METHOD, UNAVAILABLE_TOOL_FOR_METHOD, NO_CLIENT_METHOD_TOOLS, COMMS_CLIENT_TOOLS,
 } from '../src/delegatedClient.js';
 import { SERVERS, TOOL_SCOPES } from '../src/servers.js';
 
@@ -276,8 +276,9 @@ test('a zero-block delegated domain write targets the public API too', async () 
 test('every catalogue tool is delegated, explicitly refused, or explicitly method-less', () => {
   const wrapped = new Set(Object.values(TOOL_FOR_METHOD));
   const refused = new Set(Object.values(UNAVAILABLE_TOOL_FOR_METHOD));
+  const comms = new Set(Object.values(COMMS_CLIENT_TOOLS)); // own client, own base URL, own audience
   const unaccounted = Object.keys(TOOL_SCOPES).filter(
-    (t) => !wrapped.has(t) && !refused.has(t) && !NO_CLIENT_METHOD_TOOLS.has(t)
+    (t) => !wrapped.has(t) && !refused.has(t) && !NO_CLIENT_METHOD_TOOLS.has(t) && !comms.has(t)
   );
   assert.deepEqual(unaccounted, [],
     `these tools would 401 over OAuth: ${unaccounted.join(', ')}`);

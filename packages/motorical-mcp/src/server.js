@@ -5,8 +5,11 @@ import { MotoricalClient, loadConfig } from './client.js';
 import { TOOLS } from './registry.js';
 import { openOutputSchema } from './openOutputSchema.js';
 import { HOSTED_ONLY_TOOLS } from './servers.js';
+import { describeWithNote } from './grantVisibility.js';
 import { RESOURCES, RESOURCE_TEMPLATES, DOC_RESOURCES } from './resources.js';
 import { instructionsFor } from './instructions.js';
+import { COMMS_RESOURCES } from './commsResources.js';
+import { COMMS_PROMPTS } from './commsPrompts.js';
 
 const PACKAGE_VERSION = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url))
@@ -75,7 +78,7 @@ export function createMotoricalMcpServer(options = {}) {
     server.registerTool(
       tool.name,
       {
-        description: tool.description,
+        description: describeWithNote(tool.description, options.descriptionNotes && options.descriptionNotes.get(tool.name)),
         inputSchema: tool.inputSchema,
         annotations: tool.annotations,
         // Open at every level, identical to the native path (openOutputSchema.js).
@@ -147,6 +150,26 @@ export function createMotoricalMcpServer(options = {}) {
         new ResourceTemplate(template.uriTemplate, { list: undefined }),
         { description: template.description, mimeType: template.mimeType },
         async (uri, variables) => template.handler(client)(variables)
+      );
+    }
+  }
+
+  // The communications server's reference pages and playbooks (Comms MCP M4-2): the same tables the native dispatcher reads, and only on that server,
+  // since the local stdio server has no communications tools for them to point at.
+  if (options.serverKey === 'communications') {
+    for (const resource of COMMS_RESOURCES) {
+      server.registerResource(
+        resource.name.toLowerCase().replace(/\s+/g, '-'),
+        resource.uri,
+        { description: resource.description, mimeType: resource.mimeType },
+        async () => resource.handler(client)()
+      );
+    }
+    for (const prompt of COMMS_PROMPTS) {
+      server.registerPrompt(
+        prompt.name,
+        { title: prompt.title, description: prompt.description, argsSchema: prompt.args },
+        async (args) => ({ description: prompt.description, messages: [{ role: 'user', content: { type: 'text', text: prompt.build(args) } }] })
       );
     }
   }

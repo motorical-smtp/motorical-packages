@@ -9,7 +9,7 @@
 // access credential).
 import crypto from 'node:crypto';
 
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TTL_MS = 5 * 60 * 1000; // 5 minutes (default; a caller may ask for another lifetime)
 
 // Falling back to a hardcoded, git-visible secret would let anyone forge a
 // valid confirmation token if the env var is misconfigured. Fail loudly in
@@ -36,8 +36,8 @@ function canonicalArgsHash(args) {
   return crypto.createHash('sha256').update(stableStringify(args ?? {})).digest('hex');
 }
 
-export function signRequestState({ tool, args, nowMs = Date.now() }) {
-  const payload = { tool, argsHash: canonicalArgsHash(args), exp: nowMs + TTL_MS };
+export function signRequestState({ tool, args, nowMs = Date.now(), ttlMs = TTL_MS }) {
+  const payload = { tool, argsHash: canonicalArgsHash(args), exp: nowMs + ttlMs };
   const json = JSON.stringify(payload);
   const sig = crypto.createHmac('sha256', SECRET).update(json).digest('hex');
   return Buffer.from(JSON.stringify({ payload, sig })).toString('base64url');

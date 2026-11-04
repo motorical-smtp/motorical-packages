@@ -41,6 +41,51 @@ function docsResource({ uri, name, description, mimeType, docsPath }) {
   };
 }
 
+// Plans and prices change, so nothing in an instruction or a doc types them: this resource reads the public billing feed at the moment of the
+// read and projects only what an agent must quote. A feed that is down or malformed is an error, never a stale or invented price list.
+const PLANS_URL = 'https://motorical.com/api/billing/plans';
+
+export function plansView(raw, now = new Date()) {
+  const list = raw && Array.isArray(raw.plans) ? raw.plans : [];
+  if (list.length === 0) throw new Error('The plans feed returned no plans');
+  const plans = list.map((p) => {
+    if (typeof p.amount !== 'number' || !p.currency) throw new Error(`The plans feed has no price for "${p.name}"`);
+    const f = p.features || {};
+    const limits = f.emailLimits || {};
+    const trialDays = (f.trial && f.trial.days) || p.trialPeriodDays || 0;
+    const currency = String(p.currency).toUpperCase();
+    return {
+      name: p.name,
+      description: p.description || null,
+      price: `${currency} ${(p.amount / 100).toFixed(2)} per ${p.interval || 'month'}`,
+      amountCents: p.amount,
+      currency,
+      interval: p.interval || 'month',
+      emailsPerMonth: limits.monthly ?? p.emailLimit ?? null,
+      emailsPerDay: limits.daily ?? null,
+      emailsPerHour: limits.hourly ?? null,
+      motorBlocks: (f.motorBlocks && f.motorBlocks.maxCount) ?? p.motorBlocks ?? null,
+      marketingEmail: Boolean(f.communications && f.communications.enabled),
+      support: f.support && f.support.level ? `${f.support.level}${f.support.response_time ? ` (${f.support.response_time})` : ''}` : null,
+      trial: trialDays > 0 ? { days: trialDays, newCustomersOnly: Boolean(f.trial && f.trial.newCustomersOnly) } : null,
+    };
+  });
+  return {
+    asOf: now.toISOString(),
+    source: PLANS_URL,
+    pricingPage: 'https://motorical.com/pricing',
+    marketingEmailPlans: plans.filter((p) => p.marketingEmail).map((p) => p.name),
+    note: 'Read live from the billing feed just now. Prices and limits change: quote these figures with the time they were read, never from memory. Marketing campaigns need a plan with marketingEmail true (listed in marketingEmailPlans); a plan with marketingEmail false cannot send them, and that includes any trial it offers. Only the person can subscribe or change plan: give them the pricing page link.',
+    plans,
+  };
+}
+
+async function fetchLivePlans() {
+  const res = await fetch(process.env.MOTORICAL_PLANS_URL || PLANS_URL, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`The plans feed answered ${res.status}`);
+  return res.json();
+}
+
 export const DOC_RESOURCES = [
   docsResource({
     uri: 'motorical://docs/llms.txt',
@@ -63,6 +108,16 @@ export const DOC_RESOURCES = [
     mimeType: 'application/json',
     docsPath: '/openapi.json',
   }),
+  {
+    uri: 'motorical://docs/plans',
+    name: 'Motorical Plans',
+    description: 'The current plans, live: name, price, email limits, Motor Blocks, trial, and whether the plan includes marketing email. Always read this before quoting a plan or a price.',
+    mimeType: 'application/json',
+    handler: (client) => async () => {
+      const raw = typeof client.fetchPlans === 'function' ? await client.fetchPlans() : await fetchLivePlans();
+      return { contents: [{ uri: 'motorical://docs/plans', mimeType: 'application/json', text: JSON.stringify(plansView(raw), null, 2) }] };
+    },
+  },
   docsResource({
     uri: 'motorical://docs/agents-hub',
     name: 'Motorical Agent Hub',
