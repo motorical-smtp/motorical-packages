@@ -303,9 +303,46 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
     const { exact } = await lookup(ws, address);
     if (!exact) need('CONTACT_NOT_FOUND', `Nobody in this workspace has the address ${maskEmail(address)}. Check the spelling with the person.`, 404);
     const contact = contactView(exact);
-    if (isDry(a)) return { success: true, dryRun: true, applied: false, contact, effect: 'This person would be erased from the workspace and leave every list. Campaign statistics stay, no longer linked to them. A suppression, if they have one, stays. This cannot be undone. Tell the person who you found and get a clear yes first.' };
+    if (isDry(a)) {
+      // What exactly would be lost, from the API: lists they are on, campaign events that lose their link, consent records.
+      const impact = ((await call(`/contacts/${exact.id}/erase-impact`, ws)).data) || {};
+      return {
+        success: true, dryRun: true, applied: false, contact,
+        would_lose: { name_on_record: impact.has_name ?? null, lists: (impact.lists || []).map((l) => ({ id: l.id, name: l.name })), campaign_events_unlinked: impact.campaign_events_unlinked ?? null, consent_records_deleted: impact.consent_records_deleted ?? null },
+        suppression_stays: Boolean(impact.suppressed),
+        effect: 'This person would be erased from the workspace and leave every list. Campaign statistics stay, no longer linked to them. A suppression, if they have one, stays. This cannot be undone. Tell the person who you found and what would be lost, and get a clear yes first.',
+      };
+    }
     const out = await call(`/contacts/${exact.id}`, ws, { method: 'DELETE' });
     return { success: true, dryRun: false, applied: true, contact, message: out.message || 'Contact deleted' };
+  });
+
+  // ---- comms_delete_campaign -------------------------------------------------
+  client.commsDeleteCampaign = guarded('comms_delete_campaign', async (a) => {
+    checkId(a.id);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
+    const c = ((await call(`/campaigns/${a.id}`, ws)).data) || {};
+    if (['scheduled', 'sending'].includes(c.status)) {
+      need('CAMPAIGN_ACTIVE', `This campaign is ${c.status}. Cancel it first with comms_cancel_campaign (it needs its own permission), then delete it.`, 409);
+    }
+    const campaign = { id: a.id, name: c.name ?? null, status: c.status ?? null };
+    const note = 'The campaign goes to the recycle bin; nothing is erased and the person can restore it in the dashboard.';
+    if (isDry(a)) return { success: true, dryRun: true, applied: false, campaign, note };
+    await call(`/campaigns/${a.id}`, ws, { method: 'DELETE' });
+    return { success: true, dryRun: false, applied: true, campaign, note };
+  });
+  // ---- comms_delete_template -------------------------------------------------
+  client.commsDeleteTemplate = guarded('comms_delete_template', async (a) => {
+    checkId(a.id);
+    const ws = await resolveWorkspace(a.workspaceId, { explicit: true });
+    const tpl = ((await call(`/templates/${a.id}`, ws)).data) || {};
+    const template = { id: a.id, name: tpl.name ?? null, kind: tpl.kind ?? null };
+    if (isDry(a)) {
+      const peek = await call(`/templates/${a.id}?dry_run=true`, ws, { method: 'DELETE' });
+      return { success: true, dryRun: true, applied: false, template, would_delete: Boolean(peek.data && peek.data.would_delete), note: 'A template that no campaign uses can be deleted. It cannot be undone; the person can duplicate a template first (comms_duplicate_template) if they may want it back. Show the person which one and get a clear yes first.' };
+    }
+    const out = await call(`/templates/${a.id}`, ws, { method: 'DELETE' });
+    return { success: true, dryRun: false, applied: true, template, message: out.message || 'Template deleted' };
   });
 
   // ---- comms_resubscribe_contact ---------------------------------------------

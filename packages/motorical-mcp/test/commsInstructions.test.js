@@ -72,7 +72,7 @@ describe('what you cannot do is true', () => {
   });
   test('and there really is no tool that could do any of it (the one deliberate exception is deleting a webhook, which is confirm-gated)', () => {
     const commsTools = srv.tools.filter((n) => n.startsWith('comms_'));
-    assert.deepEqual(commsTools.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)).sort(), ['comms_delete_contact', 'comms_delete_list', 'comms_delete_webhook', 'comms_resubscribe_contact']);
+    assert.deepEqual(commsTools.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)).sort(), ['comms_delete_campaign', 'comms_delete_contact', 'comms_delete_list', 'comms_delete_template', 'comms_delete_webhook', 'comms_resubscribe_contact']);
     for (const n of ['comms_create_webhook', 'comms_set_default_workspace', 'comms_remove_sending_identity', 'comms_replace_sending_identities', 'comms_delete_workspace', 'comms_send_now', 'comms_export_contacts']) {
       assert.ok(!names.includes(n), n);
     }

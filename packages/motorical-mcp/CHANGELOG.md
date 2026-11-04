@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.27.0] — 2026-11-04
+
+### Added
+
+- `comms_send_template_test`: send one test copy of a template to the account owner, without needing a campaign (needs the marketing Motor Block it would send from; dry run first).
+- `comms_delete_template` and `comms_delete_campaign` (permission `manage:comms.audience`, dry run first). A template used by a campaign is refused; a scheduled or sending campaign must be cancelled first; a deleted campaign goes to the recycle bin.
+- `comms_delete_contact` dry run now says what would be lost (lists, campaign events that lose their link, consent records).
+
+### Changed
+
+- The starter footer no longer claims "you subscribed": it uses the reason you give, the brand kit footer text, or a neutral line, and warns when it fell back to the neutral line (`footer_reason_default`).
+- `comms_send_test` says where the links in a test copy point (placeholders to motorical.com).
+- `comms_get_campaign_report` returns open figures as null, with a note, when open tracking is off.
+
 ## [1.26.1] — 2026-11-04
 
 ### Fixed
