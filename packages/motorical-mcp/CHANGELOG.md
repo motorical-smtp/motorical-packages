@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.26.1] — 2026-11-04
+
+### Fixed
+
+- Audience filters: a bare `date_to` or `last_activity_to` (such as 2026-11-04) now includes that whole day. A one-day range used to return nobody. Search, summary and a filtered list report `as_of` (when the count was read) and `interpreted` (the date range in plain words).
+
 ## [1.26.0] — 2026-11-04
 
 ### Added

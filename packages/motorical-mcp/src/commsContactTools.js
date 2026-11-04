@@ -41,10 +41,10 @@ export const audienceFilter = z.object({
   batch_id: z.string().uuid().optional().describe('Created or added by this import batch (comms_list_imports).'),
   email_domain: z.string().max(253).optional().describe('The part after the @, exactly, for example example.com. No sub-domains, no @.'),
   search: z.string().max(200).optional().describe('Part of a name or address.'),
-  date_from: z.string().max(40).optional().describe('Added on or after this date (ISO, for example 2026-01-31).'),
-  date_to: z.string().max(40).optional().describe('Added on or before this date.'),
+  date_from: z.string().max(40).optional().describe('Added on or after this date (ISO, for example 2026-01-31; a bare date starts at 00:00 UTC).'),
+  date_to: z.string().max(40).optional().describe('Added on or before this date. A bare date such as 2026-11-04 includes that WHOLE day (to 23:59:59 UTC); a full timestamp is exact. The result echoes the range in plain words (interpreted).'),
   last_activity_from: z.string().max(40).optional().describe('Last campaign activity (send, delivery, open, click) on or after this date.'),
-  last_activity_to: z.string().max(40).optional().describe('Last campaign activity on or before this date.'),
+  last_activity_to: z.string().max(40).optional().describe('Last campaign activity on or before this date; a bare date includes the whole day.'),
   never_active: z.boolean().optional().describe('true: no campaign activity yet. Cannot be combined with the last-activity dates.'),
 }).strict();
 
