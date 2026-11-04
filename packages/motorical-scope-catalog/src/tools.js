@@ -137,6 +137,8 @@ const COMMS_TOOLS = [
   'comms_add_suppressions',
   'comms_delete_list',
   'comms_delete_contact',
+  'comms_delete_template',
+  'comms_delete_campaign',
   'comms_cleanup_orphan_contacts',
   'comms_resubscribe_contact',
   'comms_get_dashboard_link',
@@ -146,6 +148,7 @@ const COMMS_TOOLS = [
   'comms_duplicate_campaign',
   'comms_preflight_campaign',
   'comms_send_test',
+  'comms_send_template_test',
   // M3-5: scheduling and cancelling (send:comms.campaign): the step that actually emails people. Not in the first consent.
   'comms_schedule_campaign',
   'comms_cancel_campaign',
@@ -304,6 +307,7 @@ const TOOL_SCOPES = {
   comms_add_suppressions: ['write:comms.audience'],
   comms_delete_list: ['manage:comms.audience'],
   comms_delete_contact: ['manage:comms.audience'],
+  comms_delete_template: ['manage:comms.audience'],
   comms_cleanup_orphan_contacts: ['manage:comms.audience'],
   comms_resubscribe_contact: ['manage:comms.audience'],
   comms_get_dashboard_link: ['read:comms'],
@@ -312,6 +316,8 @@ const TOOL_SCOPES = {
   comms_duplicate_campaign: ['write:comms.content'],
   comms_preflight_campaign: ['write:comms.content'],
   comms_send_test: ['write:comms.content'],
+  comms_send_template_test: ['write:comms.content'],
+  comms_delete_campaign: ['manage:comms.audience'],
   comms_schedule_campaign: ['send:comms.campaign'],
   comms_cancel_campaign: ['send:comms.campaign'],
   // M3-6: reporting reads.

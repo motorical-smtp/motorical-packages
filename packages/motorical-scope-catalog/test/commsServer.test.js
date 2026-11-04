@@ -8,16 +8,16 @@ const {
 
 const WRITE_CONTENT = ['comms_create_template', 'comms_create_template_from_starter', 'comms_update_template', 'comms_apply_template_fixes', 'comms_duplicate_template', 'comms_set_brand_kit'];
 const WRITE_AUDIENCE = ['comms_create_list', 'comms_update_list', 'comms_import_contacts', 'comms_remove_from_list', 'comms_derive_list', 'comms_unsubscribe_contact', 'comms_add_suppression', 'comms_undo_import', 'comms_set_list_archived', 'comms_add_suppressions'];
-const MANAGE_AUDIENCE = ['comms_delete_list', 'comms_delete_contact', 'comms_cleanup_orphan_contacts', 'comms_resubscribe_contact'];
+const MANAGE_AUDIENCE = ['comms_delete_list', 'comms_delete_contact', 'comms_delete_template', 'comms_delete_campaign', 'comms_cleanup_orphan_contacts', 'comms_resubscribe_contact'];
 const READ_CONTACTS = ['comms_list_list_contacts', 'comms_find_contact', 'comms_search_audience', 'comms_audience_summary', 'comms_suppression_info', 'comms_list_imports', 'comms_get_dashboard_link'];
-const CAMPAIGN_TOOLS = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test'];
+const CAMPAIGN_TOOLS = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test', 'comms_send_template_test'];
 const SEND_TOOLS = ['comms_schedule_campaign', 'comms_cancel_campaign'];
 const MANAGE_WORKSPACE = ['comms_create_workspace', 'comms_update_workspace', 'comms_update_workspace_settings', 'comms_add_sending_identity'];
 const MANAGE_WEBHOOKS = ['comms_update_webhook', 'comms_delete_webhook', 'comms_test_webhook'];
 
 test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2), the 16 contact tools (M3-3 + list manipulation), the 5 campaign-draft tools (M3-4), the 2 send tools (M3-5), the 5 reporting reads (M3-6), the 9 management tools (M3-7) and whoami', () => {
   const t = SERVER_TOOLS.communications;
-  assert.equal(t.length, 68);
+  assert.equal(t.length, 71);
   for (const n of SEND_TOOLS) assert.ok(t.includes(n), n);
   for (const n of CAMPAIGN_TOOLS) assert.ok(t.includes(n), n);
   for (const n of READ_CONTACTS) assert.ok(t.includes(n), n);
@@ -55,11 +55,11 @@ test('the server offers all six scopes, but only the first three are in the firs
   assert.deepEqual([...scopesForTools(SERVER_TOOLS.communications)].sort(), ['manage:comms.audience', 'manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
 });
 
-test('no communications tool can delete (except a webhook, a list and a contact, each behind its own grant and a dry run), erase, export, resubscribe, restore or pause; send, schedule and cancel exist only as the three deliberate tools', () => {
+test('no communications tool can delete (except a webhook, a list, a contact, a template and a campaign, each behind its own grant and a dry run), erase, export, resubscribe, restore or pause; send, schedule and cancel exist only as the three deliberate tools', () => {
   const t = SERVER_TOOLS.communications;
-  assert.deepEqual(t.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)).sort(), ['comms_delete_contact', 'comms_delete_list', 'comms_delete_webhook', 'comms_resubscribe_contact']);
+  assert.deepEqual(t.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)).sort(), ['comms_delete_campaign', 'comms_delete_contact', 'comms_delete_list', 'comms_delete_template', 'comms_delete_webhook', 'comms_resubscribe_contact']);
   assert.ok(!t.includes('comms_create_webhook'), 'a webhook secret is shown once, to a person');
-  assert.deepEqual(t.filter((n) => /(send|schedule|cancel)/i.test(n)).sort(), ['comms_add_sending_identity', 'comms_cancel_campaign', 'comms_schedule_campaign', 'comms_send_test']);
+  assert.deepEqual(t.filter((n) => /(send|schedule|cancel)/i.test(n)).sort(), ['comms_add_sending_identity', 'comms_cancel_campaign', 'comms_schedule_campaign', 'comms_send_template_test', 'comms_send_test']);
 });
 
 
