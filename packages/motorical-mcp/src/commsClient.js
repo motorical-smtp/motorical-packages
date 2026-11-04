@@ -149,7 +149,8 @@ export function attachCommsMethods(client, { claims, server, signer, commsBaseUr
       if (row.draft) checkDraft(args);
       const workspace = row.account ? null : await resolveWorkspace(args.workspaceId);
       const out = await call(row.path(args), workspace, row.http === 'POST' ? { method: 'POST', body: row.body(args) } : {});
-      return row.paged ? pageOf(out, args) : out;
+      const shaped = row.shape ? row.shape(out) : out;
+      return row.paged ? pageOf(shaped, args) : shaped;
     };
   }
   // M3-2: the write family (dry run by default; see commsWrites.js).

@@ -14,7 +14,8 @@ import { z } from 'zod';
 import { workspaceId, dryRun, idempotencyKey } from './commsWriteTools.js';
 
 export const SUPPRESSION_REASONS = ['manual', 'complaint', 'unsubscribe'];
-export const DERIVE_OPERATIONS = ['union', 'intersection', 'difference'];
+export const DERIVE_OPERATIONS = ['union', 'intersection', 'difference', 'filter'];
+export const AUDIENCE_SORTS = ['recent', 'email', 'activity'];
 export const MAX_IMPORT_ROWS = 1001;
 export const MAX_REMOVE_IDS = 100;
 export const MAX_SUPPRESS_EMAILS = 200;
@@ -25,6 +26,27 @@ const uuid = (what) => z.string().uuid().describe(what);
 const email = z.string().min(3).max(320).describe('The address the person typed. It is never echoed back: results show it masked.');
 const READ = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const WRITE = (extra = {}) => ({ readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, ...extra });
+
+const idList = (what) => z.union([z.string().uuid(), z.array(z.string().uuid()).min(1).max(20)]).describe(what);
+/** One filter for search, summary and a filtered list. Every key is optional and they combine with AND; unknown keys are refused. */
+export const audienceFilter = z.object({
+  status: z.union([z.string(), z.array(z.string()).min(1).max(7)]).optional().describe('One or more of: new, sent, delivered, engaged, bounced, unsubscribed, complained.'),
+  engagement: z.union([z.string(), z.array(z.string()).min(1).max(4)]).optional().describe('One or more of: none, low, medium, high.'),
+  consent_kind: z.enum(['explicit', 'inferred', 'none']).optional(),
+  suppressed: z.boolean().optional().describe('true: only suppressed people. false: only people who are not.'),
+  list_id: idList('On at least one of these lists.').optional(),
+  list_id_not: idList('On none of these lists.').optional(),
+  no_list: z.boolean().optional().describe('true: people who are on no list at all.'),
+  campaign_id: idList('Took part in one of these campaigns.').optional(),
+  batch_id: z.string().uuid().optional().describe('Created or added by this import batch (comms_list_imports).'),
+  email_domain: z.string().max(253).optional().describe('The part after the @, exactly, for example example.com. No sub-domains, no @.'),
+  search: z.string().max(200).optional().describe('Part of a name or address.'),
+  date_from: z.string().max(40).optional().describe('Added on or after this date (ISO, for example 2026-01-31).'),
+  date_to: z.string().max(40).optional().describe('Added on or before this date.'),
+  last_activity_from: z.string().max(40).optional().describe('Last campaign activity (send, delivery, open, click) on or after this date.'),
+  last_activity_to: z.string().max(40).optional().describe('Last campaign activity on or before this date.'),
+  never_active: z.boolean().optional().describe('true: no campaign activity yet. Cannot be combined with the last-activity dates.'),
+}).strict();
 
 const importRow = z.object({
   email: z.string().max(320), name: z.string().max(200).optional(), phone: z.string().max(50).optional(),
@@ -46,6 +68,28 @@ export const COMMS_CONTACT_TOOLS = [
     description: 'Look up ONE contact by the exact address the person gave you (GET /comm-api/api/recipients): id, status (new, sent, delivered, engaged, bounced, '
       + 'unsubscribed, complained), suppression reason, consent kind and how many lists they are on. The address is returned masked. Not found means nobody in '
       + 'this workspace has that exact address. Use it before comms_unsubscribe_contact or comms_add_suppression.',
+    input: { email },
+  },
+  {
+    tool: 'comms_search_audience', method: 'commsSearchAudience', http: 'POST', route: '/comm-api/api/recipients/search', read: true,
+    title: 'Search the whole audience (masked)', annotations: READ,
+    description: 'Search EVERY contact in the workspace, not one list (POST /comm-api/api/recipients/search): by domain, status, engagement, consent, suppression, campaign, import batch, dates, or "on no list" / "not on these lists". '
+      + 'Each row: id, masked address, initials, status, engagement, last activity, suppression reason, and which lists the person is on (up to 5, plus list_count). Paged (limit up to 100, offset; sort recent, email or activity); total says how many match. '
+      + 'Addresses are always masked: to find one person by the full address they gave, use comms_find_contact. To count rather than list, use comms_audience_summary; to turn a filter into a list, comms_derive_list with operation filter.',
+    input: { filter: audienceFilter.optional(), limit: z.number().int().min(1).max(100).optional(), offset: z.number().int().min(0).optional(), sort: z.enum(AUDIENCE_SORTS).optional() },
+  },
+  {
+    tool: 'comms_audience_summary', method: 'commsAudienceSummary', http: 'POST', route: '/comm-api/api/recipients/summary', read: true,
+    title: 'Counts across the whole audience', annotations: READ,
+    description: 'Counts only, for the whole workspace or for a filter (POST /comm-api/api/recipients/summary): total, by status, by consent, by engagement, the biggest domains, the biggest lists and how many people are on no list. '
+      + 'No addresses at all. Use it to understand an audience before touching it, and to check an import or a derived list afterwards.',
+    input: { filter: audienceFilter.optional(), top: z.number().int().min(1).max(20).optional().describe('How many domains and lists to show (default 10).') },
+  },
+  {
+    tool: 'comms_suppression_info', method: 'commsSuppressionInfo', http: 'GET', route: '/comm-api/api/suppressions/lookup', read: true,
+    title: 'Is this address suppressed, and why', annotations: READ,
+    description: 'Read the account-wide suppression list for ONE address the person gave you (GET /comm-api/api/suppressions/lookup): suppressed or not, the reason (manual, complaint, unsubscribe, bounce...), where it came from and since when. '
+      + 'The address is returned masked. A suppression applies to every workspace of the account. Adding one is comms_add_suppression; removing one is only possible in the dashboard.',
     input: { email },
   },
   {
@@ -77,11 +121,13 @@ export const COMMS_CONTACT_TOOLS = [
     tool: 'comms_derive_list', method: 'commsDeriveList', http: 'POST', route: '/comm-api/api/lists/derive', create: true,
     title: 'Derive a list from other lists', annotations: WRITE(),
     description: 'Make a NEW list from other lists (POST /comm-api/api/lists/derive): union, intersection (needs two or more sources) or difference (sources minus '
-      + 'excludeListIds), up to 10 sources. The result is a one-time SNAPSHOT, not live; it records its sources. DRY RUN by default: returns the counts and creates '
+      + 'excludeListIds), up to 10 sources. Or operation filter: a list of everyone in the workspace who matches a `filter` (the same filter as comms_search_audience: a domain, a status, a campaign, "on no list"...; '
+      + 'give filter and no source lists, at least one filter key is required, at most 10000 people). Suppressed people are copied but stay ineligible, and the dry run counts them apart (would_be_eligible). The result is a one-time SNAPSHOT, not live; it records its sources. DRY RUN by default: returns the counts and creates '
       + 'nothing. A description is required. Only active, not-suppressed members are copied. A retry never creates a second list.',
     input: {
       name: z.string().min(1).max(200), description: z.string().min(1).max(1000).describe('What the list is for. Required.'),
-      operation: z.enum(DERIVE_OPERATIONS), sourceListIds: z.array(z.string().uuid()).min(1).max(10), excludeListIds: z.array(z.string().uuid()).max(10).optional(),
+      operation: z.enum(DERIVE_OPERATIONS), sourceListIds: z.array(z.string().uuid()).min(1).max(10).optional(), excludeListIds: z.array(z.string().uuid()).max(10).optional(),
+      filter: audienceFilter.optional().describe('Only with operation filter.'),
       sourceLabel: z.string().max(200).optional(),
     },
   },

@@ -63,7 +63,7 @@ export const COMMS_READ_TOOLS = [
   },
   {
     tool: 'comms_list_lists', method: 'commsListLists', http: 'GET', route: '/comm-api/api/lists', paged: true,
-    path: (a) => `/lists${a.archived ? `?archived=${a.archived}` : ''}`, title: 'Contact lists',
+    path: (a) => `/lists${a.archived ? `?archived=${a.archived}` : ''}`, shape: listCards, title: 'Contact lists',
     description: 'The workspace\'s contact lists as cards (GET /comm-api/api/lists): name, description, kind, where it came from, how many members '
       + 'and how many are eligible to receive mail, and whether it is a one-time snapshot. Counts come from this result; quote them with '
       + 'the time you read them, never from memory. Paged (default 50, at most 200; see page.truncated). To orient in one call use '
@@ -72,7 +72,7 @@ export const COMMS_READ_TOOLS = [
   },
   {
     tool: 'comms_get_list', method: 'commsGetList', http: 'GET', route: '/comm-api/api/lists/{id}', ids: ['id'],
-    path: (a) => `/lists/${a.id}`, title: 'One contact list',
+    path: (a) => `/lists/${a.id}`, shape: listCards, title: 'One contact list',
     description: 'One list\'s card (GET /comm-api/api/lists/{id}): description, kind, source, member and eligible counts, provenance. '
       + 'Does not return the contacts themselves. Read-only.',
     input: { id: uuid('The list id.') },
@@ -185,6 +185,21 @@ export const COMMS_READ_TOOLS = [
     input: { id: uuid('The campaign id.') },
   },
 ];
+
+/**
+ * The Comms API keeps two legacy count fields on a list card for the dashboard: contact_count (always equal to member_count) and
+ * suppressed_count (unsubscribed + bounced + other inactive, which is NOT the number of people on the suppression list: that is
+ * suppressed_active_count). An agent reads both as separate facts, so the cards it gets carry each number once, under its precise name.
+ */
+export function listCards(body) {
+  const clean = (card) => {
+    if (!card || typeof card !== 'object') return card;
+    const { contact_count: _c, suppressed_count: _s, ...rest } = card;
+    return rest;
+  };
+  if (!body || typeof body !== 'object') return body;
+  return { ...body, data: Array.isArray(body.data) ? body.data.map(clean) : clean(body.data) };
+}
 
 /** The registry entry for one table row. */
 export function registryEntry(row) {

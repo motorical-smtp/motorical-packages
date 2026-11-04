@@ -8,7 +8,7 @@
 import { assertToolAllowed } from './resourceAuth.js';
 import { deriveKey, keyProblem } from './commsKeys.js';
 import { maskEmail, maskName, scrubText, scrubDeep, scrubError } from './commsMask.js';
-import { SUPPRESSION_REASONS, DERIVE_OPERATIONS, MAX_IMPORT_ROWS, MAX_REMOVE_IDS, MAX_SUPPRESS_EMAILS, CONTACT_MODES } from './commsContactTools.js';
+import { SUPPRESSION_REASONS, DERIVE_OPERATIONS, AUDIENCE_SORTS, MAX_IMPORT_ROWS, MAX_REMOVE_IDS, MAX_SUPPRESS_EMAILS, CONTACT_MODES } from './commsContactTools.js';
 
 const OK_OUTCOMES = new Set(['created', 'added_existing', 'already_in_list']);
 const NOT_MAILABLE = new Set(['unsubscribed', 'bounced', 'complained']);
@@ -67,7 +67,48 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
     const address = normalizeEmail(a.email);
     const ws = await resolveWorkspace(a.workspaceId);
     const { exact, others } = await lookup(ws, address);
-    return { success: true, found: Boolean(exact), contact: exact ? contactView(exact) : null, other_matches: others };
+    let lists = null;
+    if (exact) {
+      // Which lists the person is on: the audience search carries them (up to 5 shown, list_count says how many in all).
+      const hit = await call('/recipients/search', ws, { method: 'POST', body: { filter: { search: address }, limit: 10 } });
+      const row = ((hit.data && hit.data.rows) || []).find((r) => r.id === exact.id);
+      if (row) lists = { count: Number(row.list_count ?? 0), shown: (row.lists || []).map((l) => ({ id: l.id, name: l.name })) };
+    }
+    return { success: true, found: Boolean(exact), contact: exact ? { ...contactView(exact), lists } : null, other_matches: others };
+  });
+
+  // ---- comms_search_audience / comms_audience_summary / comms_suppression_info ---------------
+  const checkFilter = (f) => {
+    if (f === undefined) return {};
+    if (!f || typeof f !== 'object' || Array.isArray(f)) need('INVALID_FILTER', 'filter must be an object.');
+    return f;
+  };
+  client.commsSearchAudience = guarded('comms_search_audience', async (a) => {
+    const filter = checkFilter(a.filter);
+    if (a.sort !== undefined && !AUDIENCE_SORTS.includes(a.sort)) need('INVALID_SORT', `sort must be one of: ${AUDIENCE_SORTS.join(', ')}.`);
+    const ws = await resolveWorkspace(a.workspaceId);
+    const out = await call('/recipients/search', ws, { method: 'POST', body: defined({ filter, limit: a.limit, offset: a.offset, sort: a.sort }) });
+    const d = out.data || {};
+    const rows = (d.rows || []).map((r) => defined({
+      id: r.id, email: maskEmail(r.email), name: maskName(r.name), status: r.status, engagement: r.engagement ?? null,
+      last_activity: r.last_activity ?? null, created_at: r.created_at, suppression_reason: r.suppression_reason ?? null,
+      list_count: Number(r.list_count ?? 0), lists: (r.lists || []).map((l) => ({ id: l.id, name: l.name })),
+    }));
+    return { success: true, data: { total: d.total ?? rows.length, rows }, filter: d.filter ?? filter, page: { limit: d.limit, offset: d.offset, returned: rows.length, truncated: Boolean(d.has_more) } };
+  });
+  client.commsAudienceSummary = guarded('comms_audience_summary', async (a) => {
+    const filter = checkFilter(a.filter);
+    const ws = await resolveWorkspace(a.workspaceId);
+    const out = await call('/recipients/summary', ws, { method: 'POST', body: defined({ filter, top: a.top }) });
+    return { success: true, data: out.data || {} };
+  });
+  client.commsSuppressionInfo = guarded('comms_suppression_info', async (a) => {
+    const address = normalizeEmail(a.email);
+    const ws = await resolveWorkspace(a.workspaceId);
+    const out = await call(`/suppressions/lookup?email=${encodeURIComponent(address)}`, ws);
+    const d = out.data || {};
+    return { success: true, email: maskEmail(address), suppressed: Boolean(d.suppressed), ...(d.suppressed ? { reason: d.reason ?? null, source: d.source ?? null, since: d.since ?? null } : {}),
+      note: 'A suppression applies to every workspace of the account. It can be added with comms_add_suppression; only the account owner can remove one, in the dashboard.' };
   });
 
   // ---- comms_import_contacts -------------------------------------------------
@@ -88,7 +129,11 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
       body: defined({ contacts: rows, on_existing: onExisting, source_label: a.sourceLabel.trim(), consent_given: a.consentConfirmed === true, dry_run: isDry(a), batch_id: a.batchId }),
     });
     const data = out.data || {};
-    const view = (r) => defined({ row: r.row, outcome: r.outcome, reason: r.reason ? scrubText(r.reason) : undefined, email: maskEmail(r.email), contact_id: r.contact_id, changes: r.changes });
+    const view = (r) => defined({
+      row: r.row, outcome: r.outcome, reason: r.reason ? scrubText(r.reason) : undefined, email: maskEmail(r.email), contact_id: r.contact_id, changes: r.changes,
+      suppression_reason: r.suppression_reason, warnings: Array.isArray(r.warnings) && r.warnings.length ? r.warnings.map(scrubText) : undefined,
+      name_conflict: r.name_conflict ? { kept: maskName(r.name_conflict.kept), ignored: maskName(r.name_conflict.ignored) } : undefined,
+    });
     const all = Array.isArray(data.rows) ? data.rows : [];
     const problems = all.filter((r) => !OK_OUTCOMES.has(r.outcome));
     return {
@@ -120,13 +165,20 @@ export function attachCommsContacts(client, { claims, server, call, resolveWorks
     if (!text(a.description)) need('MISSING_CARD', 'A description is required: say what this list is for in one to three sentences.');
     if (!text(a.name)) need('NAME_REQUIRED', 'A name is required.');
     if (!DERIVE_OPERATIONS.includes(a.operation)) need('INVALID_OPERATION', `operation must be one of: ${DERIVE_OPERATIONS.join(', ')}.`);
-    if (!Array.isArray(a.sourceListIds) || a.sourceListIds.length === 0) need('SOURCES_REQUIRED', 'Give at least one source list.');
-    if (a.sourceListIds.length > 10) need('TOO_MANY_SOURCES', 'At most 10 source lists.');
-    const sources = ids(a.sourceListIds, 'sourceListIds');
+    const byFilter = a.operation === 'filter';
+    if (byFilter) {
+      if (!a.filter || typeof a.filter !== 'object' || Object.keys(a.filter).length === 0) need('FILTER_REQUIRED', 'operation filter needs a filter with at least one key (see comms_search_audience).');
+      if (a.sourceListIds !== undefined || a.excludeListIds !== undefined) need('FILTER_AND_LISTS', 'operation filter takes filter, not source or exclude lists: put list_id and list_id_not inside the filter.');
+    } else {
+      if (a.filter !== undefined) need('FILTER_NOT_ALLOWED', 'filter is only for operation filter.');
+      if (!Array.isArray(a.sourceListIds) || a.sourceListIds.length === 0) need('SOURCES_REQUIRED', 'Give at least one source list.');
+      if (a.sourceListIds.length > 10) need('TOO_MANY_SOURCES', 'At most 10 source lists.');
+    }
+    const sources = byFilter ? undefined : ids(a.sourceListIds, 'sourceListIds');
     const excludes = a.excludeListIds === undefined ? undefined : ids(a.excludeListIds, 'excludeListIds');
     const bad = keyProblem(a); if (bad) need('INVALID_IDEMPOTENCY_KEY', bad);
     const ws = await resolveWorkspace(a.workspaceId);
-    const body = defined({ name: a.name, description: a.description, operation: a.operation, source_list_ids: sources, exclude_list_ids: excludes, source_label: a.sourceLabel });
+    const body = defined({ name: a.name, description: a.description, operation: a.operation, source_list_ids: sources, exclude_list_ids: excludes, filter: byFilter ? a.filter : undefined, source_label: a.sourceLabel });
     if (isDry(a)) {
       const out = await call('/lists/derive', ws, { method: 'POST', body: { ...body, dry_run: true } });
       return { success: true, dryRun: true, applied: false, result: out.data && out.data.result, note: 'Nothing was created. A derived list is a one-time snapshot, not live.' };
