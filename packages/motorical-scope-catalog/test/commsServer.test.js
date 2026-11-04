@@ -9,7 +9,7 @@ const {
 const WRITE_CONTENT = ['comms_create_template', 'comms_create_template_from_starter', 'comms_update_template', 'comms_apply_template_fixes', 'comms_duplicate_template', 'comms_set_brand_kit'];
 const WRITE_AUDIENCE = ['comms_create_list', 'comms_update_list', 'comms_import_contacts', 'comms_remove_from_list', 'comms_derive_list', 'comms_unsubscribe_contact', 'comms_add_suppression', 'comms_undo_import', 'comms_set_list_archived', 'comms_add_suppressions'];
 const MANAGE_AUDIENCE = ['comms_delete_list', 'comms_delete_contact', 'comms_cleanup_orphan_contacts', 'comms_resubscribe_contact'];
-const READ_CONTACTS = ['comms_list_list_contacts', 'comms_find_contact', 'comms_list_imports', 'comms_get_dashboard_link'];
+const READ_CONTACTS = ['comms_list_list_contacts', 'comms_find_contact', 'comms_search_audience', 'comms_audience_summary', 'comms_suppression_info', 'comms_list_imports', 'comms_get_dashboard_link'];
 const CAMPAIGN_TOOLS = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test'];
 const SEND_TOOLS = ['comms_schedule_campaign', 'comms_cancel_campaign'];
 const MANAGE_WORKSPACE = ['comms_create_workspace', 'comms_update_workspace', 'comms_update_workspace_settings', 'comms_add_sending_identity'];
@@ -17,7 +17,7 @@ const MANAGE_WEBHOOKS = ['comms_update_webhook', 'comms_delete_webhook', 'comms_
 
 test('the communications server has the proof tools, the 17 read tools (M3-1), the 8 write tools (M3-2), the 16 contact tools (M3-3 + list manipulation), the 5 campaign-draft tools (M3-4), the 2 send tools (M3-5), the 5 reporting reads (M3-6), the 9 management tools (M3-7) and whoami', () => {
   const t = SERVER_TOOLS.communications;
-  assert.equal(t.length, 65);
+  assert.equal(t.length, 68);
   for (const n of SEND_TOOLS) assert.ok(t.includes(n), n);
   for (const n of CAMPAIGN_TOOLS) assert.ok(t.includes(n), n);
   for (const n of READ_CONTACTS) assert.ok(t.includes(n), n);
