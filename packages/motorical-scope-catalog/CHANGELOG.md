@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0 — 2026-11-04
+
+Three read tools on the `communications` server (so it has 68): `comms_search_audience`, `comms_audience_summary` and `comms_suppression_info`, all `read:comms`. **No existing grant gains authority**, and no new scope.
+
 ## 0.17.0 — 2026-11-04
 
 New scope `manage:comms.audience` (resource `comms-audience`): delete lists and contacts, clean up contacts that are on no list, opt a contact back in. It is a step-up like the other
