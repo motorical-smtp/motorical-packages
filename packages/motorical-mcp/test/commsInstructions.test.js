@@ -72,7 +72,7 @@ describe('what you cannot do is true', () => {
   });
   test('and there really is no tool that could do any of it (the one deliberate exception is deleting a webhook, which is confirm-gated)', () => {
     const commsTools = srv.tools.filter((n) => n.startsWith('comms_'));
-    assert.deepEqual(commsTools.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)), ['comms_delete_webhook']);
+    assert.deepEqual(commsTools.filter((n) => /(delete|erase|purge|export|resubscribe|restore|pause)/i.test(n)).sort(), ['comms_delete_contact', 'comms_delete_list', 'comms_delete_webhook', 'comms_resubscribe_contact']);
     for (const n of ['comms_create_webhook', 'comms_set_default_workspace', 'comms_remove_sending_identity', 'comms_replace_sending_identities', 'comms_delete_workspace', 'comms_send_now', 'comms_export_contacts']) {
       assert.ok(!names.includes(n), n);
     }
@@ -98,9 +98,9 @@ describe('permissions', () => {
   test('every tool that needs more than the first consent belongs to a family the instructions say is asked for later', () => {
     const later = srv.tools.filter((n) => (TOOL_SCOPES[n] || []).some((s) => !COMMS_INITIAL_SCOPES.includes(s)));
     assert.ok(later.length >= 9, `${later.length} step-up tools`);
-    for (const n of later) assert.match(n, /(schedule|cancel|workspace|webhook|sending_identity)/, `${n} needs a step-up the instructions do not name`);
+    for (const n of later) assert.match(n, /(schedule|cancel|workspace|webhook|sending_identity|delete|cleanup|resubscribe)/, `${n} needs a step-up the instructions do not name`);
     const p = section('ONLY A PERSON CAN:') + section('START HERE:');
-    for (const re of [/schedul/i, /cancel/i, /workspace/i, /webhook/i]) assert.match(p, re, String(re));
+    for (const re of [/schedul/i, /cancel/i, /workspace/i, /webhook/i, /delet/i]) assert.match(p, re, String(re));
     assert.match(text, /new permission/i);
   });
 });

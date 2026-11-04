@@ -63,12 +63,12 @@ export const COMMS_READ_TOOLS = [
   },
   {
     tool: 'comms_list_lists', method: 'commsListLists', http: 'GET', route: '/comm-api/api/lists', paged: true,
-    path: () => '/lists', title: 'Contact lists',
+    path: (a) => `/lists${a.archived ? `?archived=${a.archived}` : ''}`, title: 'Contact lists',
     description: 'The workspace\'s contact lists as cards (GET /comm-api/api/lists): name, description, kind, where it came from, how many members '
       + 'and how many are eligible to receive mail, and whether it is a one-time snapshot. Counts come from this result; quote them with '
       + 'the time you read them, never from memory. Paged (default 50, at most 200; see page.truncated). To orient in one call use '
-      + 'comms_get_map instead. Read-only.',
-    input: { ...paging },
+      + 'comms_get_map instead. Archived lists are hidden; archived=include shows them too, archived=only just those. Read-only.',
+    input: { ...paging, archived: z.enum(['include', 'only']).optional().describe('Show archived lists as well (include) or only those (only).') },
   },
   {
     tool: 'comms_get_list', method: 'commsGetList', http: 'GET', route: '/comm-api/api/lists/{id}', ids: ['id'],

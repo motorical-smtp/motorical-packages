@@ -211,7 +211,7 @@ export const TOOL_ROUTES = {
   comms_get_map: { method: 'GET', path: '/comm-api/api/map' },
   ...Object.fromEntries(COMMS_READ_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
   ...Object.fromEntries(COMMS_WRITE_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
-  ...Object.fromEntries(COMMS_CONTACT_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
+  ...Object.fromEntries(COMMS_CONTACT_TOOLS.map((r) => [r.tool, r.route ? { method: r.http, path: r.route } : null])),
   ...Object.fromEntries(COMMS_CAMPAIGN_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
   ...Object.fromEntries(COMMS_SEND_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),
   ...Object.fromEntries(COMMS_REPORT_TOOLS.map((r) => [r.tool, { method: r.http, path: r.route }])),

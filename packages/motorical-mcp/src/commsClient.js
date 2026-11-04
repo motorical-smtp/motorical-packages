@@ -64,7 +64,7 @@ export function attachCommsMethods(client, { claims, server, signer, commsBaseUr
     if (body && body.data && typeof body.data === 'object') data.detail = body.data;
     // Campaign refusals carry what the agent needs to act: the wait before a retry, the expected domain, the offending variables or urls.
     if (body && body.retryAfter) data.retryAfter = body.retryAfter;
-    for (const k of ['details', 'expected_domain', 'variables', 'urls', 'changes', 'audience', 'existing']) if (body && body[k] !== undefined) data[k] = body[k];
+    for (const k of ['details', 'expected_domain', 'variables', 'urls', 'changes', 'audience', 'existing', 'used_by', 'used_by_count']) if (body && body[k] !== undefined) data[k] = body[k];
     throw fail((body && typeof body.error === 'string' && body.error) || `The Communications service answered ${res.status}.`, res.status, data);
   }
 
