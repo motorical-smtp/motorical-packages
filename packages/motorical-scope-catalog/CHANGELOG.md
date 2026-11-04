@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.17.0 — 2026-11-04
+
+New scope `manage:comms.audience` (resource `comms-audience`): delete lists and contacts, clean up contacts that are on no list, opt a contact back in. It is a step-up like the other
+manage scopes (not in the first consent), implies `read:comms`, and has its own consent line. Nine new tools on the `communications` server (so the server has 65): `comms_list_imports`,
+`comms_get_dashboard_link` (read:comms); `comms_undo_import`, `comms_set_list_archived`, `comms_add_suppressions` (write:comms.audience); `comms_delete_list`, `comms_delete_contact`,
+`comms_cleanup_orphan_contacts`, `comms_resubscribe_contact` (manage:comms.audience). **No existing grant gains authority.** New export: consent task `audience-delete`.
+
+## 0.16.0 — 2026-11-04
+
+The front door (spec `2026-11-04-mcp-front-door-and-whoami-billing`): the `main` server now also lists every Communications tool, so `SERVER_TOOLS.main` and the `main` entry of
+`RESOURCE_SCOPES` carry the six communications scopes. The old list is exported as `MAIN_BASE_TOOLS` (same order, unchanged) and the narrow servers are untouched. **No existing grant gains
+authority**: a grant holds a scope only once the person approves it. New exports: `FRONT_DOOR_CANONICAL_URI`, `permissionHint(tool)` (the "Needs permission X" marker and the actionable error,
+generated from `TOOL_SCOPES`), `PERMISSION_PATH`, `PERMISSION_REFRESH_SENTENCE`, `CONSENT_TASKS` and `groupForConsentByTask(scopes)` (consent lines by task, same shape as `groupForConsent`).
+
 ## 0.15.0 — 2026-10-27
 
 The hosted `communications` server gains 9 workspace and webhook tools (Comms MCP M3-7): two reads under `read:comms` (`comms_get_workspace_settings`, `comms_list_webhooks`), four under

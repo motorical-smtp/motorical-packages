@@ -4,4 +4,5 @@ module.exports = {
   ...require('./tools'),
   ...require('./consent'),
   ...require('./comms'),
+  ...require('./frontDoor'),
 };

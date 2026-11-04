@@ -128,6 +128,13 @@ const SCOPES = {
     agentDescription: 'Create, update, delete and test campaign event webhooks of the workspaces the person chose. Includes everything read:comms grants.',
     customerAction: 'Manage your campaign event webhooks',
   },
+  'manage:comms.audience': {
+    resource: 'comms-audience',
+    level: 'manage',
+    publicScopes: [],
+    agentDescription: 'Delete lists and contacts (a contact is erased for good), clean up contacts that are on no list, and opt a contact back in. Includes everything read:comms grants, not the permission to edit lists. People who unsubscribed, bounced or are suppressed are never erased by a list delete or a clean-up.',
+    customerAction: 'Delete lists and contacts, and clean up people who are on no list',
+  },
 };
 
 function listGrantableScopes() {
