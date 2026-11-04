@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.0 — 2026-11-04
+
+Three tools on the `communications` server (so it has 71): `comms_send_template_test` (`write:comms.content`, one copy of a template to the account owner), `comms_delete_template` and `comms_delete_campaign` (both `manage:comms.audience`, the delete step-up). **No existing grant gains authority except** that a grant already holding `manage:comms.audience` can now also delete templates and campaigns (campaigns go to the recycle bin).
+
 ## 0.18.0 — 2026-11-04
 
 Three read tools on the `communications` server (so it has 68): `comms_search_audience`, `comms_audience_summary` and `comms_suppression_info`, all `read:comms`. **No existing grant gains authority**, and no new scope.

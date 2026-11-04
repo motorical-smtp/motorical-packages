@@ -1,6 +1,6 @@
 {
   "name": "@motorical/scope-catalog",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Canonical MCP/OAuth scope metadata for Motorical — descriptions, Public API scope mapping, implied-read rules, and declarative tool/resource membership. One source of truth consumed by motorical-backend and @motorical/mcp.",
   "main": "./src/index.js",
   "engines": {
@@ -30,7 +30,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/motorical-smtp/motorical-packages.git",
+    "url": "git+https://github.com/motorical-smtp/motorical-backend.git",
     "directory": "packages/motorical-scope-catalog"
   }
 }
