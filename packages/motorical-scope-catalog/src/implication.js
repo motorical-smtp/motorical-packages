@@ -14,6 +14,7 @@ const MCP_IMPLIED_READ = {
   'send:comms.campaign': 'read:comms',
   'manage:comms.workspace': 'read:comms',
   'manage:comms.webhooks': 'read:comms',
+  'manage:comms.audience': 'read:comms',
 };
 
 function expandMcpImplied(grantedScopes) {

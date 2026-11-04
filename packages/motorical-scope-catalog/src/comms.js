@@ -14,6 +14,7 @@ const COMMS_SCOPES = [
   'send:comms.campaign',
   'manage:comms.workspace',
   'manage:comms.webhooks',
+  'manage:comms.audience',
 ];
 
 /** What the FIRST consent asks for. Sending and managing are a step-up, so sending always has its own consent moment. */

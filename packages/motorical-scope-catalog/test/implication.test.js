@@ -13,6 +13,7 @@ test('MCP vocabulary: manage implies read for domains and webhooks, and every Co
     'send:comms.campaign': 'read:comms',
     'manage:comms.workspace': 'read:comms',
     'manage:comms.webhooks': 'read:comms',
+    'manage:comms.audience': 'read:comms',
   });
 });
 

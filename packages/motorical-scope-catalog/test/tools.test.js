@@ -70,12 +70,11 @@ test('the Motor Blocks resource allows exactly manage:motor-blocks', () => {
   );
 });
 
-test('the main/all-tools resource allows every grantable scope EXCEPT the Communications scopes, which only the communications server offers', () => {
-  // A grant for the main server must never carry a marketing scope: sending to a customer's contacts has its own server and consent.
-  const comms = new Set(require('../src/comms').COMMS_SCOPES);
+test('the main resource (the front door) allows every grantable scope, Communications included', () => {
+  // Owner decision 2026-11-04. A grant only HOLDS a comms scope once the person approves it; the first consent stays small (servers.js MAIN_INITIAL_SCOPES).
   assert.deepEqual(
     RESOURCE_SCOPES['https://mcp.motorical.com/v1/motorical/mcp'].sort(),
-    listGrantableScopes().filter((s) => !comms.has(s)).sort(),
+    listGrantableScopes().sort(),
   );
 });
 

@@ -6,9 +6,9 @@ const {
   COMMS_SCOPES, COMMS_INITIAL_SCOPES, COMMS_CANONICAL_URI, COMMS_DELEGATION_AUDIENCE, MCP_HOST,
 } = require('../src');
 
-const EXPECTED = ['read:comms', 'write:comms.audience', 'write:comms.content', 'send:comms.campaign', 'manage:comms.workspace', 'manage:comms.webhooks'];
+const EXPECTED = ['read:comms', 'write:comms.audience', 'write:comms.content', 'send:comms.campaign', 'manage:comms.workspace', 'manage:comms.webhooks', 'manage:comms.audience'];
 
-test('six scopes, in a fixed order, all defined in the catalogue', () => {
+test('seven scopes, in a fixed order, all defined in the catalogue', () => {
   assert.deepEqual(COMMS_SCOPES, EXPECTED);
   for (const id of EXPECTED) assert.ok(SCOPES[id], `${id} is defined`);
   assert.deepEqual(listGrantableScopes().filter((s) => s.endsWith('comms') || s.includes('comms.')), EXPECTED);
@@ -32,7 +32,11 @@ test('every comms scope is fully described and none unlocks a Public API scope',
 
 test('no scope is a destructive one: permanent delete, purge and GDPR are never grantable', () => {
   for (const id of Object.keys(SCOPES)) assert.doesNotMatch(id, /delete|purge|erase|gdpr|destroy/i);
-  for (const id of EXPECTED) assert.doesNotMatch(SCOPES[id].agentDescription, /permanently delete|erase|purge/i, id);
+  // The one deliberate exception (owner decision 2026-11-04, "full manipulation of lists"): manage:comms.audience may delete lists and contacts, and its
+  // description must SAY so, so the person approving it knows. Purge and GDPR erasure of a whole account stay out of every scope.
+  for (const id of EXPECTED.filter((x) => x !== 'manage:comms.audience')) assert.doesNotMatch(SCOPES[id].agentDescription, /permanently delete|erase|purge/i, id);
+  assert.match(SCOPES['manage:comms.audience'].agentDescription, /delete lists and contacts/i);
+  assert.doesNotMatch(SCOPES['manage:comms.audience'].agentDescription, /purge|gdpr/i);
 });
 
 test('every write, send and manage scope implies read:comms; read implies nothing more', () => {
@@ -45,14 +49,14 @@ test('every write, send and manage scope implies read:comms; read implies nothin
 test('the first consent is read plus the two writes; sending and managing are a step-up', () => {
   assert.deepEqual(COMMS_INITIAL_SCOPES, ['read:comms', 'write:comms.audience', 'write:comms.content']);
   for (const id of COMMS_INITIAL_SCOPES) assert.ok(COMMS_SCOPES.includes(id));
-  for (const id of ['send:comms.campaign', 'manage:comms.workspace', 'manage:comms.webhooks']) assert.ok(!COMMS_INITIAL_SCOPES.includes(id));
+  for (const id of ['send:comms.campaign', 'manage:comms.workspace', 'manage:comms.webhooks', 'manage:comms.audience']) assert.ok(!COMMS_INITIAL_SCOPES.includes(id));
 });
 
 const EDIT_LINE = 'View and edit your lists, contacts, templates and campaign drafts, and send test emails to you. This never emails your contacts.';
 
 test('the consent screen: view and edit is ONE line, sending is its own line (grants stay simple, owner principle 2026-10-27)', () => {
   const lines = groupForConsent(COMMS_SCOPES);
-  assert.equal(lines.length, 4, 'view+edit, send, workspace settings, webhooks');
+  assert.equal(lines.length, 5, 'view+edit, send, workspace settings, webhooks, deleting lists and contacts');
   const edit = lines.find((l) => l.scopes.includes('read:comms'));
   assert.deepEqual(edit.scopes, ['read:comms', 'write:comms.audience', 'write:comms.content']);
   assert.equal(edit.label, EDIT_LINE);

@@ -127,6 +127,16 @@ const COMMS_TOOLS = [
   'comms_derive_list',
   'comms_unsubscribe_contact',
   'comms_add_suppression',
+  // Full list manipulation (2026-11-04): archive, import history and undo, bulk suppressions (write:comms.audience); delete, clean-up and opt-in (manage:comms.audience, a grant of its own).
+  'comms_list_imports',
+  'comms_undo_import',
+  'comms_set_list_archived',
+  'comms_add_suppressions',
+  'comms_delete_list',
+  'comms_delete_contact',
+  'comms_cleanup_orphan_contacts',
+  'comms_resubscribe_contact',
+  'comms_get_dashboard_link',
   // M3-4: campaign DRAFTS (write:comms.content). Nothing schedules, cancels or deletes; the test send goes to the account owner only.
   'comms_create_campaign',
   'comms_update_campaign',
@@ -174,8 +184,14 @@ const ALL_TOOLS = [
  */
 const ANY_GRANT_TOOLS = ['motorical_whoami'];
 
+/**
+ * The front door (spec 2026-11-04): the main server's own tools, in their old order, then every communications tool. The
+ * narrow servers are untouched; a grant on main gains NO communications authority until it holds those scopes.
+ */
+const MAIN_BASE_TOOLS = ALL_TOOLS;
+
 const SERVER_TOOLS = {
-  main: ALL_TOOLS,
+  main: [...new Set([...MAIN_BASE_TOOLS, ...COMMS_TOOLS])],
   transactional: [...TRANSACTIONAL_TOOLS, ...ANY_GRANT_TOOLS],
   analytics: ANALYTICS_TOOLS,
   domains: [...DOMAIN_TOOLS, ...ANY_GRANT_TOOLS],
@@ -276,6 +292,15 @@ const TOOL_SCOPES = {
   comms_derive_list: ['write:comms.audience'],
   comms_unsubscribe_contact: ['write:comms.audience'],
   comms_add_suppression: ['write:comms.audience'],
+  comms_list_imports: ['read:comms'],
+  comms_undo_import: ['write:comms.audience'],
+  comms_set_list_archived: ['write:comms.audience'],
+  comms_add_suppressions: ['write:comms.audience'],
+  comms_delete_list: ['manage:comms.audience'],
+  comms_delete_contact: ['manage:comms.audience'],
+  comms_cleanup_orphan_contacts: ['manage:comms.audience'],
+  comms_resubscribe_contact: ['manage:comms.audience'],
+  comms_get_dashboard_link: ['read:comms'],
   comms_create_campaign: ['write:comms.content'],
   comms_update_campaign: ['write:comms.content'],
   comms_duplicate_campaign: ['write:comms.content'],
@@ -326,5 +351,5 @@ const RESOURCE_SCOPES = Object.fromEntries(
 );
 
 module.exports = {
-  MCP_HOST, SERVER_TOOLS, TOOL_SCOPES, scopesForTools, RESOURCE_SCOPES, ANY_GRANT_TOOLS,
+  MCP_HOST, SERVER_TOOLS, TOOL_SCOPES, scopesForTools, RESOURCE_SCOPES, ANY_GRANT_TOOLS, MAIN_BASE_TOOLS,
 };
