@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.26.0] — 2026-11-04
+
+### Added
+
+- `comms_search_audience` and `comms_audience_summary`: search and count every contact in the workspace (domain, status, campaign, import batch, dates, on no list, not on these lists), addresses masked.
+- `comms_suppression_info`: is one address on the account-wide suppression list, why and since when.
+- `comms_derive_list` accepts `operation: "filter"` with the same filter. `comms_find_contact` also returns which lists the person is on.
+
+### Changed
+
+- An import result reports warnings (a value that looks like a spreadsheet formula is dropped), name conflicts (names masked) and the reason a suppressed row was skipped.
+- List cards no longer show the legacy `contact_count` and `suppressed_count` next to `member_count` and `suppressed_active_count`.
+
 ## [1.25.0] — 2026-11-05
 
 ### Added
