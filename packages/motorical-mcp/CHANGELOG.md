@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.23.1] — 2026-11-04
+
+### Changed
+
+- Upgraded `zod` to 4 (clears the high-severity memory-exhaustion advisory GHSA-mrhx-c7xc-m3w5). `openOutputSchema` was ported to the zod 4 API; the advertised tool surface is unchanged. Stricter than before: `uuid` inputs must be RFC 4122 UUIDs (the platform only issues v4).
+
 ## [1.23.0] — 2026-11-04
 
 ### Added
@@ -16,7 +22,6 @@ All notable changes to this project are documented here. Version numbers follow 
 ### Changed
 
 - Requires `@motorical/scope-catalog` 0.16.0.
-- Upgraded `zod` to 4 (clears the high-severity memory-exhaustion advisory GHSA-mrhx-c7xc-m3w5). `openOutputSchema` was ported to the zod 4 API; the advertised tool surface is unchanged. Stricter than before: `uuid` inputs must be RFC 4122 UUIDs (the platform only issues v4).
 - `motorical_whoami` describes the new `account.billing` block (price, renewal, cancellation, usage against the plan cap, payment status; never invoices or card details).
 
 ## [1.22.0] — 2026-10-22
