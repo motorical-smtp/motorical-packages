@@ -67,7 +67,7 @@ export const COMMS_WRITE_TOOLS = [
     title: 'Create a template from a starter', annotations: WRITE(),
     description: 'Create a template from a ready-made starter, filled with the workspace brand kit (POST /comm-api/api/templates/from-starter). DRY RUN by '
       + 'default: renders the starter and returns it; pass dryRun:false to save it. Get the starter keys from comms_list_starters and check the brand kit '
-      + 'with comms_get_brand_kit first. A description is required; kind defaults to the starter\'s.',
+      + 'with comms_get_brand_kit first. A description is required; kind defaults to the starter\'s. THE FOOTER: the footer says why the person gets the email, and only the customer knows that. ASK them why these people receive it (for example "You signed up at our shop") and pass it as the `reason` slot, or save it once as footer_text in the brand kit. With neither, the footer only says who sent the email, and the result carries a footer_reason_default warning: tell the customer and ask, do not invent a reason. The starter\'s own words are English; write slot text in the brand kit language.',
     input: {
       starter: z.string().min(1).max(60).describe('A starter key from comms_list_starters.'), name: z.string().min(1).max(200),
       ...card, kind: z.enum(TEMPLATE_KINDS).optional(), subject: z.string().max(998).optional(),

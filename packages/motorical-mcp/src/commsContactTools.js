@@ -202,6 +202,20 @@ export const COMMS_CONTACT_TOOLS = [
     input: { email },
   },
   {
+    tool: 'comms_delete_campaign', method: 'commsDeleteCampaign', http: 'DELETE', route: '/comm-api/api/campaigns/{id}',
+    title: 'Delete a campaign (recycle bin)', annotations: WRITE({ destructiveHint: true, idempotentHint: true }),
+    description: 'Move a campaign to the recycle bin (DELETE /comm-api/api/campaigns/{id}). Nothing is erased: the person can restore it in the dashboard. A campaign that is scheduled or sending is REFUSED: cancel it first with comms_cancel_campaign, which needs its own permission. '
+      + 'Needs manage:comms.audience, like every delete. DRY RUN by default: names the campaign and its status. Show the person which one and get a clear yes BEFORE dryRun:false.',
+    input: { id: uuid('The campaign id.') },
+  },
+  {
+    tool: 'comms_delete_template', method: 'commsDeleteTemplate', http: 'DELETE', route: '/comm-api/api/templates/{id}',
+    title: 'Delete a template', annotations: WRITE({ destructiveHint: true, idempotentHint: true }),
+    description: 'Delete ONE template for good (DELETE /comm-api/api/templates/{id}). Needs manage:comms.audience. A template that any campaign uses (even a finished or deleted one) is REFUSED with the campaigns named: delete or change those first. '
+      + 'DRY RUN by default: names the template and says whether it can go. Show the person which one and get a clear yes BEFORE dryRun:false. Cannot be undone: if they may want it back, comms_duplicate_template first. To clear out test drafts, use this once per template.',
+    input: { id: uuid('The template id.') },
+  },
+  {
     tool: 'comms_resubscribe_contact', method: 'commsResubscribeContact', http: 'PUT', route: '/comm-api/api/contacts/{id}/resubscribe',
     title: 'Opt a contact back in', annotations: WRITE({ idempotentHint: true }),
     description: 'Opt a person who unsubscribed back in (PUT /comm-api/api/contacts/{id}/resubscribe), found by the exact address. Needs manage:comms.audience. Only do this when the PERSON asked to be emailed again; the account owner\'s wish to mail them is not a reason. '

@@ -54,13 +54,13 @@ const hasForbidden = (v) => {
   return false;
 };
 
-const NAMES = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test'];
+const NAMES = ['comms_create_campaign', 'comms_update_campaign', 'comms_duplicate_campaign', 'comms_preflight_campaign', 'comms_send_test', 'comms_send_template_test'];
 const byName = (n) => TOOLS.find((t) => t.name === n);
 const DESC = 'Autumn promotion to the newsletter list, sent once in November.';
 const CAMPAIGN = { id: CAMP, name: 'Autumn promo', template_id: TPL, motor_block_id: BLOCK, status: 'draft', from_address: 'news@hatfree.com', from_name: 'Hat Free', description: DESC };
 
 describe('registration', () => {
-  test('the table, the catalogue and the registry agree on the same 5 tools', () => {
+  test('the table, the catalogue and the registry agree on the same 6 tools', () => {
     assert.deepEqual(COMMS_CAMPAIGN_TOOLS.map((t) => t.tool).sort(), [...NAMES].sort());
     for (const n of NAMES) { assert.ok(SERVER_TOOLS.communications.includes(n), n); assert.ok(byName(n), n); assert.ok(HOSTED_ONLY_TOOLS.includes(n), n); }
   });

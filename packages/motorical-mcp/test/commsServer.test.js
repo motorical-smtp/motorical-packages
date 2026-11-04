@@ -15,7 +15,7 @@ describe('the server row', () => {
     assert.equal(srv.slug, 'motorical_communications');
     assert.equal(srv.path, '/v1/motorical_communications/mcp');
     assert.equal(srv.canonicalUri, COMMS_CANONICAL_URI);
-    assert.equal(srv.tools.length, 68, '2 proof + 17 read + 8 write + 19 contact (7 + 9 list manipulation + 3 audience reads) + 5 campaign + 2 send (M3-5) + 5 report (M3-6) + 9 manage (M3-7) + whoami');
+    assert.equal(srv.tools.length, 71, '2 proof + 17 read + 8 write + 21 contact (7 + 9 list manipulation + 3 audience reads + 2 deletes) + 6 campaign + 2 send (M3-5) + 5 report (M3-6) + 9 manage (M3-7) + whoami');
     for (const t of ['comms_get_readiness', 'comms_get_map', 'motorical_whoami']) assert.ok(srv.tools.includes(t), t);
     assert.deepEqual([...srv.scopes].sort(), ['manage:comms.audience', 'manage:comms.webhooks', 'manage:comms.workspace', 'read:comms', 'send:comms.campaign', 'write:comms.audience', 'write:comms.content']);
     assert.equal(byPath(srv.path).key, 'communications');

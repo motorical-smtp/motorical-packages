@@ -3,7 +3,7 @@
  *
  * Order of checks: scope, then arguments (ids, card, caps, nothing-to-update, idempotency key), then the workspace, then the network. A dry run
  * makes reads and the API's own dry_run flag only. These tools never send a schedule, a timezone, pacing or a status, and never call
- * /schedule, /cancel, /restore or DELETE. Whatever a tool returns or throws is scrubbed: the account owner's address is shown masked.
+ * /schedule, /cancel or /restore; the one DELETE is the recycle-bin delete of a campaign that is not scheduled or sending. Whatever a tool returns or throws is scrubbed: the account owner's address is shown masked.
  */
 
 import { assertToolAllowed } from './resourceAuth.js';
@@ -121,8 +121,26 @@ export function attachCommsCampaigns(client, { claims, server, call, resolveWork
     const out = await call(`/campaigns/${a.id}/test-send`, ws, { method: 'POST', body: Object.keys(sample).length ? { sample } : {} });
     const d = out.data || {};
     return scrubDeep({
-      success: true, dryRun: false, applied: true, sent_to: maskEmail(d.sent_to), subject: d.subject, warnings: d.warnings || [],
+      success: true, dryRun: false, applied: true, sent_to: maskEmail(d.sent_to), subject: d.subject, warnings: d.warnings || [], links: d.links ?? null,
       note: 'Sent to the account owner only, to their own verified address: no one else received it. Ask them to check their own inbox.',
     });
   });
+
+  // ---- comms_send_template_test ----------------------------------------------
+  client.commsSendTemplateTest = guarded('comms_send_template_test', async (a) => {
+    checkId(a.id); checkId(a.motorBlockId, 'motorBlockId');
+    const ws = await resolveWorkspace(a.workspaceId);
+    const sample = defined({ name: typeof a.sample?.name === 'string' ? a.sample.name : undefined, identity_name: typeof a.sample?.identity_name === 'string' ? a.sample.identity_name : undefined });
+    if (isDry(a)) {
+      const t = ((await call(`/templates/${a.id}`, ws)).data) || {};
+      return { success: true, dryRun: true, applied: false, would_send: { to: 'the account owner only (their own verified address)', template: t.name ?? null, subject: t.subject ?? null, through: a.motorBlockId }, note: 'Nothing was sent.' };
+    }
+    const out = await call(`/templates/${a.id}/test-send`, ws, { method: 'POST', body: defined({ motor_block_id: a.motorBlockId, sample: Object.keys(sample).length ? sample : undefined }) });
+    const d = out.data || {};
+    return scrubDeep({
+      success: true, dryRun: false, applied: true, sent_to: maskEmail(d.sent_to), from: d.from, subject: d.subject, warnings: d.warnings || [], links: d.links ?? null,
+      note: 'Sent to the account owner only, to their own verified address: no one else received it. Ask them to check their own inbox.',
+    });
+  });
+
 }

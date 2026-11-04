@@ -76,6 +76,15 @@ export const COMMS_CAMPAIGN_TOOLS = [
       + 'merge tags (name, identity_name) for the preview.',
     input: { id: uuid('The campaign id.'), sample: z.object({ name: z.string().max(200).optional(), identity_name: z.string().max(200).optional() }).strict().optional().describe('Sample first name for the merge tags.') },
   },
+  {
+    tool: 'comms_send_template_test', method: 'commsSendTemplateTest', http: 'POST', route: '/comm-api/api/templates/{id}/test-send',
+    title: 'Send a template test to the account owner', annotations: WRITE(),
+    description: 'Send ONE test copy of a TEMPLATE to the ACCOUNT OWNER ONLY (POST /comm-api/api/templates/{id}/test-send), so a design can be checked before any campaign, list or schedule exists. '
+      + 'Same rules as comms_send_test: no recipient input, it goes to the owner\'s own verified address (shown masked), it is marked [TEST], nothing is stored, and it is rate limited (a refusal comes with retryAfter). '
+      + 'It needs a campaign Motor Block of this workspace to send through (motorBlockId, from comms_list_marketing_blocks); its sending domain is the From address. DRY RUN by default. '
+      + 'In the copy the unsubscribe and consent links are placeholders that point to motorical.com and links are not tracked: that is expected, not a fault, and the result says so. Check real links with comms_check_links.',
+    input: { id: uuid('The template id.'), motorBlockId: uuid('A campaign Motor Block of this workspace to send the test through (comms_list_marketing_blocks).'), sample: z.object({ name: z.string().max(200).optional(), identity_name: z.string().max(200).optional() }).strict().optional().describe('Sample first name for the merge tags.') },
+  },
 ];
 
 /** The registry entry for one table row. Preflight takes no dryRun (it is the check); creates also take an idempotencyKey. */
