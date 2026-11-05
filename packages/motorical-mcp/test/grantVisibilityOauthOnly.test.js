@@ -57,3 +57,15 @@ test('a read:domains-only grant sees every domain READ tool (including config an
     ['motorical_domain_dns_records', 'motorical_domain_get', 'motorical_domain_health', 'motorical_domain_list', 'motorical_get_config', 'motorical_get_domain_health'].sort(),
   );
 });
+
+// S1: the "Needs permission" marker is worked out from the token on every request, never remembered, so a client that
+// shows a stale label is showing its own cached tools/list. Two grants on one server must give two different answers.
+import { SERVERS as S1_SERVERS } from '../src/servers.js';
+import { toolsListedForGrant as s1List } from '../src/grantVisibility.js';
+test('S1: the marker follows the grant presented on each call', () => {
+  const main = S1_SERVERS.find((s) => s.key === 'main');
+  const without = s1List(main, ['read:analytics']).notes;
+  const withScope = s1List(main, ['read:analytics', 'read:webhooks']).notes;
+  assert.match(without.get('motorical_webhook_list') || '', /Needs permission: read:webhooks/);
+  assert.equal(withScope.has('motorical_webhook_list'), false, 'a held scope must not be marked');
+});

@@ -58,7 +58,7 @@ const HUB_POINTER = [
   'For the full route chooser, rulebook, and journeys (which server to use, when a human must be',
   'involved, what a consequential operation requires), read the motorical://docs/agents-hub resource',
   'or fetch https://docs.motorical.com/agents -- do not guess at rules this server has not told you.',
-  'Plans, prices and limits change: read them live from the motorical://docs/plans resource and never quote them from memory.',
+  'Plans, prices and limits change: read them live from the motorical://docs/plans resource, or from GET https://motorical.com/api/billing/plans when your client cannot read resources (public, no sign-in), and never quote them from memory.',
   `How to connect, which permission to approve now or later, and what to do when tools are missing: ${CONNECT_PAGE_URL}.`,
   `When a tool needs a permission this connection lacks, tell the person what it is for, then say: ${PERMISSION_NEEDED_SENTENCE}`,
 ].join(' ');

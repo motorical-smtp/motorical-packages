@@ -58,10 +58,15 @@ export function attachCommsReports(client, { claims, server, call, resolveWorksp
     } else {
       plain.push(`${f.delivered} of ${f.handed_off} handed off were delivered (${r.rates && r.rates.delivery_rate}%); ${o.bounced || 0} bounced, ${o.failed || 0} failed, ${o.complained || 0} complained.`);
       if (tracking.enabled) plain.push(`${e.opens_unique_excluding_scanners} of ${f.delivered} delivered opened (${r.rates && r.rates.open_rate}%); this is an estimate, see basis.`);
-      else plain.push('Open tracking is off for this workspace, so opens are not measured. Do not report an open rate; clicks and delivery are real.');
+      else plain.push('Open tracking is off for this workspace, so opens were not measured: the open numbers are unknown (null), not zero. Do not report an open rate; clicks and delivery are real. The setting is read when each email is sent.');
       plain.push(`${e.clicks_unique} of ${f.delivered} delivered clicked (${r.rates && r.rates.click_rate}%), ${e.clicks_total} clicks in all.`);
       if (sync.synced === false) plain.push(`${sync.outcomes_pending} recipients are still waiting for a delivery outcome (still syncing), so delivered and bounced may still rise.`);
     }
+    if (sent && r.consent) {
+      const bs = r.consent.by_source || {};
+      plain.push(`${r.consent.recorded_total} people were recorded as consenting because of this campaign (${bs.link_confirmation || 0} pressed the confirm button, ${bs.campaign_click || 0} by clicking a link) out of ${f.delivered} delivered. Click counts as consent is ${r.consent.click_consent_enabled_now ? 'ON' : 'OFF'} for this workspace now; a click recorded as consent is an inferred, weaker signal, and clicks by mail-security scanners are not filtered out.`);
+    }
+    if (sent && r.unsubscribes) plain.push(`${r.unsubscribes.people} unsubscribed from this campaign, out of ${f.delivered} delivered.`);
     for (const n of Array.isArray(r.notes) ? r.notes : []) plain.push(n);
     // With open tracking off, every open figure is unmeasured: show it as null, never as 0 or as a funnel step, so it cannot be read as a fact.
     let data = out.data;

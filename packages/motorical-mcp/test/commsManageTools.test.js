@@ -103,16 +103,24 @@ describe('scope and id checks come before any network call', () => {
   });
 });
 
+// What GET /workspaces/:id/settings returns: the three values and the plain-language wording the API keeps in one place.
+const effective = ({ click = false, open = true, url = null } = {}) => ok({
+  click_consent: { enabled: click, source: 'workspace', explanation: { label: 'Click counts as consent', what_it_does: 'A click can be recorded as inferred consent.', recipient_experience: 'Nothing changes for them.', you_decide: 'Whether a click is enough.', separate_from: 'A consent-request campaign.' } },
+  open_tracking: { enabled: open, source: 'workspace', explanation: { label: 'Open tracking', what_it_does: 'Adds an invisible image.', recipient_experience: 'Nothing visible.', you_decide: 'Whether to measure opens.' } },
+  unsubscribe_landing: { url, in_effect_url: url, source: 'workspace', explanation: { label: 'Unsubscribe landing page', what_it_does: 'Where people go afterwards.', recipient_experience: 'They still press the button first.', you_decide: 'The page address.' } },
+});
+
 describe('comms_get_workspace_settings', () => {
   test('reads the three settings of one workspace (account-level routes, no tenant header)', async () => {
-    const { client, calls } = make({
-      [`GET /workspaces/${W1}/settings/consent`]: ok({ click_consent_enabled: true }),
-      [`GET /workspaces/${W1}/settings/open-tracking`]: ok({ open_tracking_enabled: false }),
-      [`GET /workspaces/${W1}/settings/unsubscribe`]: ok({ unsubscribe_landing_url: 'https://shop.example/bye' }),
-    });
+    const { client, calls } = make({ [`GET /workspaces/${W1}/settings`]: effective({ click: true, open: false, url: 'https://shop.example/bye' }) });
     const r = await client.commsGetWorkspaceSettings({ workspaceId: W1 });
     assert.deepEqual(r.data, { click_consent_enabled: true, open_tracking_enabled: false, unsubscribe_landing_url: 'https://shop.example/bye' });
-    assert.equal(calls.length, 3); assert.ok(calls.every((c) => !c.headers['X-Tenant-Id']));
+    assert.equal(calls.length, 1); assert.ok(calls.every((c) => !c.headers['X-Tenant-Id']));
+    // each setting arrives with its plain-language explanation, and the answer says the person decides
+    assert.deepEqual(Object.keys(r.explanations).sort(), ['click_consent_enabled', 'open_tracking_enabled', 'unsubscribe_landing_url']);
+    for (const e of Object.values(r.explanations)) { assert.ok(e.what_it_does && e.recipient_experience && e.you_decide); assert.equal(e.source, 'workspace'); }
+    assert.ok(r.explanations.click_consent_enabled.separate_from);
+    assert.match(r.note, /person decides/i); assert.match(r.note, /cannot override/i);
   });
 });
 
@@ -176,9 +184,7 @@ describe('comms_update_workspace', () => {
 
 describe('comms_update_workspace_settings', () => {
   const settings = (over = {}) => ({
-    [`GET /workspaces/${W1}/settings/consent`]: ok({ click_consent_enabled: false }),
-    [`GET /workspaces/${W1}/settings/open-tracking`]: ok({ open_tracking_enabled: true }),
-    [`GET /workspaces/${W1}/settings/unsubscribe`]: ok({ unsubscribe_landing_url: null }),
+    [`GET /workspaces/${W1}/settings`]: effective(),
     [`PATCH /workspaces/${W1}/settings/consent`]: ok({ click_consent_enabled: true }),
     [`PATCH /workspaces/${W1}/settings/open-tracking`]: ok({ open_tracking_enabled: false }),
     [`PATCH /workspaces/${W1}/settings/unsubscribe`]: ok({ unsubscribe_landing_url: 'https://shop.example/bye' }),
@@ -190,7 +196,10 @@ describe('comms_update_workspace_settings', () => {
     assert.equal(r.applied, false);
     assert.deepEqual(r.changes.click_consent_enabled, { from: false, to: true });
     assert.deepEqual(r.changes.open_tracking_enabled, { from: true, to: false });
-    assert.match(JSON.stringify(r.explain), /click/i); assert.match(r.nextStep, /yes/i);
+    assert.deepEqual(Object.keys(r.explain).sort(), ['click_consent_enabled', 'open_tracking_enabled']);
+    assert.ok(r.explain.click_consent_enabled.what_it_does && r.explain.click_consent_enabled.recipient_experience && r.explain.click_consent_enabled.you_decide);
+    assert.match(r.appliesTo, /every campaign/i); assert.match(r.appliesTo, /preflighted again/i);
+    assert.match(r.nextStep, /yes/i);
     assert.equal(writesOf(calls).length, 0);
   });
   test('the real call patches only what changes', async () => {
@@ -206,7 +215,7 @@ describe('comms_update_workspace_settings', () => {
     const same = make(settings());
     const r = await same.client.commsUpdateWorkspaceSettings({ workspaceId: W1, openTracking: true, dryRun: false });
     assert.equal(r.applied, false); assert.match(r.note, /already/i); assert.equal(writesOf(same.calls).length, 0);
-    const clear = make(settings({ [`GET /workspaces/${W1}/settings/unsubscribe`]: ok({ unsubscribe_landing_url: 'https://shop.example/old' }) }));
+    const clear = make(settings({ [`GET /workspaces/${W1}/settings`]: effective({ url: 'https://shop.example/old' }) }));
     await clear.client.commsUpdateWorkspaceSettings({ workspaceId: W1, unsubscribeLandingUrl: null, dryRun: false });
     assert.deepEqual(writesOf(clear.calls)[0].body, { unsubscribe_landing_url: null });
     const none = make({}); await assert.rejects(() => none.client.commsUpdateWorkspaceSettings({ workspaceId: W1 }), (e) => e.data.code === 'NOTHING_TO_UPDATE');

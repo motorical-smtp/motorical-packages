@@ -28,6 +28,11 @@ Facts you can rely on. Numbers are deliberately not on this page: they are on ${
 - A campaign is a draft, then scheduled, sending, completed or cancelled; cancelled is final and there is no pause. Its template, lists and Motor Block cannot change after it is created; duplicate it to change them.
 - A send is always **scheduled at an explicit time with a timezone**. Sending limits are real: a campaign that reaches one waits and resumes by itself.
 - **Results** come from one report, per recipient: handed off, accepted, delivered, opened, clicked, bounced, failed, complained. Delivery outcomes lag the hand-off by a few minutes. Opens are an upper bound, because mail apps can load images for the reader.
+- **Three workspace settings shape what recipients experience**, set by the person (never by you) and shared by every campaign in the workspace; a campaign cannot override them. Read them with comms_get_workspace_settings, which explains each one.
+  - *Click counts as consent* (off by default): a click on a tracked link by someone who has not yet confirmed is recorded as inferred consent. Recipients notice nothing. It is weaker than a confirmation, and clicks by mail-security scanners are not filtered out. It is separate from a consent-request campaign, whose {{consent_url}} button works whether this is on or off; {{consent_url}} is live only in a campaign created as a consent request and is an empty link anywhere else.
+  - *Open tracking* (on by default): a tiny invisible image is added at send time. Mail apps can load it automatically, so opens are estimates. Off means no image and opens reported as unknown, not zero; the setting is read when each email is sent.
+  - *Unsubscribe landing page* (empty by default): people still open the unsubscribe link and press its confirm button; only afterwards are they sent to the page. It must be https on a verified domain. A link straight to it unsubscribes no one: always use {{unsubscribe_url}}.
+  - Preflight, the campaign, the schedule summary and test sends show the effective values; changing a setting voids a preflight.
 - Webhooks are signed, https only, and switched off by the platform after repeated failures. A person creates one and sees its secret once.
 `;
 
@@ -58,7 +63,7 @@ Rendered from the published policy at the time you read this page. When a tool r
 
 ## Content and reading
 - A merge fallback is at most ${p.mergeFallbackMaxChars} characters.
-- Deleting templates in bulk takes at most ${p.bulkTemplateDeleteMax} at a time (a person does it; you cannot delete).
+- Deleting templates in bulk takes at most ${p.bulkTemplateDeleteMax} at a time and is done by a person. With the delete permission you can delete one template (comms_delete_template, dry run first) or one campaign (comms_delete_campaign, which goes to the recycle bin). A template stays locked while any campaign uses it, including a finished one or one in the recycle bin; the dry run names those campaigns.
 - Event pages hold at most ${p.mcpEventsPageSize} events; page through them rather than guessing a total.
 - Webhook test events: at most ${p.agentWebhookTestsPerHour} per hour.
 `;

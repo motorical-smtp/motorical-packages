@@ -4,7 +4,7 @@
  * Every refusal that can be made WITHOUT the network is made first (scope, ids, the preflight, the time, the confirmation and the token), so a
  * mistake never reaches a write. The real schedule then asks the API for a dry run again and checks the token against what it says NOW: if the
  * numbers, the time or the campaign changed since the person was shown the preview, the token no longer fits. The Comms Block adds its own
- * guards behind this (preflight same-state, no send-now, 15 minutes to 90 days, 3 a day, an email to the account owner).
+ * guards behind this (preflight same-state, no send-now, 15 minutes to 90 days, 50 a day, an email to the account owner).
  */
 
 import { assertToolAllowed } from './resourceAuth.js';
@@ -41,7 +41,7 @@ export function attachCommsSend(client, { claims, server, call, resolveWorkspace
     // The API checks everything (the preflight is the same state, the time rules, the audience, the caps) and reports what would happen.
     const path = `/campaigns/${a.id}/schedule`;
     const dry = (await call(path, ws, { method: 'POST', body: { ...apiBody, dry_run: true } })).data || {};
-    const bound = { grantId: claims.grantId, workspaceId: ws, campaignId: a.id, preflightVersion: pv, sendAtUtc: iso, timezone: time.timezone, totalRecipients: dry.total_recipients };
+    const bound = { grantId: claims.grantId, workspaceId: ws, campaignId: a.id, preflightVersion: pv, sendAtUtc: iso, timezone: time.timezone, totalRecipients: dry.total_recipients, settings: dry.settings ? dry.settings.summary : null };
 
     if (!real) {
       const campaign = ((await call(`/campaigns/${a.id}`, ws)).data) || {};
@@ -52,25 +52,26 @@ export function attachCommsSend(client, { claims, server, call, resolveWorkspace
           campaign: { id: a.id, name: campaign.name ?? null, status: dry.status ?? campaign.status ?? null },
           subject: template.subject ?? null, from: dry.from_address ?? campaign.from_address ?? null, people: dry.total_recipients,
           sendsAt: { local: time.localText, utc: iso, timezone: time.timezone },
-          warnings: dry.warnings || [], audience: dry.audience, forecast: dry.forecast,
+          warnings: [...((dry.settings && dry.settings.warnings) || []), ...(dry.warnings || [])], audience: dry.audience, forecast: dry.forecast,
+          settings: dry.settings || null,
         },
         preflight: { version: pv, matches: true },
         confirmToken: signRequestState({ tool: TOOL, args: bound, ttlMs: TOKEN_TTL_MS }),
         expiresInMinutes: TOKEN_TTL_MS / 60000,
-        nextStep: 'Read this summary to the person: the campaign, the subject, the sender, exactly how many people, the time with its weekday in their timezone, and every warning. '
+        nextStep: 'Read this summary to the person: the campaign, the subject, the sender, exactly how many people, the time with its weekday in their timezone, the settings sentence (click consent, open tracking, where people go after unsubscribing), and every warning. '
           + 'Only after a clear yes, call this tool again with the same arguments plus dryRun:false, confirm:true and this confirmToken. Nothing has been scheduled or sent.',
       };
     }
 
     if (!verifyRequestState(a.confirmToken, { tool: TOOL, args: bound })) {
-      need('CONFIRM_TOKEN_INVALID', 'The preview this confirmation belongs to no longer matches: the numbers, the time or the campaign changed, it is for another connection, or it expired. Preview again, show the person the new summary, and ask again. Nothing was scheduled.');
+      need('CONFIRM_TOKEN_INVALID', 'The preview this confirmation belongs to no longer matches: the numbers, the time, a workspace setting or the campaign changed, it is for another connection, or it expired. Preview again, show the person the new summary, and ask again. Nothing was scheduled.');
     }
     const key = deriveKey(claims, TOOL, ws, { id: a.id, preflightVersion: pv, sendAtUtc: iso, timezone: time.timezone });
     const out = await call(path, ws, { method: 'POST', body: apiBody, headers: { 'Idempotency-Key': key } });
     const d = out.data || {};
     return {
       success: true, dryRun: false, applied: true,
-      scheduled: { id: a.id, status: d.status, scheduled_at: d.scheduled_at, timezone: time.timezone, people: d.total_recipients, from: d.from_address, artifact_version: d.artifact_version },
+      scheduled: { id: a.id, status: d.status, scheduled_at: d.scheduled_at, timezone: time.timezone, people: d.total_recipients, from: d.from_address, artifact_version: d.artifact_version, settings: d.settings ? d.settings.summary : null },
       note: `Scheduled for ${time.localText}. The account owner has been emailed about this. It can still be cancelled with comms_cancel_campaign before it sends; cancelling is final.`,
     };
   };

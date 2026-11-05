@@ -10,6 +10,7 @@ import { RESOURCES, RESOURCE_TEMPLATES, DOC_RESOURCES } from './resources.js';
 import { instructionsFor } from './instructions.js';
 import { COMMS_RESOURCES } from './commsResources.js';
 import { COMMS_PROMPTS } from './commsPrompts.js';
+import { toolErrorPayload } from './toolError.js';
 
 const PACKAGE_VERSION = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url))
@@ -24,14 +25,7 @@ function jsonResult(data, { isError = false } = {}) {
 }
 
 function errorResult(err) {
-  return jsonResult(
-    {
-      error: err.message,
-      status: err.status || null,
-      details: err.data || null
-    },
-    { isError: true }
-  );
+  return jsonResult(toolErrorPayload(err), { isError: true });
 }
 
 /**
@@ -154,9 +148,9 @@ export function createMotoricalMcpServer(options = {}) {
     }
   }
 
-  // The communications server's reference pages and playbooks (Comms MCP M4-2): the same tables the native dispatcher reads, and only on that server,
-  // since the local stdio server has no communications tools for them to point at.
-  if (options.serverKey === 'communications') {
+  // The communications server's reference pages and playbooks (Comms MCP M4-2): the same tables the native dispatcher reads, on that server and on the front door (main),
+  // which carries every Communications tool. The local stdio server has no communications tools for them to point at.
+  if (options.serverKey === 'communications' || options.serverKey === 'main') {
     for (const resource of COMMS_RESOURCES) {
       server.registerResource(
         resource.name.toLowerCase().replace(/\s+/g, '-'),

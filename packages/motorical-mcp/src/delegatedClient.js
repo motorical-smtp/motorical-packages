@@ -177,6 +177,42 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl, comm
   }
 
   /**
+   * Best-effort candidate list for the "several blocks, none chosen" error:
+   * "id (name)" for each granted block. The names come from the account-wide
+   * block listing; if that call fails the ids alone still make the error
+   * actionable.
+   */
+  async function listCandidates() {
+    let names = new Map();
+    try {
+      const view = callView(authFor(undefined), undefined);
+      const res = await client.listMotorBlocks.call(view, {});
+      const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      names = new Map(rows.map((r) => [String(r.id), r.name]));
+    } catch { /* ids only */ }
+    return blocks.map((id) => ({ id: String(id), name: names.get(String(id)) || null }));
+  }
+
+  async function describeCandidates() {
+    return (await listCandidates()).map((c) => (c.name ? `${c.id} (${c.name})` : c.id)).join(', ');
+  }
+
+  /**
+   * The wrapped client methods read motorBlockId from their own options
+   * argument to build the route path. Resolving the single granted block for
+   * the delegation header alone left that argument undefined, so the route
+   * became /motor-blocks/undefined/... Put the resolved id into the options
+   * object (the first plain object argument, else appended).
+   */
+  function withBlock(args, blockId) {
+    const out = [...args];
+    const i = out.findIndex((a) => a && typeof a === 'object' && !Array.isArray(a));
+    if (i >= 0) out[i] = { ...out[i], motorBlockId: blockId };
+    else out.push({ motorBlockId: blockId });
+    return out;
+  }
+
+  /**
    * The account-scoped counterpart to resolveBlock: a block is optional here,
    * but if one IS named it must still be covered by this authorization — the
    * relaxation is about what is REQUIRED, never about what is allowed.
@@ -275,9 +311,22 @@ export function createDelegatedClient({ claims, server, signer, apiBaseUrl, comm
     client[method] = async (...args) => {
       assertToolAllowed(server, tool, claims.scopes);
       const explicit = explicitBlockFrom(args);
-      const blockId = accountScoped ? optionalBlock(explicit) : resolveBlock(explicit);
+      let blockId;
+      if (accountScoped) blockId = optionalBlock(explicit);
+      else {
+        try { blockId = resolveBlock(explicit); } catch (e) {
+          if (blocks.length > 1) {
+            const candidates = await listCandidates();
+            const err = new Error(`motorBlockId is required: this authorization covers multiple Motor Blocks. Pass one of: ${candidates.map((c) => (c.name ? `${c.id} (${c.name})` : c.id)).join(', ')}`);
+            err.code = 'MOTOR_BLOCK_REQUIRED';
+            err.candidates = candidates;
+            throw err;
+          }
+          throw e;
+        }
+      }
       const view = callView(authFor(blockId), blockId);
-      return await original.apply(view, args);
+      return await original.apply(view, blockId && !explicit && !accountScoped ? withBlock(args, blockId) : args);
     };
   }
 

@@ -32,22 +32,26 @@ describe('the table', () => {
 });
 
 describe('native resources/list and resources/read', () => {
-  test('the communications server lists them next to the public docs; no other server does', async () => {
+  test('the communications server and the front door (main) list them next to the public docs; no other server does', async () => {
     const res = await dispatchNative({ jsonrpc: '2.0', id: 1, method: 'resources/list' }, { server: srv, client: {}, version: '1.5.0' });
     const uris = res.result.resources.map((r) => r.uri);
     for (const u of URIS) assert.ok(uris.includes(u), u);
     assert.ok(uris.includes('motorical://docs/agents-hub'));
     assert.ok(res.result.resources.every((r) => !('handler' in r)));
-    for (const s of SERVERS.filter((x) => x.key !== 'communications')) {
+    const mainRes = await dispatchNative({ jsonrpc: '2.0', id: 9, method: 'resources/list' }, { server: SERVERS.find((x) => x.key === 'main'), client: {}, version: '1.5.0' });
+    for (const u of URIS) assert.ok(mainRes.result.resources.map((r) => r.uri).includes(u), `main lists ${u}`);
+    for (const s of SERVERS.filter((x) => !['communications', 'main'].includes(x.key))) {
       const other = await dispatchNative({ jsonrpc: '2.0', id: 2, method: 'resources/list' }, { server: s, client: {}, version: '1.5.0' });
       assert.ok(other.result.resources.every((r) => !r.uri.startsWith('motorical://comms/')), s.key);
     }
   });
-  test('they are private (they follow the connection), and unreadable on other servers', async () => {
+  test('they are private (they follow the connection), readable on the front door, and unreadable on other servers', async () => {
     const res = await read(URIS[0]);
     assert.equal(res.result.cacheScope, 'private');
     const main = SERVERS.find((s) => s.key === 'main');
-    assert.equal((await read(URIS[0], client(), main)).error.code, -32602);
+    assert.equal((await read(URIS[0], client(), main)).result.cacheScope, 'private');
+    const analytics = SERVERS.find((s) => s.key === 'analytics');
+    assert.equal((await read(URIS[0], client(), analytics)).error.code, -32602);
   });
 });
 
@@ -127,8 +131,9 @@ describe('template rulebook', () => {
 
 describe('the legacy path', () => {
   const registered = (serverKey) => Object.keys(createMotoricalMcpServer({ client: {}, serverKey }).server._registeredResources || {});
-  test('only the communications server registers them', () => {
+  test('the communications server and the front door (main) register them', () => {
     for (const u of URIS) assert.ok(registered('communications').includes(u), u);
-    for (const key of ['domains', 'analytics', 'main']) assert.ok(URIS.every((u) => !registered(key).includes(u)), key);
+    for (const u of URIS) assert.ok(registered('main').includes(u), `main: ${u}`);
+    for (const key of ['domains', 'analytics']) assert.ok(URIS.every((u) => !registered(key).includes(u)), key);
   });
 });

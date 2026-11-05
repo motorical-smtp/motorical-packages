@@ -92,17 +92,20 @@ export function attachCommsCampaigns(client, { claims, server, call, resolveWork
     const ws = await resolveWorkspace(a.workspaceId);
     const d = ((await call(`/campaigns/${a.id}/compile`, ws, { method: 'POST' })).data) || {};
     const total = Number(d.totalRecipients ?? 0);
+    const settings = d.settings || null;
+    const warnings = [...((settings && settings.warnings) || []), ...(d.warnings || [])];
     const notes = [
       `Nothing was sent. Preflight compiled a snapshot of the audience and content (version ${d.version}) and stored it.`,
       'The forecast is an estimate that assumes no other traffic.',
-      'Changing the template, the lists or the settings makes this stale: run it again before scheduling.',
+      'Changing the template, the lists or the workspace settings makes this stale: run it again before scheduling.',
+      ...(settings ? [`Settings in force: ${settings.summary} They are workspace settings, set by the person; explain them with comms_get_workspace_settings.`] : []),
     ];
     if (total === 0) notes.unshift('No one would receive this campaign as it is now: the audience breakdown says why. It is not ready.');
     return scrubDeep({
       success: true,
       preflight: {
-        version: d.version, checkedAt: new Date().toISOString(), hasRecipients: total > 0, warnings: d.warnings || [], totalRecipients: total,
-        audience: d.audience, forecast: d.forecast, ga_warnings: d.ga_warnings || [], notes,
+        version: d.version, checkedAt: new Date().toISOString(), hasRecipients: total > 0, warnings, totalRecipients: total,
+        audience: d.audience, forecast: d.forecast, ga_warnings: d.ga_warnings || [], settings, notes,
       },
     });
   });

@@ -4,6 +4,7 @@
 // so it is unit-testable without a transport. It exists because the TypeScript
 // SDK tops out at 2025-11-25 and cannot serve server/discover.
 import { toolsListedForGrant, describeWithNote } from '../grantVisibility.js';
+import { toolErrorPayload } from '../toolError.js';
 import { toJsonSchemaCompat } from '@modelcontextprotocol/sdk/server/zod-json-schema-compat.js';
 import {
   objectFromShape,
@@ -20,6 +21,9 @@ import { RESOURCES, RESOURCE_TEMPLATES, DOC_RESOURCES, docResourceByUri, resourc
 import { COMMS_RESOURCES, commsResourceByUri } from '../commsResources.js';
 import { COMMS_PROMPTS, promptListing, getPrompt } from '../commsPrompts.js';
 import { signRequestState, verifyRequestState } from './requestState.js';
+
+// The front door (main) carries every Communications tool, so it also offers the Communications prompts and reference pages.
+const hasComms = (server) => server.key === 'communications' || server.key === 'main';
 
 const TOOLS_TTL_MS = 3600000;
 const RESOURCES_TTL_MS = 300000; // 5 minutes -- matches resources.js's own CACHE_TTL_MS
@@ -362,7 +366,7 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
       // output-schema validation entirely when isError is true, so this
       // payload shape is never schema-checked -- deliberately, since upstream
       // failures don't follow any tool's success outputSchema.
-      const payload = { error: err.message, status: err.status || null, details: err.data || null };
+      const payload = toolErrorPayload(err);
       return ok(id, {
         resultType: 'complete',
         content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
@@ -434,7 +438,7 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
   if (method === 'resources/list') {
     // Public docs resources on every server; account-state ones on analytics only.
     const visible = server.key === 'analytics' ? [...DOC_RESOURCES, ...RESOURCES]
-      : server.key === 'communications' ? [...DOC_RESOURCES, ...COMMS_RESOURCES] : DOC_RESOURCES;
+      : hasComms(server) ? [...DOC_RESOURCES, ...COMMS_RESOURCES] : DOC_RESOURCES;
     const resources = visible.map(({ handler, docsPath, ...meta }) => meta);
     return ok(id, { resultType: 'complete', resources, ttlMs: RESOURCES_TTL_MS, cacheScope: 'private' });
   }
@@ -463,8 +467,8 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
       }
     }
 
-    // The communications reference pages: that server only, and private because they follow the connection (the rulebook is read with its grant).
-    const commsResource = server.key === 'communications' ? commsResourceByUri(uri) : null;
+    // The communications reference pages: the communications server and the front door (main), and private because they follow the connection (the rulebook is read with its grant).
+    const commsResource = hasComms(server) ? commsResourceByUri(uri) : null;
     if (commsResource) {
       try {
         const result = await commsResource.handler(client)();
@@ -518,12 +522,12 @@ async function handleRequest(body, { server, client, version, grantedScopes, san
     }
   }
 
-  // Prompts: the communications server only (its six playbooks). Every other server keeps answering -32601, which is what it advertises.
-  if (server.key === 'communications' && method === 'prompts/list') {
+  // Prompts: the communications server and the front door (main), which carries every Communications tool (its six playbooks). Every other server keeps answering -32601, which is what it advertises.
+  if (hasComms(server) && method === 'prompts/list') {
     return ok(id, { resultType: 'complete', prompts: COMMS_PROMPTS.map(promptListing), ttlMs: RESOURCES_TTL_MS, cacheScope: 'public' });
   }
 
-  if (server.key === 'communications' && method === 'prompts/get') {
+  if (hasComms(server) && method === 'prompts/get') {
     const got = getPrompt(body.params?.name, body.params?.arguments);
     if (got.error) return fail(id, -32602, got.error);
     return ok(id, { resultType: 'complete', ...got });

@@ -143,6 +143,14 @@ describe('creating a template from a starter', () => {
     assert.equal(out.applied, false); assert.ok(out.render);
     assert.equal(writes(calls).length, 0);
   });
+  test('includeConsentBlock is passed on only when true, in the dry run and the real call', async () => {
+    const off = make(table); await off.client.commsCreateTemplateFromStarter(args);
+    assert.equal('include_consent_block' in off.calls[0].body, false);
+    const on = make(table); await on.client.commsCreateTemplateFromStarter({ ...args, includeConsentBlock: true });
+    assert.equal(on.calls[0].body.include_consent_block, true);
+    const real = make(table); await real.client.commsCreateTemplateFromStarter({ ...args, includeConsentBlock: true, dryRun: false });
+    assert.equal(writes(real.calls)[0].body.include_consent_block, true);
+  });
   test('dryRun:false creates once with a key', async () => {
     const { client, calls } = make(table);
     const out = await client.commsCreateTemplateFromStarter({ ...args, dryRun: false });

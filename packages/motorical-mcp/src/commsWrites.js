@@ -86,10 +86,10 @@ export function attachCommsWrites(client, { claims, server, call, resolveWorkspa
     requireCard(a, { kind: false }); keyOk(a);
     const ws = await resolveWorkspace(a.workspaceId);
     if (isDry(a)) {
-      const out = await call(`/templates/starters/${a.starter}/render`, ws, { method: 'POST', body: defined({ brand: a.brand, slots: a.slots }) });
+      const out = await call(`/templates/starters/${a.starter}/render`, ws, { method: 'POST', body: defined({ brand: a.brand, slots: a.slots, include_consent_block: a.includeConsentBlock === true ? true : undefined }) });
       return { success: true, dryRun: true, applied: false, would_create: { name: a.name, description: a.description, kind: a.kind ?? null, starter: a.starter }, render: out.data };
     }
-    const body = defined({ starter: a.starter, name: a.name, description: a.description, kind: a.kind, subject: a.subject, slots: a.slots, brand: a.brand });
+    const body = defined({ starter: a.starter, name: a.name, description: a.description, kind: a.kind, subject: a.subject, slots: a.slots, brand: a.brand, include_consent_block: a.includeConsentBlock === true ? true : undefined });
     const out = await call('/templates/from-starter', ws, { method: 'POST', body, headers: { 'Idempotency-Key': keyFor('comms_create_template_from_starter', ws, a) } });
     return { success: true, dryRun: false, applied: true, data: out.data };
   };

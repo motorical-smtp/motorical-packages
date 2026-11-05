@@ -19,9 +19,6 @@ const shapeHook = (h) => ({
 });
 const sameSet = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
 
-const CLICK_CONSENT_EXPLAINED = 'When on, a recipient clicking a link in one of your campaigns is recorded as giving their consent (inferred consent); when off, clicks are never treated as consent. '
-  + 'It changes how consent is recorded for the people you email, so make sure the person understands before switching it on.';
-
 export function attachCommsManage(client, { claims, server, call, resolveWorkspace, fail, UUID }) {
   const need = (code, message, status = 400) => { throw fail(message, status, { code }); };
   const checkId = (value, label = 'id') => { if (!UUID.test(String(value ?? ''))) need('INVALID_ID', `${label} must be a valid id.`); };
@@ -31,16 +28,23 @@ export function attachCommsManage(client, { claims, server, call, resolveWorkspa
     try { return scrubDeep(await fn(a)); } catch (e) { throw scrubError(e); }
   };
 
-  async function readSettings(ws) {
-    const [c, o, u] = await Promise.all([
-      call(`/workspaces/${ws}/settings/consent`, null), call(`/workspaces/${ws}/settings/open-tracking`, null), call(`/workspaces/${ws}/settings/unsubscribe`, null),
-    ]);
-    return {
-      click_consent_enabled: c.data.click_consent_enabled,
-      open_tracking_enabled: o.data.open_tracking_enabled,
-      unsubscribe_landing_url: u.data.unsubscribe_landing_url ?? null,
+  // One call returns the three values AND the plain-language wording the API keeps in one place, so the dashboard, the docs and the assistant agree.
+  const KEY_OF = { click_consent_enabled: 'click_consent', open_tracking_enabled: 'open_tracking', unsubscribe_landing_url: 'unsubscribe_landing' };
+  async function readEffective(ws) {
+    const d = ((await call(`/workspaces/${ws}/settings`, null)).data) || {};
+    const values = {
+      click_consent_enabled: d.click_consent ? d.click_consent.enabled === true : false,
+      open_tracking_enabled: d.open_tracking ? d.open_tracking.enabled !== false : true,
+      unsubscribe_landing_url: d.unsubscribe_landing ? (d.unsubscribe_landing.url ?? null) : null,
     };
+    return { d, values };
   }
+  async function readSettings(ws) { return (await readEffective(ws)).values; }
+  const explainOf = (d, key) => {
+    const x = d[KEY_OF[key]] || {};
+    const e = x.explanation || {};
+    return { label: e.label, what_it_does: e.what_it_does, recipient_experience: e.recipient_experience, you_decide: e.you_decide, ...(e.separate_from ? { separate_from: e.separate_from } : {}), source: x.source || 'workspace', ...(x.problem ? { problem: x.problem } : {}) };
+  };
   const listWebhooks = async (ws) => (await call(`/workspaces/${ws}/webhooks`, ws)).data || [];
   async function findWebhook(ws, webhookId) {
     const found = (await listWebhooks(ws)).find((h) => String(h.id) === String(webhookId));
@@ -51,7 +55,13 @@ export function attachCommsManage(client, { claims, server, call, resolveWorkspa
   // ---- reads ------------------------------------------------------------------
   client.commsGetWorkspaceSettings = guarded('comms_get_workspace_settings', async (a) => {
     const ws = await resolveWorkspace(a.workspaceId);
-    return { success: true, data: await readSettings(ws) };
+    const { d, values } = await readEffective(ws);
+    const explanations = {}; for (const k of Object.keys(KEY_OF)) explanations[k] = explainOf(d, k);
+    return {
+      success: true, data: values, explanations,
+      note: 'These are workspace settings: they apply to every campaign in this workspace, and a campaign cannot override them. The person decides each one; never switch one on or off on your own. '
+        + 'When you describe a setting, use its explanation: what it does, what recipients experience, and what the person decides.',
+    };
   });
   client.commsListWebhooks = guarded('comms_list_webhooks', async (a) => {
     const ws = await resolveWorkspace(a.workspaceId);
@@ -119,7 +129,7 @@ export function attachCommsManage(client, { claims, server, call, resolveWorkspa
     }
     if (Object.keys(asked).length === 0) need('NOTHING_TO_UPDATE', 'Pass at least one of clickConsentEnabled, openTracking, unsubscribeLandingUrl.');
     const ws = await resolveWorkspace(a.workspaceId);
-    const current = await readSettings(ws);
+    const { d: effective, values: current } = await readEffective(ws);
     const changes = {};
     for (const [k, to] of Object.entries(asked)) if (current[k] !== to) changes[k] = { from: current[k], to };
     if (Object.keys(changes).length === 0) {
@@ -128,7 +138,8 @@ export function attachCommsManage(client, { claims, server, call, resolveWorkspa
     if (isDry(a)) {
       return {
         success: true, dryRun: true, applied: false, changes, current,
-        ...(changes.click_consent_enabled ? { explain: { click_consent_enabled: CLICK_CONSENT_EXPLAINED } } : {}),
+        explain: Object.fromEntries(Object.keys(changes).map((k) => [k, explainOf(effective, k)])),
+        appliesTo: 'Every campaign in this workspace, from now on. A campaign cannot override a workspace setting. Campaigns already preflighted must be preflighted again before they can be scheduled.',
         nextStep: 'Show the person each change (from, to) in plain words and get a clear yes, then call again with the same arguments plus dryRun:false. Nothing has been changed.',
       };
     }

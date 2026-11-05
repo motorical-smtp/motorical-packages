@@ -20,7 +20,7 @@ import { COMMS_REPORT_TOOLS, reportRegistryEntry as commsReportEntry } from './c
 import { COMMS_MANAGE_TOOLS, manageRegistryEntry as commsManageEntry } from './commsManageTools.js';
 import * as taskStore from './native/taskStore.js';
 import { resolveTask } from './native/taskResolver.js';
-import { TOOL_SCOPES, SCOPES } from '@motorical/scope-catalog';
+import { TOOL_SCOPES } from '@motorical/scope-catalog';
 
 const blockSelector = z.string().uuid().optional()
   .describe('Required when the authorization covers more than one Motor Block');
@@ -125,7 +125,7 @@ export const TOOLS = [
   {
     name: 'motorical_get_send_status',
     description:
-      'Check Motorical transactional email HTTP Send API status (GET /v1/status). No auth required.',
+      'Check Motorical transactional email HTTP Send API status. No auth required.',
     inputSchema: {},
     // GET /v1/status returns a hardcoded status block (backend/src/routes/v1.js) --
     // docs-site/static/openapi.json documents only a bare 200 description for this
@@ -165,7 +165,9 @@ export const TOOLS = [
   {
     name: 'motorical_list_motor_blocks',
     description:
-      'List Motor Blocks (isolated sending streams) visible to a Public API bearer token (auto-mints with ak_live_ if needed).',
+      'List the Motor Blocks (isolated sending streams) this connection covers: id and name only, of every type, active or not (so marketing and companion blocks appear too). ' +
+      'Use it to find a valid motorBlockId. For type, domain, status and management use motorical_motor_block_list (production blocks only); ' +
+      'for the account-wide picture including inactive blocks use motorical_get_onboarding_state. Auto-mints a Public API token with ak_live_ on the local server if needed.',
     inputSchema: {
       motorBlockId: z.string().uuid().optional().describe('Optional. Listing is account-wide; a block is only used when minting a legacy public token on the non-OAuth path.')
     },
@@ -177,7 +179,7 @@ export const TOOLS = [
     name: 'motorical_motor_block_list',
     description:
       'List ordinary production Motor Blocks (isolated sending streams) this account can manage. ' +
-      'Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks.',
+      'Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks, so its count can be lower than motorical_list_motor_blocks (which lists every block this connection covers, id and name only). Prefer this one when you need type, domain or status.',
     inputSchema: {},
     outputSchema: { success: z.boolean(), data: z.array(motorBlockOutput) },
     annotations: { title: 'List production Motor Blocks', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -312,28 +314,12 @@ export const TOOLS = [
   {
     name: 'motorical_send_email',
     description:
-      'Transactional email: send or validate via POST /v1/send. Over the hosted OAuth server your grant authorizes the send, ' +
-      'so no key is needed and you never see one; the local stdio server instead needs MOTORICAL_MK_API_KEY (mk_live_...). ' +
-      'Defaults to dryRun:true. Real sends require dryRun:false AND confirmRealSend:true. ' +
-      'For developer-sandbox accounts, a non-allowlisted recipient is refused with 403 ' +
-      'sandbox_outbound_locked (a locked sandbox, the default) or sandbox_recipient_denied (after an explicit unlock); ' +
-      'it is never redirected, so add the recipient to the allowlist first. ' +
-      'Real sends from a sandbox block go only to the effective allowlist (see motorical_sandbox_status); unlock a recipient with ' +
-      'motorical_free_recipient_add (needs manage:recipients; the recipient must click the emailed link). ' +
-      'A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and ' +
-      'nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. ' +
-      'A dryRun does not send; for a sandbox block its answer reports sandboxPreview.wouldRefuse (recipients a real send would refuse). ' +
-      'Optional cc, bcc and replyTo: cc recipients are named in the Cc header, bcc recipients receive the message but are named in no header, replyTo sets Reply-To. ' +
-      'to, cc and bcc together take at most 50 recipients and every one is checked like a to recipient (sandbox allowlist, Free-account rules, suppression; a suppressed cc/bcc is skipped and listed in data.skipped). ' +
-      'These fields are rolling out per Motor Block: a block that does not have them yet answers 422 feature_not_enabled and sends nothing, so retry without them or tell the person. ' +
-      'Optional headers: an object of extra email headers, for threading a reply (In-Reply-To and References, copied from the message you answer), List-Unsubscribe (with List-Unsubscribe-Post for one-click) or your own X- headers; at most 20, no line breaks in values. ' +
-      'Headers that would let a message pretend to be someone else or break the platform (From, Sender, Return-Path, To, Cc, Bcc, Subject, Date, Message-ID, MIME and Content-* headers, DKIM and authentication headers, X-Motorical-*) are refused with 400 DISALLOWED_HEADERS and nothing is sent. Set the reply address with replyTo or with a Reply-To header, not both. ' +
-      'Optional attachments, for SMALL files only because the bytes travel through the conversation: a list of { filename, content (base64), contentType?, contentId?, disposition? }, at most 5 files and about 500 KB of files in total (700000 base64 characters). ' +
-      'For anything larger, send over SMTP instead (the attachments guide in the docs). An inline image takes a contentId and disposition inline, and html references it as cid:<contentId>. ' +
-      'Attachments roll out per Motor Block like cc and bcc: a block without them answers 422 feature_not_enabled and sends nothing. ' +
-      'The plan decides how many files, how large and which types, exactly as over SMTP, and a refusal names the plan and the limit (413 attachment_too_large or attachments_total_too_large, 422 too_many_attachments, attachment_type_not_allowed, content_policy_rejected). ' +
-      'A dryRun with attachments runs the same plan check without sending, but it does not run the virus and content scan, so a real send can still be refused for the file itself. ' +
-      'from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain that motorical_sandbox_provision created (see motorical_get_onboarding_state sendFrom); any local part works.',
+      'Send a transactional email, or validate one first. Defaults to dryRun:true: a dry run returns the resolved from, subject, recipient count and body size, plus `limits` (burst, hourly and daily: used, limit, remaining, reset) and `warnings` (stable codes such as NO_TEXT_PART, SUBJECT_LONG, OVER_LIMIT, NEAR_LIMIT, THROTTLED), so "validated" is not read as "would work". Real sends require dryRun:false AND confirmRealSend:true. ' +
+      'Over the hosted OAuth server your grant authorizes the send and you never see a key; the local stdio server instead needs MOTORICAL_MK_API_KEY (mk_live_...). ' +
+      'A real send returns two different ids: messageId (use it with motorical_get_message and motorical_get_message_events) and nextAction.args.taskId (use it ONLY with motorical_wait_for_outcome). Neither works in the other tool. ' +
+      'from must be an address at the domain your Motor Block is assigned to: a verified, send-ready domain you own, or the Motorical-owned sandbox domain from motorical_sandbox_provision (see motorical_get_onboarding_state sendFrom); any local part works. ' +
+      'Sandbox accounts only: real sends go only to the effective allowlist (see motorical_sandbox_status); a non-allowlisted recipient is refused (403 sandbox_outbound_locked or sandbox_recipient_denied), never redirected, so unlock it with motorical_free_recipient_add first. Those two tools disappear once the account has a verified domain and an active plan, so ignore this sentence if you cannot see them. ' +
+      'cc, bcc, replyTo, headers and attachments are optional; each field says its own limits and errors.',
     inputSchema: {
       from: z.string().email().optional().describe('Defaults to MOTORICAL_DEFAULT_FROM'),
       fromName: z
@@ -342,7 +328,7 @@ export const TOOLS = [
         .optional()
         .describe('Optional From display name (do not put From in headers — use this field)'),
       to: z.union([z.string().email(), z.array(z.string().email())]),
-      cc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Copy recipients (Cc header). Rolling out per Motor Block: 422 feature_not_enabled where not available'),
+      cc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Copy recipients (Cc header), named in the header. to, cc and bcc together take at most 50 recipients and every one is checked like a to recipient (sandbox allowlist, Free-account rules, suppression; a suppressed cc/bcc is skipped and listed in data.skipped). Rolling out per Motor Block: a block without it answers 422 feature_not_enabled and sends nothing, so retry without it or tell the person'),
       bcc: z.union([z.string().email(), z.array(z.string().email())]).optional().describe('Blind-copy recipients: delivered, named in no header. Rolling out per Motor Block'),
       replyTo: z.string().email().optional().describe('Reply-To address. Do not also set a Reply-To header. Rolling out per Motor Block'),
       headers: z.record(
@@ -353,7 +339,7 @@ export const TOOLS = [
       attachments: z.array(attachmentInput).min(1).max(INLINE_ATTACHMENT_MAX_FILES)
         .refine((list) => list.reduce((n, a) => n + a.content.length, 0) <= INLINE_ATTACHMENT_MAX_BASE64, { message: 'attachments are limited to about 500 KB in total over this tool; send larger files over SMTP' })
         .optional()
-        .describe('Small files to attach (base64). Rolling out per Motor Block: 422 feature_not_enabled where not available'),
+        .describe('Small files only, because the bytes travel through the conversation: { filename, content (base64), contentType?, contentId?, disposition? }, at most 5 files and about 500 KB in total (700000 base64 characters). Send anything larger over SMTP (see the attachments guide in the docs). An inline image takes a contentId and disposition inline; html references it as cid:<contentId>. The plan decides how many files, how large and which types, as over SMTP; a refusal names the plan and the limit (413 attachment_too_large or attachments_total_too_large, 422 too_many_attachments, attachment_type_not_allowed, content_policy_rejected). A dryRun runs the plan check but not the virus and content scan, so a real send can still be refused for the file itself. Rolling out per Motor Block: 422 feature_not_enabled where not available'),
       subject: z.string().min(1),
       text: z.string().optional(),
       html: z.string().optional(),
@@ -527,7 +513,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_message',
-    description: 'Get a message by send UUID (GET /api/public/v1/messages/{id}). Auto-mints bearer if needed.',
+    description: 'Get a message by send UUID. Auto-mints bearer if needed.',
     inputSchema: {
       messageId: z.string().uuid(),
       includePII: z.boolean().optional(),
@@ -566,7 +552,7 @@ export const TOOLS = [
   {
     name: 'motorical_get_message_events',
     description:
-      'Get delivery lifecycle events for a message (GET /api/public/v1/messages/{id}/events).',
+      'Get delivery lifecycle events for a message.',
     inputSchema: {
       messageId: z.string().uuid(),
       includePII: z.boolean().optional(),
@@ -758,7 +744,7 @@ export const TOOLS = [
   {
     name: 'motorical_domain_add',
     description:
-      'Add a customer domain (POST /api/domains). Returns verification DNS instructions. ' +
+      'Add a customer domain. Returns verification DNS instructions. ' +
       'For cname_managed DKIM publish the CNAME in verification.records.dkim / dnsRecords (not a TXT p= key). ' +
       'On 409 (domain already registered), call motorical_domain_list first to check whether it is already on ' +
       'this account before asking the user to resolve the conflict. A Free account may have one domain; adding ' +
@@ -780,7 +766,7 @@ export const TOOLS = [
   {
     name: 'motorical_domain_list',
     description:
-      'List domains already on this account (GET /api/domains) — id, domain, verified, DNS auth flags. ' +
+      'List domains already on this account — id, domain, verified, DNS auth flags. ' +
       'Call this before motorical_domain_add on a 409 conflict to self-diagnose whether the domain is already ' +
       'yours (proceed with the existing id) or genuinely owned by someone else (stop, do not guess). Over hosted OAuth it needs the read:domains scope; the local server uses MOTORICAL_JWT.',
     inputSchema: {
@@ -797,7 +783,7 @@ export const TOOLS = [
   {
     name: 'motorical_domain_get',
     description:
-      'One domain on this account by id (GET /api/public/v1/domains/{id}): verified, DNS auth flags, DKIM mode, created. ' +
+      'One domain on this account by id: verified, DNS auth flags, DKIM mode, created. ' +
       'Read-only; no keys or tokens. Over hosted OAuth it needs the read:domains scope.',
     inputSchema: {
       domainId: z.string().uuid(),
@@ -811,7 +797,7 @@ export const TOOLS = [
   {
     name: 'motorical_domain_dns_records',
     description:
-      'The DNS records to publish for one domain, with what each is for (GET /api/public/v1/domains/{id}/dns-records). ' +
+      'The DNS records to publish for one domain, with what each is for. ' +
       'Pass lookup:true to also check what DNS currently answers (slower: live lookups). Read-only. ' +
       'Over hosted OAuth it needs the read:domains scope.',
     inputSchema: {
@@ -827,10 +813,10 @@ export const TOOLS = [
   {
     name: 'motorical_domain_health',
     description:
-      'Email-authentication health of ONE domain by id (GET /api/public/v1/domains/{id}/health): SPF, DKIM, DMARC, status, ' +
+      'Email-authentication health of ONE domain by id: SPF, DKIM, DMARC, status, ' +
       'issues, and whether the answer is cached (source). Works for a domain that has no Motor Block yet. ' +
       'Same shape as motorical_get_domain_health, which answers for the domain attached to one Motor Block. ' +
-      'Pass refresh:true for a live DNS check (slower). Read-only. Over hosted OAuth it needs the read:domains scope.',
+      'Pass refresh:true for a live DNS check (slower). A result with source "cache_stale" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists. Read-only. Over hosted OAuth it needs the read:domains scope.',
     inputSchema: {
       domainId: z.string().uuid(),
       refresh: z.boolean().optional().describe('Run a live DNS check instead of serving the cache (default false)'),
@@ -844,7 +830,7 @@ export const TOOLS = [
   {
     name: 'motorical_domain_verify',
     description:
-      'Verify domain ownership and refresh DKIM/SPF/DMARC send-readiness flags (POST /api/domains/{id}/verify). ' +
+      'Verify domain ownership and refresh DKIM/SPF/DMARC send-readiness flags. ' +
       'Requires confirm:true — this call is destructive/consequential. Returns sendReady. Over hosted OAuth it needs the manage:domains scope; the local server uses MOTORICAL_JWT.',
     inputSchema: {
       domainId: z.string().uuid(),
@@ -867,7 +853,7 @@ export const TOOLS = [
   {
     name: 'motorical_domain_check_dns',
     description:
-      'Live-check DKIM/SPF/DMARC and persist dkim_configured/spf_configured (POST /api/domains/{id}/check-dns). ' +
+      'Live-check DKIM/SPF/DMARC and persist dkim_configured/spf_configured. ' +
       'Required before /v1/send when ownership is verified but send returns DOMAIN_DNS_INCOMPLETE. Over hosted OAuth it needs the manage:domains scope; the local server uses MOTORICAL_JWT.',
     inputSchema: {
       domainId: z.string().uuid(),
@@ -885,7 +871,7 @@ export const TOOLS = [
   {
     name: 'motorical_web_handoff',
     description:
-      'Mint a one-time browser handoff URL (POST /api/auth/web-handoff). ' +
+      'Mint a one-time browser handoff URL. ' +
       'Open the URL so the human can set a dashboard password / use the UI. Requires MOTORICAL_JWT. ' +
       'Give the person the link as a short markdown link such as [Open your Motorical dashboard](url), never as a bare long URL. ' +
       'The link is short-lived (the response has expiresInSeconds): open it right away; if it says expired, ask for a new link or sign in with your password.',
@@ -900,7 +886,7 @@ export const TOOLS = [
     name: 'motorical_signup_handoff',
     description:
       'FOR APPS THAT IMPLEMENT AN OAUTH CLIENT (hosts, embedded agent apps) -- NOT for chat agents. It needs your own client\'s OAuth values (clientId, a registered redirectUri, PKCE codeChallenge, resource); if you are an agent in Claude Code, Claude Desktop or another chat client you cannot supply them, so do not invent them: connect the main motorical server and authenticate it instead (the browser opens the sign-in page, the person creates the account and sets up MFA there, then authenticates again to reach consent). ' +
-      'Bridge a human with no Motorical account onto this OAuth client (POST /api/auth/signup-handoff). ' +
+      'Bridge a human with no Motorical account onto this OAuth client. ' +
       'Call with no continuationToken first: returns a one-time URL for the human to open in a browser, ' +
       'which runs signup if needed and then the normal OAuth consent screen for this client -- one ' +
       'browser visit gets them to a usable session. No credential is ever returned by this tool. Call ' +
@@ -943,7 +929,10 @@ export const TOOLS = [
     name: 'motorical_get_overview',
     description:
       'Sending overview for one Motor Block over a date range — volume, delivery and bounce '
-      + 'rates, and current usage against plan limits (GET /api/public/v1/motor-blocks/{id}/overview). '
+      + 'rates, and current usage against plan limits. '
+      + 'Rates are percentages of finalized recipients (accepted = delivered + processed + complained, plus bounced and failed); '
+      + '"processed" means the receiving server accepted the message, and queued or deferred recipients are counted as pending, not in the rates. '
+      + 'totals.accepted, finalized and pending and rates.basis spell this out; generatedAt says when the figures were computed. '
       + 'Its reputation block is the same delivery reputation score as motorical_get_reputation.',
     inputSchema: {
       motorBlockId: blockSelector,
@@ -956,7 +945,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_daily_summary',
-    description: 'Per-day send counts and outcomes for one Motor Block (GET /api/public/v1/motor-blocks/{id}/daily-summary).',
+    description: 'Per-day send counts and outcomes for one Motor Block. Rates use the same finalized-recipient definition as motorical_get_overview (rateBasis says so); days with no sends are not returned.',
     inputSchema: {
       motorBlockId: blockSelector,
       days: z.number().int().positive().optional().describe('How many days back, counting today')
@@ -967,7 +956,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_metrics',
-    description: 'Time-series send metrics for one Motor Block, bucketed by hour or day (GET /api/public/v1/motor-blocks/{id}/metrics).',
+    description: 'Time-series send metrics for one Motor Block, bucketed by hour or day.',
     inputSchema: {
       motorBlockId: blockSelector,
       from: isoDate('inclusive'),
@@ -980,7 +969,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_deliverability',
-    description: 'Deliverability broken down by recipient domain (GET /api/public/v1/motor-blocks/{id}/deliverability).',
+    description: 'Deliverability broken down by recipient domain.',
     inputSchema: {
       motorBlockId: blockSelector,
       from: isoDate('inclusive'),
@@ -995,7 +984,7 @@ export const TOOLS = [
     name: 'motorical_get_reputation',
     description:
       'Delivery reputation score (0 to 100) for one Motor Block, computed on request from its delivery outcomes over windowDays (the token retention window): '
-      + '100 minus penalties for bounced, complained and failed recipients (GET /api/public/v1/motor-blocks/{id}/reputation). '
+      + '100 minus penalties for bounced, complained and failed recipients. '
       + 'The response says what it is: kind, basis, formula and notTheSameAs. It is not the dashboard Health score (different formula and timeframe), '
       + 'not the internal score behind automatic throttling, and not domain health (SPF, DKIM, DMARC), so those numbers differ by design.',
     inputSchema: { motorBlockId: blockSelector },
@@ -1005,7 +994,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_anomalies',
-    description: 'Detected sending anomalies for one Motor Block — volume spikes, bounce surges, unusual patterns (GET /api/public/v1/motor-blocks/{id}/anomalies).',
+    description: 'Detected sending anomalies for one Motor Block — volume spikes, bounce surges, unusual patterns.',
     inputSchema: { motorBlockId: blockSelector },
     annotations: { title: 'Get sending anomalies', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.getAnomalies(args),
@@ -1013,7 +1002,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_providers',
-    description: 'Send outcomes grouped by receiving mailbox provider (GET /api/public/v1/motor-blocks/{id}/providers).',
+    description: 'Send outcomes grouped by receiving mailbox provider. deliveryRate uses the same finalized-recipient definition as motorical_get_overview (accepted includes processed; rateBasis says so).',
     inputSchema: {
       motorBlockId: blockSelector,
       from: isoDate('inclusive'),
@@ -1027,10 +1016,10 @@ export const TOOLS = [
   {
     name: 'motorical_get_error_codes',
     description:
-      'SMTP error codes seen for one Motor Block, with counts and a specific diagnosis for each (GET /api/public/v1/motor-blocks/{id}/error-codes). '
+      'SMTP error codes seen for one Motor Block, with counts and a specific diagnosis for each. '
       + 'Each row has the code, its count, a label and hint saying what it means and what to do, cause (the platform bounce bucket, for example recipient_invalid or policy_block_auth), '
       + 'retryable (temporary failures are retried by the platform), suggestedAction (none, retry, remove or investigate) and lookup. '
-      + 'The stored code is basic (550), enhanced (5.7.1) or a bucket (200 delivered to a Motorical-hosted mailbox; 400 and 500 when the exact code was not recorded). '
+      + 'The stored code is basic (550), enhanced (5.7.1) or a bucket (200 accepted with the exact reply not recorded, which includes delivery to a Motorical-hosted mailbox; 400 and 500 when the exact code was not recorded). '
       + 'Counts are the same rows motorical_get_logs returns: to see the messages behind a row, call motorical_get_logs with the row lookup (smtpCode) and read smtpResponse on one message.',
     inputSchema: {
       motorBlockId: blockSelector,
@@ -1044,7 +1033,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_rate_limits',
-    description: "Current hourly and daily send usage against this Motor Block's limits (GET /api/public/v1/motor-blocks/{id}/rate-limits).",
+    description: "Current hourly and daily send usage against this Motor Block's limits.",
     inputSchema: { motorBlockId: blockSelector },
     annotations: { title: 'Get Motor Block rate limits', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.getRateLimits(args),
@@ -1085,7 +1074,7 @@ export const TOOLS = [
   {
     name: 'motorical_whoami',
     description:
-      'Who this connection is acting for (GET /api/public/v1/account/whoami): the account (id, owner email, name), '
+      'Who this connection is acting for: the account (id, owner email, name), '
       + 'its plan (name, status, hasSubscription), account.billing (price amount in minor units + currency + interval, trial end, '
       + 'current period end / next renewal date, cancelAtPeriodEnd and endsAt, this month\'s sends against the plan cap, and '
       + 'paymentMethod.status ok or failing; never invoices, receipts or card details; a field it cannot resolve is null with its '
@@ -1107,11 +1096,11 @@ export const TOOLS = [
   {
     name: 'comms_get_readiness',
     description:
-      'What still stands between this workspace and a sent marketing campaign (GET /comm-api/api/readiness). Returns ready, next '
+      'What still stands between this workspace and a sent marketing campaign. Returns ready, next '
       + '(the FIRST missing step with a message and a fix hint, or null) and steps in a fixed order: plan, workspace, domain, '
       + 'marketing_block, list, template, plus the sending limits (hourly, daily) of the workspace\'s campaign Motor Blocks. '
       + 'Read-only. Say the first missing thing, not the whole list. If the missing step is the plan, read the current plans from the '
-      + 'motorical://docs/plans resource (never quote a plan or price from memory); only the person can change plan. Pass workspaceId, or omit it when this authorization covers '
+      + 'motorical://docs/plans resource, or GET https://motorical.com/api/billing/plans if your client cannot read resources (never quote a plan or price from memory); only the person can change plan. Pass workspaceId, or omit it when this authorization covers '
       + 'exactly one workspace; with several, the error lists them.',
     inputSchema: {
       workspaceId: z.string().uuid().optional()
@@ -1124,7 +1113,7 @@ export const TOOLS = [
   {
     name: 'comms_get_map',
     description:
-      'The marketing workspace at a glance (GET /comm-api/api/map): its lists (short cards with kind, counts of members and eligible '
+      'The marketing workspace at a glance: its lists (short cards with kind, counts of members and eligible '
       + 'contacts, whether the list is a one-time snapshot, whether its description is good), the 50 most recent campaigns (status, '
       + 'list_ids, exclude_list_ids, pacing), its templates (with how many campaigns use each) and the edges between them: sends_to, '
       + 'excludes, uses, derived_from. Use it to orient yourself in ONE call before choosing a list or template by name. '
@@ -1155,7 +1144,7 @@ export const TOOLS = [
   {
     name: 'motorical_get_logs',
     description:
-      'Search send logs for one Motor Block (GET /api/public/v1/motor-blocks/{id}/logs). '
+      'Search send logs for one Motor Block. '
       + 'Paginate with cursor. Recipient addresses are masked unless the token carries logs.pii, '
       + 'which OAuth tokens never do. '
       + 'To find failures by cause use smtpCode: the stored code is whatever the receiving server reported, in either form '
@@ -1179,7 +1168,7 @@ export const TOOLS = [
   {
     name: 'motorical_get_message_by_smtp_id',
     description:
-      'Look up one message by its SMTP Message-ID header (GET /api/public/v1/messages?smtpMessageId=). '
+      'Look up one message by its SMTP Message-ID header. '
       + 'This is a lookup, not a listing: an exact id is required and at most one message is returned. '
       + 'Use motorical_get_message when you have the internal send UUID instead.',
     inputSchema: {
@@ -1193,7 +1182,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_config',
-    description: "Configuration of one Motor Block — its sending domain, limits, delivery settings, and activeAuthMethod (\"Password\"/\"API Key\"/\"OAuth 2.0\"/\"mTLS\", read-only -- changing it is dashboard-only) (GET /api/public/v1/motor-blocks/{id}/config).",
+    description: "Configuration of one Motor Block — its sending domain, limits (as configured) and effectiveLimits (what is enforced now: dailyVolume, hourlyRate and burstLimit, the lower of configured and any reputation throttle, with defaults filled in; burstLimit is a short-window cap that applies to every block even when not configured), delivery settings, and activeAuthMethod (\"Password\"/\"API Key\"/\"OAuth 2.0\"/\"mTLS\", read-only -- changing it is dashboard-only).",
     inputSchema: { motorBlockId: blockSelector },
     annotations: { title: 'Get Motor Block config', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.getConfig(args),
@@ -1201,8 +1190,9 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_domain_health',
-    description: "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX (GET /api/public/v1/motor-blocks/{id}/domain-health). "
-      + 'This is a set-up status, not a score, and it is separate from the delivery reputation score (motorical_get_reputation), which measures delivery outcomes.',
+    description: "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX. "
+      + 'This is a set-up status, not a score, and it is separate from the delivery reputation score (motorical_get_reputation), which measures delivery outcomes. '
+      + 'A result with source "cache_stale" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists.',
     inputSchema: {
       motorBlockId: blockSelector,
       refresh: z.boolean().optional().describe('Re-run the live DNS checks now instead of returning the last cached result')
@@ -1213,7 +1203,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_webhook_list',
-    description: 'List webhook endpoints registered on one Motor Block (GET /api/public/v1/motor-blocks/{id}/webhooks).',
+    description: 'List webhook endpoints registered on one Motor Block.',
     inputSchema: { motorBlockId: blockSelector },
     annotations: { title: 'List webhook endpoints', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.webhookList(args),
@@ -1222,7 +1212,7 @@ export const TOOLS = [
   {
     name: 'motorical_webhook_create',
     description:
-      'Register a new webhook endpoint on one Motor Block (POST /api/public/v1/motor-blocks/{id}/webhooks). '
+      'Register a new webhook endpoint on one Motor Block. '
       + 'The response includes the full signing secret exactly once — store it immediately, it is only masked on every later read.',
     inputSchema: {
       motorBlockId: blockSelector,
@@ -1236,7 +1226,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_webhook_update',
-    description: 'Update a webhook endpoint\'s url, events, or enabled state (PUT /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}). Only the fields you pass are changed.',
+    description: 'Update a webhook endpoint\'s url, events, or enabled state. Only the fields you pass are changed.',
     inputSchema: {
       motorBlockId: blockSelector,
       webhookId: webhookIdArg,
@@ -1251,7 +1241,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_webhook_delete',
-    description: 'Delete a webhook endpoint (DELETE /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}).',
+    description: 'Delete a webhook endpoint.',
     inputSchema: {
       motorBlockId: blockSelector,
       webhookId: webhookIdArg,
@@ -1267,7 +1257,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_webhook_test',
-    description: 'Send a synthetic test delivery to a webhook endpoint (POST /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/test).',
+    description: 'Send a synthetic test delivery to a webhook endpoint.',
     inputSchema: { motorBlockId: blockSelector, webhookId: webhookIdArg },
     annotations: { title: 'Send test webhook delivery', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     handler: (client) => async (args) => client.webhookTest(args),
@@ -1275,7 +1265,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_webhook_get_deliveries',
-    description: 'Recent delivery attempts for one webhook endpoint (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/deliveries).',
+    description: 'Recent delivery attempts for one webhook endpoint.',
     inputSchema: {
       motorBlockId: blockSelector,
       webhookId: webhookIdArg,
@@ -1287,7 +1277,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_webhook_get_stats',
-    description: 'Delivery success/failure counts and average latency for one webhook endpoint over a time window (GET /api/public/v1/motor-blocks/{id}/webhooks/{webhookId}/stats).',
+    description: 'Delivery success/failure counts and average latency for one webhook endpoint over a time window.',
     inputSchema: {
       motorBlockId: blockSelector,
       webhookId: webhookIdArg,
@@ -1314,10 +1304,11 @@ const AUTH_METHOD_LIMITED = new Set([
 for (const tool of TOOLS) {
   const scopes = TOOL_SCOPES[tool.name];
   if (!scopes || scopes.length === 0) continue;
-  const scopeText = scopes
-    .map((s) => `${s} (${SCOPES[s].agentDescription})`)
-    .join('; ');
-  let suffix = ` Requires OAuth scope: ${scopeText}.`;
+  // Scope ids only. The plain-language meaning of each scope is served by
+  // motorical_whoami and the consent dialog; repeating the full prose on
+  // every tool was ~30 KB of listing weight that tool search cannot use.
+  const scopeText = scopes.join(', ');
+  let suffix = ` Requires OAuth scope: ${scopeText} (see motorical_whoami for what it allows).`;
   if (AUTH_METHOD_LIMITED.has(tool.name)) {
     suffix += ' Needs a dashboard session, not OAuth — granting this scope does not make this tool callable over a hosted OAuth/Delegation connection.';
   }

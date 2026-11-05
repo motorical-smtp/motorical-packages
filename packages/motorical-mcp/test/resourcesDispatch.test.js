@@ -22,7 +22,7 @@ describe('native resources/list, resources/read, resources/templates/list', () =
     assert.ok(!uris.includes('motorical://account/state'));
   });
 
-  test('resources/list serves docs resources on main, sandbox and the unauthenticated signup server', async () => {
+  test('resources/list serves docs resources on main, sandbox and the unauthenticated signup server (main adds the Communications reference pages)', async () => {
     for (const key of ['main', 'sandbox', 'signup']) {
       const server = SERVERS.find((s) => s.key === key);
       assert.ok(server, `${key} server exists`);
@@ -31,7 +31,7 @@ describe('native resources/list, resources/read, resources/templates/list', () =
       for (const u of ['motorical://docs/agents-hub', 'motorical://docs/agents-playbook', 'motorical://docs/llms.txt', 'motorical://docs/llms-full.txt', 'motorical://docs/openapi.json']) {
         assert.ok(uris.includes(u), `${key}: missing ${u}`);
       }
-      assert.ok(uris.every((u) => u.startsWith('motorical://docs/')), `${key}: non-docs resource leaked`);
+      assert.ok(uris.every((u) => u.startsWith('motorical://docs/') || (key === 'main' && u.startsWith('motorical://comms/'))), `${key}: non-docs resource leaked`);
       assert.ok(res.result.resources.every((r) => !('handler' in r)));
     }
   });

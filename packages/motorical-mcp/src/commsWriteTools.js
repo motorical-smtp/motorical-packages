@@ -51,7 +51,7 @@ export const COMMS_WRITE_TOOLS = [
   {
     tool: 'comms_create_template', method: 'commsCreateTemplate', http: 'POST', route: '/comm-api/api/templates', create: true,
     title: 'Create an email template', annotations: WRITE(),
-    description: 'Create a template (POST /comm-api/api/templates). DRY RUN by default: checks the template against the rulebook and lints it, and returns what '
+    description: 'Create a template. DRY RUN by default: checks the template against the rulebook and lints it, and returns what '
       + 'would be created; pass dryRun:false to save it. A description (what it is for) and a kind are required. Kinds: ' + TEMPLATE_KINDS.join(', ') + '. '
       + 'Read comms_get_template_rules first and fix every finding before saving. The type (html or text) cannot be changed later. A retry of the same call '
       + 'never creates a second template. Never invent a logo URL, legal text or an address.',
@@ -65,20 +65,21 @@ export const COMMS_WRITE_TOOLS = [
   {
     tool: 'comms_create_template_from_starter', method: 'commsCreateTemplateFromStarter', http: 'POST', route: '/comm-api/api/templates/from-starter', create: true,
     title: 'Create a template from a starter', annotations: WRITE(),
-    description: 'Create a template from a ready-made starter, filled with the workspace brand kit (POST /comm-api/api/templates/from-starter). DRY RUN by '
+    description: 'Create a template from a ready-made starter, filled with the workspace brand kit. DRY RUN by '
       + 'default: renders the starter and returns it; pass dryRun:false to save it. Get the starter keys from comms_list_starters and check the brand kit '
-      + 'with comms_get_brand_kit first. A description is required; kind defaults to the starter\'s. THE FOOTER: the footer says why the person gets the email, and only the customer knows that. ASK them why these people receive it (for example "You signed up at our shop") and pass it as the `reason` slot, or save it once as footer_text in the brand kit. With neither, the footer only says who sent the email, and the result carries a footer_reason_default warning: tell the customer and ask, do not invent a reason. The starter\'s own words are English; write slot text in the brand kit language.',
+      + 'with comms_get_brand_kit first. A description is required; kind defaults to the starter\'s. THE FOOTER: the footer says why the person gets the email, and only the customer knows that. ASK them why these people receive it (for example "You signed up at our shop") and pass it as the `reason` slot, or save it once as footer_text in the brand kit. With neither, the footer only says who sent the email, and the result carries a footer_reason_default warning: tell the customer and ask, do not invent a reason. The starter\'s own words are English; write slot text in the brand kit language. SETTINGS: the result carries a `settings` block with the workspace\'s click consent, open tracking and unsubscribe-page values; read it to the person, do not change them yourself, and use comms_get_workspace_settings to explain them. The consent block (includeConsentBlock) is an option the PERSON chooses.',
     input: {
       starter: z.string().min(1).max(60).describe('A starter key from comms_list_starters.'), name: z.string().min(1).max(200),
       ...card, kind: z.enum(TEMPLATE_KINDS).optional(), subject: z.string().max(998).optional(),
       slots: z.record(z.string(), z.any()).optional().describe('Values for the starter\'s slots (see comms_list_starters).'),
       brand: brandKit.optional().describe('A brand kit for this one template only; the stored kit is not changed.'),
+      includeConsentBlock: z.boolean().optional().describe('true adds a "please confirm you want to keep hearing from us" block with a button built on {{consent_url}}. Add it only if the person wants to ask for consent. That button is live only in a campaign created as a consent request (elsewhere it is an empty link); it works whether click consent is on or off.'),
     },
   },
   {
     tool: 'comms_update_template', method: 'commsUpdateTemplate', http: 'PATCH', route: '/comm-api/api/templates/{id}', idempotent: true,
     title: 'Edit an email template', annotations: WRITE({ idempotentHint: true }),
-    description: 'Change a template\'s name, subject, bodies, description or kind (PATCH /comm-api/api/templates/{id}). DRY RUN by default: shows exactly what '
+    description: 'Change a template\'s name, subject, bodies, description or kind. DRY RUN by default: shows exactly what '
       + 'would change (from/to), validates and lints the result, and returns expectedUpdatedAt. A real write (dryRun:false) must pass that expectedUpdatedAt; '
       + 'if the template changed meanwhile, nothing is written (STALE_TEMPLATE). The previous values are returned so the edit can be undone with another call. '
       + 'A campaign that is already scheduled or sending was compiled when it was scheduled and will NOT pick up the edit: the result says so in warnings. '
@@ -92,7 +93,7 @@ export const COMMS_WRITE_TOOLS = [
   {
     tool: 'comms_apply_template_fixes', method: 'commsApplyTemplateFixes', http: 'POST', route: '/comm-api/api/templates/fix', idempotent: true,
     title: 'Apply the safe template fixes', annotations: WRITE({ idempotentHint: true }),
-    description: 'Apply the rulebook\'s safe, deterministic fixes to a saved template (POST /comm-api/api/templates/fix, then PATCH). DRY RUN by default: returns '
+    description: 'Apply the rulebook\'s safe, deterministic fixes to a saved template. DRY RUN by default: returns '
       + 'what would change and the re-lint (the same as comms_suggest_template_fixes); pass dryRun:false with expectedUpdatedAt to save. The previous text is '
       + 'returned. If nothing needs fixing nothing is written. Show the person the changes before saving.',
     input: {
@@ -102,7 +103,7 @@ export const COMMS_WRITE_TOOLS = [
   {
     tool: 'comms_duplicate_template', method: 'commsDuplicateTemplate', http: 'POST', route: '/comm-api/api/templates/{id}/duplicate', create: true,
     title: 'Duplicate an email template', annotations: WRITE(),
-    description: 'Make a copy of a template named "<name> (copy)" that remembers its parent (POST /comm-api/api/templates/{id}/duplicate). DRY RUN by default. '
+    description: 'Make a copy of a template named "<name> (copy)" that remembers its parent. DRY RUN by default. '
       + 'The safest way to change a template that campaigns use: edit the copy. A retry never makes a second copy; to deliberately make another, pass a different '
       + 'idempotencyKey.',
     input: { id: uuid('The template to copy.') },
@@ -110,7 +111,7 @@ export const COMMS_WRITE_TOOLS = [
   {
     tool: 'comms_set_brand_kit', method: 'commsSetBrandKit', http: 'PATCH', route: '/comm-api/api/settings/brand-kit', idempotent: true,
     title: 'Change the workspace brand kit', annotations: WRITE({ idempotentHint: true }),
-    description: 'Change the workspace brand kit used by the starters (PATCH /comm-api/api/settings/brand-kit): sender name, postal address, logo (https), '
+    description: 'Change the workspace brand kit used by the starters: sender name, postal address, logo (https), '
       + 'colours, font, button radius, footer, reply-to, tone, language, description. Partial: only the fields given change, null clears one. DRY RUN by default: '
       + 'returns the current kit and your patch. A real write returns the previous values of the fields it changed. Never invent a logo URL, an address or legal text: '
       + 'ask the person.',
@@ -119,7 +120,7 @@ export const COMMS_WRITE_TOOLS = [
   {
     tool: 'comms_create_list', method: 'commsCreateList', http: 'POST', route: '/comm-api/api/lists', create: true,
     title: 'Create a contact list (card only)', annotations: WRITE(),
-    description: 'Create an empty list with its card (POST /comm-api/api/lists): name, a description of what the list is for, who is in it and where the contacts '
+    description: 'Create an empty list with its card: name, a description of what the list is for, who is in it and where the contacts '
       + 'came from (no counts), a kind and an optional source label. DRY RUN by default: the API checks the card and returns it, nothing is stored; pass dryRun:false '
       + 'to create it. A weak description is refused (LIST_CARD_INVALID) with the findings. Kinds: ' + LIST_KINDS.join(', ') + ' (derived and system_view are made '
       + 'by the system). This adds no contacts.',
@@ -131,7 +132,7 @@ export const COMMS_WRITE_TOOLS = [
   {
     tool: 'comms_update_list', method: 'commsUpdateList', http: 'PATCH', route: '/comm-api/api/lists/{id}', idempotent: true,
     title: 'Edit a list card', annotations: WRITE({ idempotentHint: true }),
-    description: 'Change a list\'s card: name, description, kind or source label (PATCH /comm-api/api/lists/{id}). It does not change who is on the list. DRY RUN by '
+    description: 'Change a list\'s card: name, description, kind or source label. It does not change who is on the list. DRY RUN by '
       + 'default: returns the card as it would be and the previous values; pass dryRun:false to save. A weak description is refused (LIST_CARD_INVALID). The previous '
       + 'values are returned so the change can be undone.',
     input: {

@@ -16,6 +16,7 @@ import { detectRevision } from './native/revision.js';
 import { dispatchNative } from './native/dispatch.js';
 import { toolsListedForGrant, SANDBOX_TOOL_NAMES } from './grantVisibility.js';
 import { createSignupRateLimiter } from './signupRateLimit.js';
+import { toolErrorPayload } from './toolError.js';
 
 const AUTHORIZATION_SERVER = 'https://motorical.com';
 
@@ -284,7 +285,7 @@ export function createHttpApp({ verifier, signer, clientFactory, grantScopesLook
             }
             if (err.challenge) res.set('WWW-Authenticate', err.challenge);
             // Already actionable: assertToolAllowed's message names the scope and ends with the canonical one-step sentence.
-            const payload = { error: err.message, status: err.status, details: { missingScopes: (err.challenge?.match(/scope="([^"]+)"/) || [])[1]?.split(' ') || [] } };
+            const payload = toolErrorPayload(Object.assign(err, { data: { missingScopes: (err.challenge?.match(/scope="([^"]+)"/) || [])[1]?.split(' ') || [] } }));
             const result = {
               ...(detectRevision(body) === 'native' ? { resultType: 'complete' } : {}),
               content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
