@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { TOOLS } from '../src/registry.js';
 
 const tool = TOOLS.find((t) => t.name === 'motorical_send_email');
+const agentText = (t) => t.description + ' ' + Object.values(t.inputSchema).map((f) => f.description || '').join(' ');
 const schema = z.object(tool.inputSchema);
 const base = { to: 'a@example.com', subject: 's', text: 't' };
 
@@ -17,8 +18,8 @@ test('invalid addresses in the new fields are rejected before any request is mad
   assert.equal(schema.safeParse({ ...base, replyTo: ['r@example.com'] }).success, false);
 });
 test('the description tells an agent the fields roll out per block and what the refusal looks like', () => {
-  assert.match(tool.description, /feature_not_enabled/);
-  assert.match(tool.description, /50 recipients/);
+  assert.match(agentText(tool), /feature_not_enabled/);
+  assert.match(agentText(tool), /50 recipients/);
 });
 test('the output schema accepts the echoed fields and data.skipped', () => {
   const out = z.object(tool.outputSchema);

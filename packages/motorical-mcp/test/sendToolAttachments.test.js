@@ -5,6 +5,7 @@ import { TOOLS } from '../src/registry.js';
 import { MotoricalClient } from '../src/client.js';
 
 const tool = TOOLS.find((t) => t.name === 'motorical_send_email');
+const agentText = (t) => t.description + ' ' + Object.values(t.inputSchema).map((f) => f.description || '').join(' ');
 const schema = z.object(tool.inputSchema);
 const base = { to: 'a@example.com', subject: 's', text: 't' };
 const b64 = (s) => Buffer.from(s).toString('base64');
@@ -37,11 +38,11 @@ test('inline base64 is limited to what a chat can carry, in total and per file',
 });
 
 test('the description tells an agent the limits, the rollout and where larger files go', () => {
-  assert.match(tool.description, /attachments/);
-  assert.match(tool.description, /base64/);
-  assert.match(tool.description, /feature_not_enabled/);
-  assert.match(tool.description, /SMTP/);
-  assert.match(tool.description, /dryRun/);
+  assert.match(agentText(tool), /attachments/);
+  assert.match(agentText(tool), /base64/);
+  assert.match(agentText(tool), /feature_not_enabled/);
+  assert.match(agentText(tool), /SMTP/);
+  assert.match(agentText(tool), /dryRun/);
 });
 
 test('the output schema accepts the dryRun attachment summary', () => {

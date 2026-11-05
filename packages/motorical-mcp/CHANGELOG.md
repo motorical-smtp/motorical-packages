@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.28.0] — 2026-11-05
+
+### Added
+
+- Every tool failure carries a stable `code`, a plain message with no route in it, and a recovery `hint`. When several Motor Blocks are granted and none was chosen, the error lists them as `candidates` (`id` and `name`). Codes that come from the server keep their exact spelling (`insufficient_scope`, `subscription_required`, `authorization_revoked`).
+- `motorical_send_email` dry runs return `limits` (burst, hourly and daily: used, limit, remaining, reset) and `warnings` (stable codes such as `NO_TEXT_PART`, `SUBJECT_LONG`, `OVER_LIMIT`, `NEAR_LIMIT`, `THROTTLED`).
+- `motorical_get_config` returns `effectiveLimits`: the lower of the configured limits and any throttle.
+- `motorical_domain_health` and `motorical_get_domain_health` report `cacheAgeSeconds` and `nextAction` on a stale read, and say that `dmarc.policy` is not reported.
+
+### Changed
+
+- When the grant covers exactly one Motor Block and `motorBlockId` is omitted, that block is used. Before, the request path contained `undefined`.
+- Tool descriptions are about 30% shorter: scope text is ids only (see `motorical_whoami` for what a scope allows), HTTP routes are removed, and `motorical_send_email` keeps its field detail in the `cc` and `attachments` field descriptions.
+- Delivery rate is counted over finalized recipients only, so messages still in flight no longer lower it.
+- Descriptions of the Motor Block listing tools, `motorical_send_email` (sandbox-only advice) and `comms_get_readiness` (plans fallback) say more plainly what each is for.
+
+### Compatibility
+
+- The error object gains `code`. A client that matched error text should match `code` instead.
+
 ## [1.27.0] — 2026-11-04
 
 ### Added

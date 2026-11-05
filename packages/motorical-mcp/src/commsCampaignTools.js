@@ -20,7 +20,7 @@ export const COMMS_CAMPAIGN_TOOLS = [
   {
     tool: 'comms_create_campaign', method: 'commsCreateCampaign', http: 'POST', route: '/comm-api/api/campaigns', create: true,
     title: 'Create a campaign draft', annotations: WRITE(),
-    description: 'Create a campaign as a DRAFT (POST /comm-api/api/campaigns): a name, a template, the marketing Motor Block it sends through, the lists it goes to and '
+    description: 'Create a campaign as a DRAFT: a name, a template, the marketing Motor Block it sends through, the lists it goes to and '
       + 'optionally lists to exclude. DRY RUN by default: the API runs every check (the template and lists belong to this workspace, the Motor Block is assigned, the From '
       + 'address is on its verified domain, no list is both sent to and excluded) and returns the would-be draft; nothing is stored. Pass dryRun:false to create it. '
       + 'A real create makes a draft only: it is NOT scheduled and nothing is sent. Get ids from comms_list_templates, comms_list_lists and comms_list_marketing_blocks. '
@@ -37,7 +37,7 @@ export const COMMS_CAMPAIGN_TOOLS = [
   {
     tool: 'comms_update_campaign', method: 'commsUpdateCampaign', http: 'PATCH', route: '/comm-api/api/campaigns/{id}/settings', idempotent: true,
     title: 'Edit a campaign draft', annotations: WRITE({ idempotentHint: true }),
-    description: 'Change a campaign DRAFT (PATCH /comm-api/api/campaigns/{id}/settings): its From address, From name, reply-to, description, template, lists and excluded '
+    description: 'Change a campaign DRAFT: its From address, From name, reply-to, description, template, lists and excluded '
       + 'lists (null clears a name, a reply-to or the exclusions). DRY RUN by default: the API checks everything and returns what would change and what it is now. A '
       + 'real write (dryRun:false) returns the previous values so it can be undone. Only a draft can have its template, lists or sender changed: a scheduled, sending or '
       + 'finished campaign answers INVALID_STATE. This tool cannot set a send time, a timezone or pacing, and cannot schedule.',
@@ -59,9 +59,9 @@ export const COMMS_CAMPAIGN_TOOLS = [
   {
     tool: 'comms_preflight_campaign', method: 'commsPreflightCampaign', http: 'POST', route: '/comm-api/api/campaigns/{id}/compile', noDryRun: true,
     title: 'Preflight a campaign', annotations: WRITE({ idempotentHint: true }),
-    description: 'The check to run and SHOW before anyone says a campaign is ready (POST /comm-api/api/campaigns/{id}/compile). Nothing is sent. It compiles a snapshot of '
+    description: 'The check to run and SHOW before anyone says a campaign is ready. Nothing is sent. It compiles a snapshot of '
       + 'the audience and content, stored as a numbered version, and returns who would receive it (totalRecipients and an audience breakdown of who is in and why '
-      + 'others are out), a forecast and warnings. State the numbers exactly as returned, with the version and time. Read the warnings first and mention every one. '
+      + 'others are out), a forecast and warnings. State the numbers exactly as returned, with the version and time. Read the warnings first and mention every one. The result has a `settings` block (click counts as consent, open tracking, the unsubscribe page, each with where it comes from): say them in plain words, explain with comms_get_workspace_settings if asked, and remember they are workspace settings the person decides, never yours to change. '
       + 'hasRecipients false means NOT ready: no one would receive it, and the audience breakdown says why. The forecast is an estimate that assumes no other traffic. '
       + 'Any later change to the template, lists or settings makes it stale: run it again before scheduling.',
     input: { id: uuid('The campaign id.') },
@@ -69,7 +69,7 @@ export const COMMS_CAMPAIGN_TOOLS = [
   {
     tool: 'comms_send_test', method: 'commsSendTest', http: 'POST', route: '/comm-api/api/campaigns/{id}/test-send',
     title: 'Send a test email to the account owner', annotations: WRITE(),
-    description: 'Send ONE test copy of a campaign to the ACCOUNT OWNER ONLY (POST /comm-api/api/campaigns/{id}/test-send). There is no recipient input: it always goes to the '
+    description: 'Send ONE test copy of a campaign to the ACCOUNT OWNER ONLY. There is no recipient input: it always goes to the '
       + 'account owner\'s own verified address, never to anyone else, and the address is shown masked. DRY RUN by default: says what would be sent (sender, subject) and '
       + 'sends nothing. Pass dryRun:false to send it; tell the person to check their own inbox. It is not a send to anyone else and is not a way to preview for a '
       + 'colleague. It is rate limited: a refusal comes with its wait time (retryAfter, in seconds); report it and do not retry in a loop. The optional sample fills the '
@@ -79,10 +79,10 @@ export const COMMS_CAMPAIGN_TOOLS = [
   {
     tool: 'comms_send_template_test', method: 'commsSendTemplateTest', http: 'POST', route: '/comm-api/api/templates/{id}/test-send',
     title: 'Send a template test to the account owner', annotations: WRITE(),
-    description: 'Send ONE test copy of a TEMPLATE to the ACCOUNT OWNER ONLY (POST /comm-api/api/templates/{id}/test-send), so a design can be checked before any campaign, list or schedule exists. '
+    description: 'Send ONE test copy of a TEMPLATE to the ACCOUNT OWNER ONLY, so a design can be checked before any campaign, list or schedule exists. '
       + 'Same rules as comms_send_test: no recipient input, it goes to the owner\'s own verified address (shown masked), it is marked [TEST], nothing is stored, and it is rate limited (a refusal comes with retryAfter). '
       + 'It needs a campaign Motor Block of this workspace to send through (motorBlockId, from comms_list_marketing_blocks); its sending domain is the From address. DRY RUN by default. '
-      + 'In the copy the unsubscribe and consent links are placeholders that point to motorical.com and links are not tracked: that is expected, not a fault, and the result says so. Check real links with comms_check_links.',
+      + 'In the copy the unsubscribe and consent links are placeholders that point to motorical.com and links are not tracked: that is expected, not a fault, and the result says so. The result also carries the workspace `settings` that apply to real sends. Check real links with comms_check_links.',
     input: { id: uuid('The template id.'), motorBlockId: uuid('A campaign Motor Block of this workspace to send the test through (comms_list_marketing_blocks).'), sample: z.object({ name: z.string().max(200).optional(), identity_name: z.string().max(200).optional() }).strict().optional().describe('Sample first name for the merge tags.') },
   },
 ];

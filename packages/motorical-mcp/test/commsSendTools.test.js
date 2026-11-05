@@ -251,3 +251,24 @@ describe('scopes and the whole family', () => {
     for (const c of calls.filter((x) => x.body)) for (const k of Object.keys(c.body)) assert.ok(allowed.has(k), `${c.key} sent ${k}`);
   });
 });
+
+describe('workspace settings in the schedule summary', () => {
+  const SETTINGS_A = { click_consent: { enabled: false, source: 'workspace' }, summary: 'Click counts as consent: off. Open tracking: on. Unsubscribe: after unsubscribing people see the shared Motorical page.', warnings: [] };
+  const SETTINGS_B = { ...SETTINGS_A, click_consent: { enabled: true, source: 'workspace' }, summary: 'Click counts as consent: on. Open tracking: on. Unsubscribe: after unsubscribing people see the shared Motorical page.', warnings: [{ type: 'click_consent_on', message: 'Click counts as consent is ON' }] };
+  const withSettings = (settings) => tableFor({ [`POST /campaigns/${CAMP}/schedule`]: (init) => (JSON.parse(init.body).dry_run === true ? dryReply({ settings }) : ok({ id: CAMP, status: 'scheduled', scheduled_at: '2030-01-15T07:00:00Z', total_recipients: 842, artifact_version: 5, from_address: 'news@hatfree.com', settings }, { message: 'Campaign scheduled' })) });
+  test('the summary carries the settings, and their warnings come before the other warnings', async () => {
+    const out = await make(withSettings(SETTINGS_B)).client.commsScheduleCampaign(base);
+    assert.equal(out.summary.settings.summary, SETTINGS_B.summary);
+    assert.deepEqual(out.summary.warnings.map((w) => w.type), ['click_consent_on', 'daily_cap']);
+    assert.match(out.nextStep, /settings sentence/i);
+  });
+  test('a setting that changed between the preview and the yes voids the confirmation', async () => {
+    const token = (await make(withSettings(SETTINGS_A)).client.commsScheduleCampaign(base)).confirmToken;
+    const later = make(withSettings(SETTINGS_B));
+    await assert.rejects(() => later.client.commsScheduleCampaign({ ...base, dryRun: false, confirm: true, confirmToken: token }), (e) => e.data.code === 'CONFIRM_TOKEN_INVALID');
+    assert.equal(realSchedules(later.calls).length, 0, 'nothing was scheduled');
+    const same = make(withSettings(SETTINGS_A));
+    const done = await same.client.commsScheduleCampaign({ ...base, dryRun: false, confirm: true, confirmToken: token });
+    assert.equal(done.applied, true); assert.equal(done.scheduled.settings, SETTINGS_A.summary);
+  });
+});

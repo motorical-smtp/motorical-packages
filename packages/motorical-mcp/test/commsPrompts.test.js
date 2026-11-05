@@ -125,9 +125,9 @@ describe('what each playbook insists on', () => {
 });
 
 describe('the native path', () => {
-  test('server/discover advertises prompts on the communications server only', () => {
+  test('server/discover advertises prompts on the communications server and the front door only', () => {
     assert.deepEqual(buildDiscoverResult({ server: srv, version: '1.5.0' }).capabilities.prompts, {});
-    for (const s of SERVERS.filter((x) => x.key !== 'communications')) assert.equal(buildDiscoverResult({ server: s, version: '1.5.0' }).capabilities.prompts, undefined, s.key);
+    for (const s of SERVERS.filter((x) => !['communications', 'main'].includes(x.key))) assert.equal(buildDiscoverResult({ server: s, version: '1.5.0' }).capabilities.prompts, undefined, s.key);
   });
   test('prompts/list returns the six with their arguments and no functions', async () => {
     const res = await dispatchNative({ jsonrpc: '2.0', id: 1, method: 'prompts/list' }, ctx());
@@ -153,18 +153,22 @@ describe('the native path', () => {
     const long = await dispatchNative({ jsonrpc: '2.0', id: 4, method: 'prompts/get', params: { name: 'motorical_run_campaign', arguments: { [arg.name]: 'x'.repeat(5000) } } }, ctx());
     assert.equal(long.error.code, -32602);
     const main = SERVERS.find((s) => s.key === 'main');
+    const mainList = await dispatchNative({ jsonrpc: '2.0', id: 5, method: 'prompts/list' }, ctx(main));
+    assert.equal(mainList.result.prompts.length, 6, 'the front door carries the six playbooks');
+    const analytics = SERVERS.find((s) => s.key === 'analytics');
     for (const method of ['prompts/list', 'prompts/get']) {
-      const res = await dispatchNative({ jsonrpc: '2.0', id: 5, method, params: { name: 'motorical_run_campaign' } }, ctx(main));
-      assert.equal(res.error.code, -32601, `${method} on main`);
+      const res = await dispatchNative({ jsonrpc: '2.0', id: 5, method, params: { name: 'motorical_run_campaign' } }, ctx(analytics));
+      assert.equal(res.error.code, -32601, `${method} on analytics`);
     }
   });
 });
 
 describe('the legacy path', () => {
   const names = (serverKey) => Object.keys(createMotoricalMcpServer({ client: {}, serverKey }).server._registeredPrompts || {});
-  test('the communications server registers the six; no other hosted server does', () => {
+  test('the communications server and the front door register the six; no other hosted server does', () => {
     const got = names('communications');
     for (const n of NAMES) assert.ok(got.includes(n), n);
+    for (const n of NAMES) assert.ok(names('main').includes(n), `main: ${n}`);
     for (const key of ['domains', 'analytics', 'webhooks']) assert.ok(NAMES.every((n) => !names(key).includes(n)), key);
   });
   test('the unscoped local server (stdio) does not offer them, because it has no communications tools', () => {

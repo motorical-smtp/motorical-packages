@@ -388,3 +388,62 @@ test('Motor Block mutation delegates the explicit id even when it is absent from
   });
   assert.equal(decoded.motorBlockId, 'new-live-block');
 });
+
+const mainServer = SERVERS.find((s) => s.key === 'main');
+const allScopes = [...new Set(Object.values(TOOL_SCOPES).flat())];
+function mainClient(ids) {
+  return createDelegatedClient({
+    claims: { ...claims, scopes: allScopes, motorBlockIds: ids },
+    server: mainServer, signer, apiBaseUrl: 'http://127.0.0.1:3001',
+  });
+}
+
+const BLOCK_SCOPED_NO_ARG = [
+  ['getConfig', []], ['getOverview', []], ['getDailySummary', []], ['getMetrics', []],
+  ['getDeliverability', []], ['getReputation', []], ['getAnomalies', []], ['getProviders', []],
+  ['getErrorCodes', []], ['getRateLimits', []], ['getLogs', []], ['getDomainHealth', []],
+  ['webhookList', []], ['webhookGetStats', [{ webhookId: 'w1' }]],
+  ['webhookGetDeliveries', [{ webhookId: 'w1' }]],
+];
+
+test('N1: one-block grant, every block-scoped tool with no id never puts "undefined" in the route', async () => {
+  for (const [method, args] of BLOCK_SCOPED_NO_ARG) {
+    const c = mainClient(['mb-1']);
+    const seen = [];
+    c.request = async (m, p) => { seen.push(p); return {}; };
+    await c[method](...args);
+    assert.ok(seen.length, method);
+    for (const p of seen) {
+      assert.ok(!p.includes('undefined'), `${method}: ${p}`);
+      assert.ok(p.includes('mb-1'), `${method}: ${p}`);
+    }
+  }
+});
+
+test('N1: getMessage with no options object still resolves the single block', async () => {
+  const c = mainClient(['mb-1']);
+  let seen;
+  c.request = async (m, p, opts) => { seen = { p, opts }; return {}; };
+  await c.getMessage('msg-1');
+  const decoded = jwt.verify(seen.opts.headers.Authorization.slice('Delegation '.length), publicKey,
+    { algorithms: ['RS256'], audience: 'https://api.motorical.com/internal/mcp' });
+  assert.equal(decoded.motorBlockId, 'mb-1');
+});
+
+test('N1: several blocks and no id lists the candidate ids and names', async () => {
+  for (const [method, args] of BLOCK_SCOPED_NO_ARG) {
+    const c = mainClient(['mb-1', 'mb-2']);
+    const paths = [];
+    c.request = async (m, p) => {
+      paths.push(p);
+      return { data: [{ id: 'mb-1', name: 'Alpha' }, { id: 'mb-2', name: 'Beta' }, { id: 'mb-9', name: 'Not granted' }] };
+    };
+    await assert.rejects(() => c[method](...args), (e) => {
+      assert.match(e.message, /mb-1 \(Alpha\)/);
+      assert.match(e.message, /mb-2 \(Beta\)/);
+      assert.doesNotMatch(e.message, /mb-9|undefined/);
+      return true;
+    }, method);
+    assert.ok(paths.every((p) => !p.includes('undefined')), method);
+  }
+});

@@ -62,6 +62,21 @@ describe("registration", () => {
 });
 
 describe("comms_get_campaign_report", () => {
+  test("consents and unsubscribes are said per campaign with the delivered denominator, and the scanner caveat", async () => {
+    const withConsent = report({ consent: { click_consent_enabled_now: true, recorded_total: 5, by_source: { campaign_click: 4, link_confirmation: 1 }, denominator: { delivered: 118 } }, unsubscribes: { people: 2, of_delivered: 118 } });
+    const { client } = make({ [`GET /campaigns/${CAMP}/report`]: ok(withConsent) });
+    const plain = (await client.commsGetCampaignReport({ workspaceId: W1, id: CAMP })).plain.join(" | ");
+    assert.match(plain, /5 people were recorded as consenting.*1 pressed the confirm button, 4 by clicking a link.*out of 118 delivered/);
+    assert.match(plain, /Click counts as consent is ON/); assert.match(plain, /scanners are not filtered/);
+    assert.match(plain, /2 unsubscribed from this campaign, out of 118 delivered/);
+  });
+  test("with open tracking off the open numbers are null and the sentence says unknown, not zero", async () => {
+    const off = report({ open_tracking: { enabled: false, note: "x" } });
+    const { client } = make({ [`GET /campaigns/${CAMP}/report`]: ok(off) });
+    const r = await client.commsGetCampaignReport({ workspaceId: W1, id: CAMP });
+    assert.equal(r.data.engagement.opens_unique, null); assert.equal(r.data.rates.open_rate, null); assert.equal(r.data.funnel.opened, null);
+    assert.match(r.plain.join(" "), /unknown \(null\), not zero/);
+  });
   test("returns the report with its basis, the data-as-of time, and plain sentences with the denominators written out", async () => {
     const { client, calls } = make({ [`GET /campaigns/${CAMP}/report`]: ok(report()) });
     const r = await client.commsGetCampaignReport({ workspaceId: W1, id: CAMP });

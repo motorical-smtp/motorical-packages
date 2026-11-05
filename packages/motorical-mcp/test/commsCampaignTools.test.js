@@ -287,3 +287,16 @@ describe('across the family', () => {
     }
   });
 });
+
+describe('comms_preflight_campaign carries the workspace settings', () => {
+  const settings = { summary: 'Click counts as consent: on. Open tracking: off. Unsubscribe: after unsubscribing people see the shared Motorical page.', warnings: [{ type: 'click_consent_on', message: 'Click counts as consent is ON' }, { type: 'open_tracking_off', message: 'Open tracking is OFF' }] };
+  const compile = ok({ version: 3, totalRecipients: 10, audience: { included: 10 }, forecast: {}, warnings: [{ type: 'daily_cap', message: 'Waits' }], settings });
+  test('settings warnings come first, the block is returned, and the notes say the person decides', async () => {
+    const { client } = make({ [`POST /campaigns/${CAMP}/compile`]: compile });
+    const p = (await client.commsPreflightCampaign({ workspaceId: W1, id: CAMP })).preflight;
+    assert.deepEqual(p.warnings.map((w) => w.type), ['click_consent_on', 'open_tracking_off', 'daily_cap']);
+    assert.equal(p.settings.summary, settings.summary);
+    const notes = p.notes.join(' ');
+    assert.match(notes, /Settings in force: Click counts as consent: on/); assert.match(notes, /set by the person/i); assert.match(notes, /workspace settings makes this stale/i);
+  });
+});

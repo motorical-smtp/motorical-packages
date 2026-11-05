@@ -5,6 +5,7 @@ import { TOOLS } from '../src/registry.js';
 import { MotoricalClient } from '../src/client.js';
 
 const tool = TOOLS.find((t) => t.name === 'motorical_send_email');
+const agentText = (t) => t.description + ' ' + Object.values(t.inputSchema).map((f) => f.description || '').join(' ');
 const schema = z.object(tool.inputSchema);
 const base = { to: 'a@example.com', subject: 's', text: 't' };
 const ok = (headers) => schema.safeParse({ ...base, headers }).success;
@@ -32,10 +33,10 @@ test('shape errors are rejected before any request is made', () => {
 });
 
 test('the description tells an agent what to use it for and what the platform refuses', () => {
-  assert.match(tool.description, /In-Reply-To/);
-  assert.match(tool.description, /List-Unsubscribe/);
-  assert.match(tool.description, /DISALLOWED_HEADERS/);
-  assert.match(tool.description, /replyTo/);
+  assert.match(agentText(tool), /In-Reply-To/);
+  assert.match(agentText(tool), /List-Unsubscribe/);
+  assert.match(agentText(tool), /DISALLOWED_HEADERS/);
+  assert.match(agentText(tool), /replyTo/);
 });
 
 test('sendEmail passes headers to the body untouched (the backend owns the deny list)', async () => {
