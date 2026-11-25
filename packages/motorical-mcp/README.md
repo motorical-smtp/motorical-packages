@@ -6,6 +6,8 @@ Agents can **execute** Motorical APIs (not only read docs): dry-run / send email
 
 **Agents: start here.** Not sure this package is the right route? [docs.motorical.com/agents](https://docs.motorical.com/agents) has the route chooser (this local server vs. the hosted OAuth server at `mcp.motorical.com` vs. the plain HTTP API), a rulebook, and journeys for every starting situation.
 
+**Listed in:** the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=motorical) (`io.github.motorical-smtp/motorical`) and on [Glama](https://glama.ai/mcp/connectors/io.github.motorical-smtp/motorical).
+
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
 ## Tools (v1.28.2)
