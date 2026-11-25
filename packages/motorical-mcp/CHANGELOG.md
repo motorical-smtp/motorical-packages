@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.28.1] — 2026-11-25
+
+### Changed
+
+- Licensed under the MIT License (was "UNLICENSED"). A `LICENSE` file now ships in the package. No code or behavior change.
+
 ## [1.28.0] — 2026-11-05
 
 ### Added

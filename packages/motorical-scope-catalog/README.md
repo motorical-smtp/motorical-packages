@@ -19,3 +19,7 @@ for why this package exists.
 `https://mcp.motorical.com/v1/motorical_motor_blocks/mcp`, which advertises the
 nine bounded production Motor Block lifecycle tools. Communications Block and
 marketing-block operations are deliberately excluded.
+
+## License
+
+MIT. See [LICENSE](./LICENSE). The license covers the code in this package, not the Motorical name or logo.

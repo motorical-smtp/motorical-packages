@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+Licensed under the MIT License (was "UNLICENSED"); a `LICENSE` file now ships in the package. No change to scopes, tools or any grant. Takes effect on npm with the next release; not bumped on its own because every `@motorical/scope-catalog` pin must rise with the version.
+
 ## 0.19.0 — 2026-11-04
 
 Three tools on the `communications` server (so it has 71): `comms_send_template_test` (`write:comms.content`, one copy of a template to the account owner), `comms_delete_template` and `comms_delete_campaign` (both `manage:comms.audience`, the delete step-up). **No existing grant gains authority except** that a grant already holding `manage:comms.audience` can now also delete templates and campaigns (campaigns go to the recycle bin).

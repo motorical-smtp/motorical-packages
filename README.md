@@ -86,3 +86,7 @@ version of this README claimed, that field was never actually changed during a s
 - **Dependabot security updates:** enabled (vulnerability alerts also on).
 - **`sha_pinning_required: true`** at the repo level (Settings → Actions → General) —
   every workflow here pins its actions to commit SHAs rather than mutable tags.
+
+## License
+
+MIT. See [LICENSE](./LICENSE). The license covers the code in this repository, not the Motorical name or logo.
