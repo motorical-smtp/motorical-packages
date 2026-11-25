@@ -8,7 +8,7 @@ Agents can **execute** Motorical APIs (not only read docs): dry-run / send email
 
 A **Motorical SMTP Motor Block** is an isolated sending stream (similar to a per-app/per-tenant ESP project).
 
-## Tools (v1.28.0)
+## Tools (v1.28.1)
 
 | Tool | Auth | Purpose |
 |------|------|---------|
@@ -135,3 +135,7 @@ npm run smoke            # ovh24 live dry-run (creates/revokes temp keys)
 - Communications Block tools (lists/campaigns) — later
 - OAuth consent / SMTP / mTLS execution — use docs + out-of-band clients
 - Hosted remote MCP HTTP
+
+## License
+
+MIT. See [LICENSE](./LICENSE). The license covers the code in this package, not the Motorical name or logo.

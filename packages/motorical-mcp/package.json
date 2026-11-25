@@ -1,6 +1,6 @@
 {
   "name": "@motorical/mcp",
-  "version": "1.28.0",
+  "version": "1.28.1",
   "description": "MCP server for Motorical transactional email API — dry-run/send, mint public tokens, list Motor Blocks, inspect delivery events",
   "type": "module",
   "bin": {
@@ -32,7 +32,7 @@
     "email-api",
     "model-context-protocol"
   ],
-  "license": "UNLICENSED",
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@motorical/scope-catalog": "^0.19.0",
