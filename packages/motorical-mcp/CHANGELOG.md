@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.28.2] — 2026-11-25
+
+### Changed
+
+- Adds `mcpName` to `package.json` so the package can be listed in the official MCP Registry. No code or behavior change.
+
 ## [1.28.1] — 2026-11-25
 
 ### Changed

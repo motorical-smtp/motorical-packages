@@ -1,0 +1,93 @@
+name: Publish @motorical/mcp to the MCP Registry
+
+# DRAFT for review. Goes to motorical-smtp/motorical-packages/.github/workflows/.
+#
+# Lists the ALREADY-PUBLISHED npm version in the official MCP Registry. It does not
+# publish to npm (publish-motorical-mcp.yml does that) and it installs no project
+# dependencies. Authentication is GitHub OIDC (no stored secret), which is the route
+# the registry documents for organization namespaces (io.github.motorical-smtp/*).
+#
+# Manual trigger only, like the npm workflow. Run with dry_run=true first: it does
+# everything except log in and publish.
+#
+# server.json carries the version it was last edited with; this workflow rewrites both
+# version fields from package.json so the two cannot drift, then checks that npm already
+# serves that exact version with a matching mcpName.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate only: check npm, rewrite and validate server.json, do not log in or publish.'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  registry:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write # OIDC to the registry; only this job has it
+    defaults:
+      run:
+        working-directory: packages/motorical-mcp
+    env:
+      # Pinned deliberately (do not use releases/latest). Bump on purpose and re-verify.
+      MCP_PUBLISHER_VERSION: v1.8.16
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Read the package version and check npm serves it with the right mcpName
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -r .version package.json)
+          NAME=$(jq -r .name package.json)
+          MCPNAME=$(jq -r .mcpName package.json)
+          SERVER_NAME=$(jq -r .name server.json)
+          echo "package: $NAME@$VERSION  mcpName: $MCPNAME  server.json name: $SERVER_NAME"
+          [ "$MCPNAME" = "$SERVER_NAME" ] || { echo "::error::package.json mcpName ($MCPNAME) must equal server.json name ($SERVER_NAME)"; exit 1; }
+          PUBLISHED_MCPNAME=$(npm view "$NAME@$VERSION" mcpName 2>/dev/null || true)
+          [ "$PUBLISHED_MCPNAME" = "$MCPNAME" ] || { echo "::error::npm does not serve $NAME@$VERSION with mcpName $MCPNAME (got '${PUBLISHED_MCPNAME}'). Publish the npm package first."; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Point server.json at that version
+        run: |
+          set -euo pipefail
+          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp
+          mv server.tmp server.json
+          jq '{name, version, package: .packages[0].version, remote: .remotes[0].url}' server.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          archive="mcp-publisher_${os}_${arch}.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Validate server.json
+        run: ./mcp-publisher validate
+
+      - name: Authenticate to the MCP Registry (OIDC)
+        if: ${{ !inputs.dry_run }}
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to the MCP Registry
+        if: ${{ !inputs.dry_run }}
+        run: ./mcp-publisher publish
