@@ -1,0 +1,55 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.motorical-smtp/motorical",
+  "title": "Motorical",
+  "description": "Send and track transactional email, manage Motor Blocks and domains, and run campaigns.",
+  "websiteUrl": "https://docs.motorical.com/ai-mcp",
+  "repository": {
+    "url": "https://github.com/motorical-smtp/motorical-packages",
+    "source": "github",
+    "subfolder": "packages/motorical-mcp"
+  },
+  "version": "1.28.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@motorical/mcp",
+      "version": "1.28.2",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MOTORICAL_MK_API_KEY",
+          "description": "Motor Block key (mk_live_...), needed only to send over the local server. Not needed if you sign in with `npx @motorical/mcp login`.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MOTORICAL_AK_API_KEY",
+          "description": "Account key (ak_live_...) for the Public API tools. Not needed if you sign in with `npx @motorical/mcp login`.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MOTORICAL_MOTOR_BLOCK_ID",
+          "description": "UUID of the Motor Block that block-scoped calls should use. Recommended when your account has more than one.",
+          "isRequired": false
+        },
+        {
+          "name": "MOTORICAL_DEFAULT_FROM",
+          "description": "Default From address for sends, on a domain verified in your account.",
+          "isRequired": false
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.motorical.com/v1/motorical/mcp"
+    }
+  ]
+}
