@@ -1,5 +1,7 @@
 # Motorical packages
 
+[![mcptry](https://mcptry.com/badge/io.github.motorical-smtp/motorical)](https://mcptry.com/servers/io.github.motorical-smtp/motorical)
+
 Public source for Motorical’s agent/developer tooling published on npm.
 
 **Agents: start here.** [docs.motorical.com/agents](https://docs.motorical.com/agents) has the route
