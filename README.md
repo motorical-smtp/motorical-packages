@@ -55,6 +55,11 @@ packages/
 - https://docs.motorical.com/onboarding-sandbox-journey.json
 - https://docs.motorical.com/openapi.json
 
+## Community
+
+Questions, ideas and release announcements: join the [Motorical community on Discord](https://discord.gg/k992NRN34M).
+Please never post API keys, SMTP passwords or tokens there or in issues.
+
 This repository is **not** the Motorical API backend. It only contains public packages meant to be installed or depended on outside Motorical's own infrastructure.
 
 ## Every package here is a release-time mirror, not the dev source
