@@ -165,8 +165,8 @@ export const TOOLS = [
   {
     name: 'motorical_list_motor_blocks',
     description:
-      'List the Motor Blocks (isolated sending streams) this connection covers: id and name only, of every type, active or not (so marketing and companion blocks appear too). ' +
-      'Use it to find a valid motorBlockId. For type, domain, status and management use motorical_motor_block_list (production blocks only); ' +
+      'Find a Motor Block id: every Motor Block (isolated sending stream) this connection covers, with id, name, type and whether it is active, including inactive, marketing and companion blocks. ' +
+      'For the attached domain, send-readiness and management use motorical_motor_block_list (production blocks only); ' +
       'for the account-wide picture including inactive blocks use motorical_get_onboarding_state. Auto-mints a Public API token with ak_live_ on the local server if needed.',
     inputSchema: {
       motorBlockId: z.string().uuid().optional().describe('Optional. Listing is account-wide; a block is only used when minting a legacy public token on the non-OAuth path.')
@@ -178,8 +178,8 @@ export const TOOLS = [
   {
     name: 'motorical_motor_block_list',
     description:
-      'List ordinary production Motor Blocks (isolated sending streams) this account can manage. ' +
-      'Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks, so its count can be lower than motorical_list_motor_blocks (which lists every block this connection covers, id and name only). Prefer this one when you need type, domain or status.',
+      'Manage production Motor Blocks: ordinary blocks this account can manage, with type, attached domain and status. ' +
+      'Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks, so its count can be lower than motorical_list_motor_blocks (which lists every block this connection covers). Prefer this one when you need the domain or send-readiness.',
     inputSchema: {},
     outputSchema: { success: z.boolean(), data: z.array(motorBlockOutput) },
     annotations: { title: 'List production Motor Blocks', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -813,12 +813,11 @@ export const TOOLS = [
   {
     name: 'motorical_domain_health',
     description:
-      'Email-authentication health of ONE domain by id: SPF, DKIM, DMARC, status, ' +
-      'issues, and whether the answer is cached (source). Works for a domain that has no Motor Block yet. ' +
-      'Same shape as motorical_get_domain_health, which answers for the domain attached to one Motor Block. ' +
+      'Check SPF, DKIM and DMARC for a domain by DOMAIN id (not a Motor Block id): status, issues, and whether the answer is cached (source). Works for a domain that has no Motor Block yet. ' +
+      'For the sending domain of a Motor Block use motorical_get_domain_health (same shape, takes a Motor Block id). ' +
       'Pass refresh:true for a live DNS check (slower). A result with source "cache_stale" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists. Read-only. Over hosted OAuth it needs the read:domains scope.',
     inputSchema: {
-      domainId: z.string().uuid(),
+      domainId: z.string().uuid().describe('A domain id (from motorical_domain_list), never a Motor Block id. For a Motor Block use motorical_get_domain_health.'),
       refresh: z.boolean().optional().describe('Run a live DNS check instead of serving the cache (default false)'),
       motorBlockId: z.string().uuid().optional()
         .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
@@ -956,7 +955,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_metrics',
-    description: 'Time-series send metrics for one Motor Block, bucketed by hour or day.',
+    description: 'Sends over time for one Motor Block, bucketed by hour or day. For plain per-day counts use motorical_get_daily_summary; for totals and rates over a range use motorical_get_overview.',
     inputSchema: {
       motorBlockId: blockSelector,
       from: isoDate('inclusive'),
@@ -1033,7 +1032,7 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_rate_limits',
-    description: "Current hourly and daily send usage against this Motor Block's limits.",
+    description: "Hourly and daily send usage against the limits of ONE Motor Block. For the account-wide ceiling across all blocks use motorical_get_account_rate_limits.",
     inputSchema: { motorBlockId: blockSelector },
     annotations: { title: 'Get Motor Block rate limits', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.getRateLimits(args),
@@ -1042,8 +1041,8 @@ export const TOOLS = [
   {
     name: 'motorical_get_account_rate_limits',
     description:
-      'Account-wide send ceiling and current usage across every Motor Block '
-      + '(GET /api/public/v1/account/rate-limits). Account-scoped: no Motor Block needed.',
+      'Account-wide send ceiling and current usage across ALL Motor Blocks (no Motor Block needed). '
+      + 'For the usage of a single block use motorical_get_rate_limits.',
     inputSchema: {
       motorBlockId: z.string().uuid().optional()
         .describe('Optional. This operation acts on the whole account, so a Motor Block is never needed; pass one only to record which block the call was made on behalf of.')
@@ -1190,11 +1189,12 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_domain_health',
-    description: "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX. "
+    description: "Check SPF, DKIM, DMARC and MX health for the sending domain of one MOTOR BLOCK (takes a Motor Block id). For a domain id, or a domain that has no Motor Block yet, use motorical_domain_health. "
       + 'This is a set-up status, not a score, and it is separate from the delivery reputation score (motorical_get_reputation), which measures delivery outcomes. '
       + 'A result with source "cache_stale" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists.',
     inputSchema: {
-      motorBlockId: blockSelector,
+      motorBlockId: z.string().uuid().optional()
+        .describe('A Motor Block id, not a domain id (for a domain id use motorical_domain_health). Required when the authorization covers more than one Motor Block'),
       refresh: z.boolean().optional().describe('Re-run the live DNS checks now instead of returning the last cached result')
     },
     annotations: { title: 'Get domain health', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },

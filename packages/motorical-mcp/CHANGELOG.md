@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.29.0] — 2026-11-26
+
+### Changed
+
+- Twin tools now say what they are for in the first sentence and name each other: `motorical_list_motor_blocks` / `motorical_motor_block_list`, `motorical_domain_health` / `motorical_get_domain_health`, `motorical_get_rate_limits` / `motorical_get_account_rate_limits`, and `motorical_get_metrics` points to the daily summary and overview. No tool was renamed or removed.
+- `motorical_list_motor_blocks` now also returns each block's `type` and `active` flag (additive; `id` and `name` are unchanged).
+- Passing a Motor Block id to `motorical_domain_health`, or a domain id to `motorical_get_domain_health`, now fails with a hint naming the right tool. It never reroutes the call.
+- The local server no longer lists `motorical_sandbox_allowlist_request` and `motorical_sandbox_allowlist_confirm` unless `MOTORICAL_JWT` is set (they need a dashboard session and always failed without one; `motorical_free_recipient_add` is the tool that works). With a JWT, all 55 tools are listed as before; without one, 53.
+
 ## [1.28.2] — 2026-11-25
 
 ### Changed

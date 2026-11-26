@@ -8,7 +8,7 @@ import { PERMISSION_NEEDED_SENTENCE } from './permissionNeeded.js';
  * (manage:sandbox) so a scope filter alone listed them on every sandbox grant, inviting calls that can only fail;
  * motorical_free_recipient_add is the OAuth replacement. A grant is by definition an OAuth connection, so hide them.
  */
-const DASHBOARD_SESSION_ONLY = new Set([
+export const DASHBOARD_SESSION_ONLY = new Set([
   'motorical_sandbox_allowlist_request',
   'motorical_sandbox_allowlist_confirm',
 ]);

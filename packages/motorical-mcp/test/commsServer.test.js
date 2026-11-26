@@ -55,7 +55,7 @@ describe('the local (npm) server never registers them', () => {
       assert.ok(HOSTED_ONLY_TOOLS.includes(n), n);
       assert.ok(!ALL_TOOLS.includes(n), n);
     }
-    const { server } = createMotoricalMcpServer({ client: new Proxy({}, { get: () => async () => ({}) }) });
+    const { server } = createMotoricalMcpServer({ client: new Proxy({}, { get: (_t, k) => (k === 'config' ? { dashboardJwt: 'stub' } : async () => ({})) }) });
     const names = Object.keys(server._registeredTools || {});
     assert.ok(names.length > 0, 'the local server registers tools');
     assert.equal(names.length, LOCAL_SERVER_TOOL_COUNT, 'the count is unchanged by hosted-only tools');

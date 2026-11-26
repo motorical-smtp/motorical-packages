@@ -5,7 +5,7 @@ import { MotoricalClient, loadConfig } from './client.js';
 import { TOOLS } from './registry.js';
 import { openOutputSchema } from './openOutputSchema.js';
 import { HOSTED_ONLY_TOOLS } from './servers.js';
-import { describeWithNote } from './grantVisibility.js';
+import { describeWithNote, DASHBOARD_SESSION_ONLY } from './grantVisibility.js';
 import { RESOURCES, RESOURCE_TEMPLATES, DOC_RESOURCES } from './resources.js';
 import { instructionsFor } from './instructions.js';
 import { COMMS_RESOURCES } from './commsResources.js';
@@ -68,6 +68,9 @@ export function createMotoricalMcpServer(options = {}) {
     // audience (servers.js) -- a local operator already has some credential
     // configured, which is the exact scenario this tool exists to bridge past.
     if (!allowedTools && HOSTED_ONLY_TOOLS.includes(tool.name)) continue;
+    // The sandbox allowlist pair works only with a dashboard session (MOTORICAL_JWT) and is hidden on hosted grants for the same reason; on
+    // the local server an OAuth-style or no-credential setup can never call it, and motorical_free_recipient_add is the tool that works.
+    if (!allowedTools && DASHBOARD_SESSION_ONLY.has(tool.name) && !(client.config && client.config.dashboardJwt)) continue;
     const run = tool.handler(client);
     server.registerTool(
       tool.name,
