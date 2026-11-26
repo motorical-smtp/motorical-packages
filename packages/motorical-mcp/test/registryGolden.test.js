@@ -17,7 +17,7 @@ import { toolSurface } from './helpers/toolSurface.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, 'fixtures', 'tool-surface.json');
 
-const stubClient = new Proxy({}, { get: () => async () => ({}) });
+const stubClient = new Proxy({}, { get: (_t, k) => (k === 'config' ? { dashboardJwt: 'stub' } : async () => ({})) });
 
 describe('tool surface', () => {
   test('matches the recorded fixture exactly', () => {

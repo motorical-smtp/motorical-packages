@@ -16,6 +16,7 @@ test('MCP server lists tools and resources', async () => {
     akApiKey: 'ak_live_x',
     bearerToken: '',
     motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
+    dashboardJwt: 'jwt_x',
     defaultFrom: 'a@example.com'
   });
   // `success` is the one field motorical_get_send_status's outputSchema
@@ -136,6 +137,7 @@ async function registeredTools() {
     docsBaseUrl: 'https://docs.motorical.com',
     mkApiKey: 'mk_live_x', akApiKey: 'ak_live_x', bearerToken: '',
     motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
+    dashboardJwt: 'jwt_x',
     defaultFrom: 'a@example.com'
   });
   const { server } = createMotoricalMcpServer({ client: fake });
@@ -193,6 +195,7 @@ test('reported server version matches package.json, not a hardcoded literal', as
     akApiKey: 'ak_live_x',
     bearerToken: '',
     motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
+    dashboardJwt: 'jwt_x',
     defaultFrom: 'a@example.com'
   });
 
@@ -225,6 +228,7 @@ test('legacy path lists the account-state resource and its templates', async () 
     akApiKey: 'ak_live_x',
     bearerToken: '',
     motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
+    dashboardJwt: 'jwt_x',
     defaultFrom: 'a@example.com'
   });
   fake.getAccountState = async () => ({
@@ -272,6 +276,7 @@ test('legacy path does not list or serve the account-state resource for a non-an
     akApiKey: 'ak_live_x',
     bearerToken: '',
     motorBlockId: '39b3f504-7e41-4b3f-871a-75bc77676267',
+    dashboardJwt: 'jwt_x',
     defaultFrom: 'a@example.com'
   });
   fake.getAccountState = async () => ({

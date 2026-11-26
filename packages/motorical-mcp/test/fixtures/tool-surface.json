@@ -65,7 +65,7 @@
   },
   {
     "name": "motorical_domain_health",
-    "description": "Email-authentication health of ONE domain by id: SPF, DKIM, DMARC, status, issues, and whether the answer is cached (source). Works for a domain that has no Motor Block yet. Same shape as motorical_get_domain_health, which answers for the domain attached to one Motor Block. Pass refresh:true for a live DNS check (slower). A result with source \"cache_stale\" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists. Read-only. Over hosted OAuth it needs the read:domains scope. Requires OAuth scope: read:domains (see motorical_whoami for what it allows).",
+    "description": "Check SPF, DKIM and DMARC for a domain by DOMAIN id (not a Motor Block id): status, issues, and whether the answer is cached (source). Works for a domain that has no Motor Block yet. For the sending domain of a Motor Block use motorical_get_domain_health (same shape, takes a Motor Block id). Pass refresh:true for a live DNS check (slower). A result with source \"cache_stale\" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists. Read-only. Over hosted OAuth it needs the read:domains scope. Requires OAuth scope: read:domains (see motorical_whoami for what it allows).",
     "inputKeys": [
       "domainId",
       "motorBlockId",
@@ -153,7 +153,7 @@
   },
   {
     "name": "motorical_get_account_rate_limits",
-    "description": "Account-wide send ceiling and current usage across every Motor Block (GET /api/public/v1/account/rate-limits). Account-scoped: no Motor Block needed. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
+    "description": "Account-wide send ceiling and current usage across ALL Motor Blocks (no Motor Block needed). For the usage of a single block use motorical_get_rate_limits. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -227,7 +227,7 @@
   },
   {
     "name": "motorical_get_domain_health",
-    "description": "DNS and email-authentication health for the Motor Block's sending domain — SPF, DKIM, DMARC, MX. This is a set-up status, not a score, and it is separate from the delivery reputation score (motorical_get_reputation), which measures delivery outcomes. A result with source \"cache_stale\" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists. Requires OAuth scope: read:domains (see motorical_whoami for what it allows).",
+    "description": "Check SPF, DKIM, DMARC and MX health for the sending domain of one MOTOR BLOCK (takes a Motor Block id). For a domain id, or a domain that has no Motor Block yet, use motorical_domain_health. This is a set-up status, not a score, and it is separate from the delivery reputation score (motorical_get_reputation), which measures delivery outcomes. A result with source \"cache_stale\" or refreshing:true is the last stored check (cacheAgeSeconds says how old; can be days): a recheck has started, so read again in about ten seconds or pass refresh:true. dmarc.policy is not reported yet (always null); dmarc.configured says whether a record exists. Requires OAuth scope: read:domains (see motorical_whoami for what it allows).",
     "inputKeys": [
       "motorBlockId",
       "refresh"
@@ -329,7 +329,7 @@
   },
   {
     "name": "motorical_get_metrics",
-    "description": "Time-series send metrics for one Motor Block, bucketed by hour or day. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
+    "description": "Sends over time for one Motor Block, bucketed by hour or day. For plain per-day counts use motorical_get_daily_summary; for totals and rates over a range use motorical_get_overview. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
     "inputKeys": [
       "from",
       "interval",
@@ -393,7 +393,7 @@
   },
   {
     "name": "motorical_get_rate_limits",
-    "description": "Current hourly and daily send usage against this Motor Block's limits. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
+    "description": "Hourly and daily send usage against the limits of ONE Motor Block. For the account-wide ceiling across all blocks use motorical_get_account_rate_limits. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -433,7 +433,7 @@
   },
   {
     "name": "motorical_list_motor_blocks",
-    "description": "List the Motor Blocks (isolated sending streams) this connection covers: id and name only, of every type, active or not (so marketing and companion blocks appear too). Use it to find a valid motorBlockId. For type, domain, status and management use motorical_motor_block_list (production blocks only); for the account-wide picture including inactive blocks use motorical_get_onboarding_state. Auto-mints a Public API token with ak_live_ on the local server if needed. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
+    "description": "Find a Motor Block id: every Motor Block (isolated sending stream) this connection covers, with id, name, type and whether it is active, including inactive, marketing and companion blocks. For the attached domain, send-readiness and management use motorical_motor_block_list (production blocks only); for the account-wide picture including inactive blocks use motorical_get_onboarding_state. Auto-mints a Public API token with ak_live_ on the local server if needed. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
     "inputKeys": [
       "motorBlockId"
     ],
@@ -558,7 +558,7 @@
   },
   {
     "name": "motorical_motor_block_list",
-    "description": "List ordinary production Motor Blocks (isolated sending streams) this account can manage. Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks, so its count can be lower than motorical_list_motor_blocks (which lists every block this connection covers, id and name only). Prefer this one when you need type, domain or status. Requires OAuth scope: manage:motor-blocks (see motorical_whoami for what it allows).",
+    "description": "Manage production Motor Blocks: ordinary blocks this account can manage, with type, attached domain and status. Includes inactive blocks so they can be reactivated; excludes sandboxes, marketing, and portal-managed companion blocks, so its count can be lower than motorical_list_motor_blocks (which lists every block this connection covers). Prefer this one when you need the domain or send-readiness. Requires OAuth scope: manage:motor-blocks (see motorical_whoami for what it allows).",
     "inputKeys": [],
     "annotations": {
       "title": "List production Motor Blocks",

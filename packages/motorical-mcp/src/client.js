@@ -39,6 +39,18 @@ export function loadConfig(env = process.env) {
   };
 }
 
+/**
+ * Attach a recovery hint to a lookup failure that is most likely "the right id, given to the wrong twin tool". Only the listed statuses whose
+ * message matches are touched, so a scope failure (403 insufficient_scope) keeps its own hint, and an upstream hint is never overwritten.
+ * toolError.js already prefers `err.data.hint` over the generic per-code hint.
+ */
+function withWrongIdHint(err, statuses, messagePattern, hint) {
+  if (!err || !statuses.includes(err.status) || !messagePattern.test(String(err.message || ''))) return err;
+  if (err.data && typeof err.data.hint === 'string') return err;
+  err.data = { ...(err.data && typeof err.data === 'object' ? err.data : {}), hint };
+  return err;
+}
+
 export class MotoricalClient {
   constructor(config = loadConfig()) {
     this.config = config;
@@ -291,7 +303,13 @@ export class MotoricalClient {
     const bearer = await this.getBearer({ motorBlockId });
     const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/domain-health`;
     const qs = this._qs({ refresh: refresh === true ? 'true' : undefined });
-    return this.request('GET', this._scoped(path + qs, motorBlockId), { bearer });
+    try {
+      return await this.request('GET', this._scoped(path + qs, motorBlockId), { bearer });
+    } catch (err) {
+      // A domain id passed as a Motor Block id comes back 403 "not bound to this motor block" (or 404). Name the sibling; never reroute.
+      throw withWrongIdHint(err, [403, 404], /not bound to this motor block|No domain attached/i,
+        'motorBlockId must be a Motor Block id. If this was a domain id, call motorical_domain_health with domainId (motorical_domain_list shows domain ids).');
+    }
   }
 
   async webhookList({ motorBlockId } = {}) {
@@ -813,7 +831,13 @@ export class MotoricalClient {
   async domainHealthById({ domainId, refresh, motorBlockId } = {}) {
     if (!domainId) throw new Error('domainId is required');
     const bearer = await this.getBearer({ motorBlockId });
-    return this.request('GET', this._accountPath(`/api/public/v1/domains/${encodeURIComponent(domainId)}/health${this._qs({ refresh: refresh === true ? 'true' : undefined })}`, motorBlockId), { bearer });
+    try {
+      return await this.request('GET', this._accountPath(`/api/public/v1/domains/${encodeURIComponent(domainId)}/health${this._qs({ refresh: refresh === true ? 'true' : undefined })}`, motorBlockId), { bearer });
+    } catch (err) {
+      // A Motor Block id passed as a domain id is a well-formed uuid the route cannot find: 404 domain_not_found. Name the sibling; never reroute.
+      throw withWrongIdHint(err, [404], /domain_not_found/i,
+        'domainId must be a domain id (motorical_domain_list shows them). If this was a Motor Block id, call motorical_get_domain_health with motorBlockId.');
+    }
   }
 
   async domainAdd({ domain, verificationMethod = 'dns', motorBlockId, idempotencyKey } = {}) {
