@@ -49,6 +49,8 @@ packages/
   motorical-cli/            # retired, source frozen (not published, not supported)
   motorical-mcp/             # MCP server for Cursor / Claude Desktop
   motorical-scope-catalog/  # OAuth/MCP scope metadata library, no bin — a dependency, not a tool
+  motorical-sdk-node/        # @motorical/sdk: Node.js API client generated from openapi.json, no dependencies
+  motorical-sdk-python/      # motorical (PyPI): Python API client generated from openapi.json, standard library only
 ```
 
 ## Docs for agents
@@ -72,8 +74,8 @@ If you're looking to contribute, please open an issue first rather than sending 
 directly against the source here; fixes made directly in this repo can be overwritten by
 the next sync. Each package has its own publish workflow
 (`.github/workflows/publish-motorical-mcp.yml`, `publish-motorical-cli.yml` (disabled: package retired),
-`publish-motorical-scope-catalog.yml`) and its own npmjs.com trusted-publisher
-registration; they don't share either. Publishing uses npm's OIDC trusted-publisher flow
+`publish-motorical-scope-catalog.yml`, `publish-motorical-sdk.yml`, `publish-motorical-sdk-python.yml` (PyPI)) and its own
+trusted-publisher registration (npmjs.com, or pypi.org for the Python SDK); they don't share either. Publishing uses npm's OIDC trusted-publisher flow
 — no long-lived npm token is stored anywhere in this repo or its workflows — and produces
 a signed [provenance attestation](https://docs.npmjs.com/generating-provenance-statements)
 visible on each package's npm page.

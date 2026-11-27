@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "motorical"
+version = "0.1.0"
+description = "Official Python client for the Motorical transactional email API, Public API and Communications API, generated from the OpenAPI specification. Standard library only."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["motorical", "email", "transactional email", "smtp", "email api", "sdk"]
+
+[project.urls]
+Documentation = "https://docs.motorical.com/api-reference/endpoints#generate-a-client"
+Source = "https://github.com/motorical-smtp/motorical-packages/tree/main/packages/motorical-sdk-python"
+Issues = "https://github.com/motorical-smtp/motorical-packages/issues"
+
+[tool.setuptools]
+packages = ["motorical"]

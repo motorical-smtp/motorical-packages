@@ -1,0 +1,40 @@
+{
+  "name": "@motorical/sdk",
+  "version": "0.1.0",
+  "description": "Official Node.js client for the Motorical transactional email API, Public API and Communications API, generated from the OpenAPI specification. No dependencies.",
+  "main": "src/index.js",
+  "types": "index.d.ts",
+  "files": [
+    "src",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/sdk.test.js"
+  },
+  "keywords": [
+    "motorical",
+    "email",
+    "transactional email",
+    "smtp",
+    "email api",
+    "sdk"
+  ],
+  "license": "MIT",
+  "homepage": "https://docs.motorical.com/api-reference/endpoints#generate-a-client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motorical-smtp/motorical-packages.git",
+    "directory": "packages/motorical-sdk-node"
+  },
+  "bugs": {
+    "url": "https://github.com/motorical-smtp/motorical-packages/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
