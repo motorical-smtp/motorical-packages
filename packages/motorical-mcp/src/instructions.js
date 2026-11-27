@@ -27,9 +27,9 @@ import { PERMISSION_NEEDED_SENTENCE, CONNECT_PAGE_URL } from './permissionNeeded
 // server key added without a matching PER_SERVER entry. The fallback must be
 // safe by construction; it must never be the one path that omits this.
 const ACCEPTANCE_WARNING = [
-  'IMPORTANT: a successful send returns 202 Accepted. That means the message was ACCEPTED FOR',
+  'IMPORTANT: a successful send returns HTTP 200 with acceptanceStatus "queued". That means the message was ACCEPTED FOR',
   'DELIVERY -- it is NOT delivered. Delivery, bounce or deferral is decided seconds to hours',
-  'later. Never tell a user a message was delivered on the strength of a 202; check the message',
+  'later. Never tell a user a message was delivered on the strength of a successful send; check the message',
   'status before making any claim about the outcome. Use dryRun:true when composing a new send.',
 ].join(' ');
 
@@ -106,6 +106,6 @@ export function instructionsFor(serverKey) {
   // the prototype chain, so instructionsFor('toString') returned a Function and
   // instructionsFor('constructor') an Object -- neither of which is a string of
   // instructions. Only an OWN key counts; everything else falls through to
-  // GENERIC, which by design carries the 202 acceptance warning (Ruling Q12).
+  // GENERIC, which by design carries the acceptance warning (Ruling Q12).
   return Object.hasOwn(PER_SERVER, serverKey) ? PER_SERVER[serverKey] : GENERIC;
 }
