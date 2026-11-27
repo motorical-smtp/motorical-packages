@@ -79,13 +79,15 @@ describe('instructions', () => {
   // it carries motorical_send_email and is the unscoped, highest-traffic
   // route. Any server whose tools include the send tool -- now or in the
   // future -- must get the acceptance-is-not-delivery warning.
-  test('every server that can send email warns that 202 is acceptance, not delivery', () => {
+  test('every server that can send email warns that a successful send is acceptance, not delivery', () => {
     const sendCapableServers = SERVERS.filter((s) => s.tools.includes('motorical_send_email'));
     assert.ok(sendCapableServers.length > 0, 'expected at least one send-capable server to check');
 
     for (const s of sendCapableServers) {
       const text = instructionsFor(s.key);
-      assert.match(text, /202/, `${s.key}: missing 202 warning`);
+      assert.match(text, /HTTP 200/, `${s.key}: missing the real success status`);
+      // POST /v1/send answers 200 (backend/src/routes/v1.js); the text said 202 until 2026-11-27.
+      assert.doesNotMatch(text, /\b202\b/, `${s.key}: claims a 202 the API never returns`);
       assert.match(text, /accepted/i, `${s.key}: missing "accepted"`);
       assert.match(text, /not\s+delivered|is NOT delivered/i, `${s.key}: missing acceptance-vs-delivery distinction`);
     }
@@ -94,7 +96,8 @@ describe('instructions', () => {
     // install uses -- calls createMotoricalMcpServer with no serverKey, so
     // instructionsFor(undefined) is the path it actually hits.
     const stdioText = instructionsFor(undefined);
-    assert.match(stdioText, /202/, 'stdio path (undefined): missing 202 warning');
+    assert.match(stdioText, /HTTP 200/, 'stdio path (undefined): missing the real success status');
+    assert.doesNotMatch(stdioText, /\b202\b/, 'stdio path (undefined): claims a 202 the API never returns');
     assert.match(stdioText, /accepted/i, 'stdio path (undefined): missing "accepted"');
     assert.match(
       stdioText,

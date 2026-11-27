@@ -450,7 +450,7 @@ export const TOOLS = [
   {
     name: 'motorical_wait_for_outcome',
     description:
-      'Wait for a real send\'s actual delivery outcome (not just the 202 acceptance). Bounded ' +
+      'Wait for a real send\'s actual delivery outcome (not just its acceptance). Bounded ' +
       'server-side wait with backoff, capped under typical client timeouts. If the result is ' +
       'still_pending, wait retryAfterMs and call this again with the same taskId.',
     inputSchema: {

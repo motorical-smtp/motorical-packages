@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.29.1] — 2026-11-28
+
+### Fixed
+
+- The server instructions told every agent that a successful send returns `202 Accepted`. It returns HTTP `200` with `acceptanceStatus: "queued"`; the text now says so (the warning that acceptance is not delivery is unchanged). The `motorical_wait_for_outcome` description no longer mentions 202 either. Text only: no tool, input or output changed.
+
 ## [1.29.0] — 2026-11-26
 
 ### Changed
