@@ -1,6 +1,6 @@
 {
   "name": "@motorical/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official Node.js client for the Motorical transactional email API, Public API and Communications API, generated from the OpenAPI specification. No dependencies.",
   "main": "src/index.js",
   "types": "index.d.ts",

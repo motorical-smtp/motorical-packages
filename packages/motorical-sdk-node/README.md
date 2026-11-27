@@ -2,6 +2,10 @@
 
 Node.js client for the Motorical APIs: the transactional Send API, the Public API (analytics, logs, domains, webhooks, Motor Blocks) and the Communications API. One method per `operationId` in [openapi.json](https://docs.motorical.com/openapi.json), generated from it, no dependencies (Node 18+, built-in `fetch`).
 
+```bash
+npm install @motorical/sdk
+```
+
 ```js
 const { Motorical, MotoricalError } = require('@motorical/sdk');
 
