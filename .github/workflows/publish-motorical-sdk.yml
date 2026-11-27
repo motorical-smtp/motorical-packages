@@ -1,0 +1,101 @@
+name: Publish @motorical/sdk
+
+# Same least-privilege shape as publish-motorical-mcp.yml: the job that runs code (tests, pack) holds NO publish
+# credential; only the final job gets the OIDC token, checks out nothing, and publishes the exact tarball verified.
+#
+# FIRST RELEASE: npm configures a trusted publisher in an existing package's settings, so @motorical/sdk 0.1.0 is
+# published once by hand by the owner (the tarball this workflow's verify job uploads, or `npm publish` from
+# packages/motorical-sdk-node). After that, add this repository + this workflow file + environment npm-publish as
+# the package's trusted publisher on npmjs.com, and every later version goes through this workflow with provenance.
+# Run with dry_run=true first after changing this file.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate the whole pipeline without publishing (npm publish --dry-run). Only passes at a version NOT yet on npm.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/motorical-sdk-node
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      # The SDK has no dependencies, so there is nothing to install or audit.
+      - name: Run tests (every operation against a local server)
+        run: npm test
+
+      - name: Verify this version isn't already published
+        run: |
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view @motorical/sdk version 2>/dev/null || echo "none")
+          echo "package.json version: $LOCAL_VERSION"
+          echo "currently published version: $PUBLISHED_VERSION"
+          if [ "$LOCAL_VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "::error::Version $LOCAL_VERSION is already published. Bump packages/motorical-sdk-node/package.json first."
+            exit 1
+          fi
+
+      - name: Verify repository.url matches this repository (provenance requires it)
+        run: |
+          URL=$(node -p "require('./package.json').repository.url")
+          test "$URL" = "git+https://github.com/motorical-smtp/motorical-packages.git" || { echo "::error::repository.url is $URL"; exit 1; }
+
+      - name: Pack the tarball that will be published
+        run: |
+          mkdir -p "$RUNNER_TEMP/pkg"
+          npm pack --pack-destination "$RUNNER_TEMP/pkg"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: motorical-sdk-tarball
+          path: ${{ runner.temp }}/pkg/*.tgz
+          retention-days: 3
+          if-no-files-found: error
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-24.04
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Pin npm (trusted publishing requires >= 11.5.1)
+        run: npm install -g npm@11.20.0
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: motorical-sdk-tarball
+          path: ${{ runner.temp }}/pkg
+
+      - name: Publish the verified tarball
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          TARBALL=$(ls "$RUNNER_TEMP"/pkg/*.tgz)
+          echo "Publishing $TARBALL"
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish "$TARBALL" --provenance --access public --dry-run
+          else
+            npm publish "$TARBALL" --provenance --access public
+          fi
