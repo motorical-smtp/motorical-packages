@@ -944,10 +944,11 @@ export const TOOLS = [
 
   {
     name: 'motorical_get_daily_summary',
-    description: 'Per-day send counts and outcomes for one Motor Block. Rates use the same finalized-recipient definition as motorical_get_overview (rateBasis says so); days with no sends are not returned.',
+    description: 'Per-day send counts and outcomes for one Motor Block. Rates use the same finalized-recipient definition as motorical_get_overview (rateBasis says so). Days with no sends are left out unless zeroFill is true; then every day of the window is returned, empty days with zero counts and null rates (no sends, so no rate).',
     inputSchema: {
       motorBlockId: blockSelector,
-      days: z.number().int().positive().optional().describe('How many days back, counting today')
+      days: z.number().int().positive().optional().describe('How many days back, counting today'),
+      zeroFill: z.boolean().optional().describe('true returns one row per day, including days with no sends (zero counts, null rates). Default false.')
     },
     annotations: { title: 'Get daily send summary', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: (client) => async (args) => client.getDailySummary(args),

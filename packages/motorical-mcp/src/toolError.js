@@ -61,6 +61,9 @@ export function toolErrorPayload(err) {
     status: (err && err.status) || null,
     details: (err && err.data) || null,
   };
+  // The API's request id (X-Request-Id, also requestId in every error body): quote it to support to find the call.
+  const requestId = err && err.data && typeof err.data.requestId === 'string' ? err.data.requestId : null;
+  if (requestId) payload.requestId = requestId;
   const hint = (err && err.data && typeof err.data.hint === 'string' && err.data.hint) || HINTS[payload.code];
   if (hint) payload.hint = hint;
   if (err && Array.isArray(err.candidates) && err.candidates.length) payload.candidates = err.candidates;
