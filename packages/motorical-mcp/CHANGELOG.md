@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [1.30.0] — 2026-11-28
+
+### Added
+
+- `motorical_get_daily_summary` takes `zeroFill: true` to return every day of the window, days with no sends as zero counts and `null` rates. Without it the answer is unchanged.
+- Tool errors carry the API's `requestId` as their own field (it was only inside `details`). Quote it to support.
+
 ## [1.29.1] — 2026-11-28
 
 ### Fixed

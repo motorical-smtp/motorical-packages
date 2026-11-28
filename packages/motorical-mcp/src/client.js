@@ -243,10 +243,10 @@ export class MotoricalClient {
     return this.request('GET', this._scoped(path + this._qs({ from, to }), motorBlockId), { bearer });
   }
 
-  async getDailySummary({ motorBlockId, days } = {}) {
+  async getDailySummary({ motorBlockId, days, zeroFill } = {}) {
     const bearer = await this.getBearer({ motorBlockId });
     const path = `/api/public/v1/motor-blocks/${encodeURIComponent(motorBlockId)}/daily-summary`;
-    return this.request('GET', this._scoped(path + this._qs({ days }), motorBlockId), { bearer });
+    return this.request('GET', this._scoped(path + this._qs({ days, zeroFill: zeroFill === true ? 'true' : undefined }), motorBlockId), { bearer });
   }
 
   async getMetrics({ motorBlockId, from, to, interval } = {}) {

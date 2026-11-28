@@ -195,10 +195,11 @@
   },
   {
     "name": "motorical_get_daily_summary",
-    "description": "Per-day send counts and outcomes for one Motor Block. Rates use the same finalized-recipient definition as motorical_get_overview (rateBasis says so); days with no sends are not returned. Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
+    "description": "Per-day send counts and outcomes for one Motor Block. Rates use the same finalized-recipient definition as motorical_get_overview (rateBasis says so). Days with no sends are left out unless zeroFill is true; then every day of the window is returned, empty days with zero counts and null rates (no sends, so no rate). Requires OAuth scope: read:analytics (see motorical_whoami for what it allows).",
     "inputKeys": [
       "days",
-      "motorBlockId"
+      "motorBlockId",
+      "zeroFill"
     ],
     "annotations": {
       "title": "Get daily send summary",
